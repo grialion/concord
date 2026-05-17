@@ -33,15 +33,17 @@
 
           src = craneLib.cleanCargoSource ./.;
 
-          # zstd-sys builds the bundled C source by default, so it only needs
-          # a C compiler from stdenv. pkg-config is included to keep the
-          # build robust if a future dep grows a system-library probe.
+          # audiopus_sys and ALSA use pkg-config to find system libraries.
+          # Providing Opus here avoids falling back to bundled Opus CMake
+          # builds, which are sensitive to the host CMake version.
           nativeBuildInputs = [ pkgs.pkg-config ];
 
           # Networking uses rustls + webpki-roots, so we do not need openssl
           # or a system CA bundle here. Only Darwin needs Security/CoreFoundation
           # frameworks because some indirect crates link against them.
-          buildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
+          buildInputs = [
+            pkgs.opus
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
             pkgs.alsa-lib
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.darwin.apple_sdk.frameworks.Security
