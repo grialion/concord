@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.3] - 2026-05-20
+
+### Bug Fixes
+
+- Stop auto-fetching visible user profiles by @chojs23
+- Use gateway for fetch message authors info by @chojs23
+- Dedupe message author member hydration by @chojs23
+- Load pinned messages on demand by @chojs23
+- Debounce member list subscriptions by @chojs23
+- Fix forum preview author hydration through gateway by @chojs23
+- Dedupe gateway channel subscriptions by @chojs23
+- Cap reaction user pagination by @chojs23
+- Dedupe duplicate voice state updates by @chojs23
+- Op37 subscription dedupe reset by @chojs23
+
+### Documentation
+
+- Update changelog by @chojs23
+
+### Features
+
+- Change composer Ctrl+Backspace to delete words and Delete to remove attachments by @chojs23
+
+### Miscellaneous Tasks
+
+- Format by @chojs23
+
 ## [2.0.2] - 2026-05-19
 
 ### Bug Fixes
