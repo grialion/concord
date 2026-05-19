@@ -545,7 +545,7 @@ impl DashboardState {
                     ChannelActionKind::LoadPinnedMessages => {
                         self.enter_pinned_message_view(channel_id);
                         self.close_channel_leader_action();
-                        Some(AppCommand::LoadPinnedMessages { channel_id })
+                        None
                     }
                     ChannelActionKind::ShowThreads => {
                         self.channel_leader_action = Some(ChannelLeaderActionState::Threads {

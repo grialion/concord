@@ -3315,10 +3315,7 @@ fn channel_show_pinned_messages_action_enters_pinned_message_view() {
 
     let command = state.activate_selected_channel_action();
 
-    assert!(matches!(
-        command,
-        Some(AppCommand::LoadPinnedMessages { channel_id }) if channel_id == Id::new(2)
-    ));
+    assert_eq!(command, None);
     assert!(state.is_pinned_message_view());
     assert_eq!(state.selected_message(), 0);
     assert_eq!(state.message_scroll(), 0);
@@ -5707,12 +5704,7 @@ fn channel_leader_action_loads_pinned_messages_for_selected_channel() {
 
     let command = state.activate_selected_channel_action();
 
-    assert_eq!(
-        command,
-        Some(AppCommand::LoadPinnedMessages {
-            channel_id: Id::new(2),
-        })
-    );
+    assert_eq!(command, None);
     assert!(state.is_pinned_message_view());
     assert!(!state.is_channel_leader_action_active());
 }

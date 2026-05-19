@@ -1618,6 +1618,11 @@ impl DashboardState {
             .is_some_and(|channel_id| Some(channel_id) == self.selected_channel_id())
     }
 
+    pub fn pinned_message_view_channel_id(&self) -> Option<Id<ChannelMarker>> {
+        self.is_pinned_message_view_active()
+            .then_some(self.pinned_message_view_channel_id?)
+    }
+
     #[cfg(test)]
     pub fn is_pinned_message_view(&self) -> bool {
         self.is_pinned_message_view_active()

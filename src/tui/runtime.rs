@@ -455,7 +455,7 @@ pub(super) async fn run_dashboard(
         }
 
         if let Some(channel_id) =
-            pinned_message_requests.next(state.selected_message_history_channel_id())
+            pinned_message_requests.next(state.pinned_message_view_channel_id())
             && commands
                 .send(AppCommand::LoadPinnedMessages { channel_id })
                 .await

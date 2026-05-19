@@ -2113,7 +2113,7 @@ fn a_key_no_longer_opens_actions_directly() {
 }
 
 #[test]
-fn leader_a_p_loads_pinned_messages_from_channel_pane() {
+fn leader_a_p_enters_pinned_message_view_from_channel_pane() {
     let mut state = state_with_messages(1);
     state.focus_pane(FocusPane::Channels);
     handle_key(&mut state, char_key(' '));
@@ -2121,12 +2121,7 @@ fn leader_a_p_loads_pinned_messages_from_channel_pane() {
 
     let command = handle_key(&mut state, char_key('p'));
 
-    assert_eq!(
-        command,
-        Some(AppCommand::LoadPinnedMessages {
-            channel_id: Id::new(2),
-        })
-    );
+    assert_eq!(command, None);
     assert!(state.is_pinned_message_view());
     assert!(!state.is_leader_active());
 }
