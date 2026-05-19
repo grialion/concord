@@ -24,6 +24,7 @@ use crate::{
 };
 
 const REACTION_USERS_PAGE_LIMIT: u16 = 100;
+const REACTION_USERS_MAX_PAGES: usize = 3;
 const FORUM_POST_SEARCH_PAGE_LIMIT: u16 = 25;
 // Discord returns 202 ACCEPTED while it warms the per-forum search index.
 // Wait briefly then retry. With two attempts after the original we cover the
@@ -539,6 +540,7 @@ impl DiscordRest {
     ) -> Result<Vec<ReactionUserInfo>> {
         let mut users = Vec::new();
         let mut after: Option<Id<UserMarker>> = None;
+        let mut pages_loaded = 0usize;
 
         loop {
             let mut request = self
@@ -577,9 +579,11 @@ impl DiscordRest {
                 .iter()
                 .filter_map(reaction_user_info_from_raw)
                 .collect();
+            pages_loaded = pages_loaded.saturating_add(1);
             let next_after = next_reaction_users_after(
                 parsed_page.len(),
                 parsed_page.last().map(|user| user.user_id),
+                pages_loaded,
             );
             users.extend(parsed_page);
 
@@ -1043,8 +1047,9 @@ fn percent_encode_path_segment(value: &str) -> String {
 fn next_reaction_users_after(
     page_len: usize,
     last_user_id: Option<Id<UserMarker>>,
+    pages_loaded: usize,
 ) -> Option<Id<UserMarker>> {
-    (page_len == usize::from(REACTION_USERS_PAGE_LIMIT))
+    (pages_loaded < REACTION_USERS_MAX_PAGES && page_len == usize::from(REACTION_USERS_PAGE_LIMIT))
         .then_some(last_user_id)
         .flatten()
 }
@@ -1217,11 +1222,12 @@ mod tests {
         discord::{
             ChannelInfo, MAX_UPLOAD_FILE_BYTES, MessageAttachmentUpload, ReactionEmoji,
             rest::{
-                ForumPostPage, ForumSearchSort, is_search_index_warming, merge_forum_pages,
-                message_multipart_form, message_request_body, mute_request_body,
-                next_reaction_users_after, parse_forum_preview_messages, parse_forum_thread_page,
-                parse_user_profile_response, poll_vote_request_body, reaction_route_component,
-                upload_content_type, validate_message_content, validate_message_payload,
+                ForumPostPage, ForumSearchSort, REACTION_USERS_MAX_PAGES, is_search_index_warming,
+                merge_forum_pages, message_multipart_form, message_request_body,
+                mute_request_body, next_reaction_users_after, parse_forum_preview_messages,
+                parse_forum_thread_page, parse_user_profile_response, poll_vote_request_body,
+                reaction_route_component, upload_content_type, validate_message_content,
+                validate_message_payload,
             },
         },
     };
@@ -1364,11 +1370,15 @@ mod tests {
         let last_user_id = Id::new(123);
 
         assert_eq!(
-            next_reaction_users_after(100, Some(last_user_id)),
+            next_reaction_users_after(100, Some(last_user_id), 1),
             Some(last_user_id)
         );
-        assert_eq!(next_reaction_users_after(99, Some(last_user_id)), None);
-        assert_eq!(next_reaction_users_after(100, None), None);
+        assert_eq!(next_reaction_users_after(99, Some(last_user_id), 1), None);
+        assert_eq!(next_reaction_users_after(100, None, 1), None);
+        assert_eq!(
+            next_reaction_users_after(100, Some(last_user_id), REACTION_USERS_MAX_PAGES),
+            None
+        );
     }
 
     #[test]
