@@ -83,7 +83,11 @@ pub(super) fn process_effect_event(
     let outcome = EffectProcessingOutcome::processed(&event);
     let member_hydration_messages = match &event {
         AppEvent::MessageHistoryLoaded { messages, .. }
-        | AppEvent::PinnedMessagesLoaded { messages, .. } => Some(messages.clone()),
+        | AppEvent::PinnedMessagesLoaded { messages, .. }
+        | AppEvent::ForumPostsLoaded {
+            preview_messages: messages,
+            ..
+        } => Some(messages.clone()),
         _ => None,
     };
     if let Some(notification) = ctx.state.desktop_notification_for_event(&event) {
@@ -381,7 +385,8 @@ mod tests {
 
     use crate::discord::ids::Id;
     use crate::discord::{
-        AppCommand, AppEvent, ChannelInfo, MemberInfo, MessageInfo, MessageKind, RoleInfo,
+        AppCommand, AppEvent, ChannelInfo, ForumPostArchiveState, MemberInfo, MessageInfo,
+        MessageKind, RoleInfo,
     };
 
     use super::*;
@@ -392,27 +397,82 @@ mod tests {
         let channel_id = Id::new(2);
         let author_id = Id::new(99);
         let mut state = DashboardState::new();
+        push_guild_with_channel(
+            &mut state,
+            guild_id,
+            channel_info(guild_id, channel_id, None, "general", "GuildText"),
+        );
+
+        process_effect_in_default_context(
+            &mut state,
+            AppEvent::MessageHistoryLoaded {
+                channel_id,
+                before: None,
+                messages: vec![message_info(guild_id, channel_id, Id::new(20), author_id)],
+            },
+        );
+
+        assert_eq!(
+            state.drain_pending_commands(),
+            vec![AppCommand::LoadGuildMembersByIds {
+                guild_id,
+                user_ids: vec![author_id],
+            }]
+        );
+    }
+
+    #[test]
+    fn forum_posts_loaded_enqueues_missing_preview_author_member_request() {
+        let guild_id = Id::new(1);
+        let forum_id = Id::new(2);
+        let thread_id = Id::new(3);
+        let author_id = Id::new(99);
+        let mut state = DashboardState::new();
+        push_guild_with_channel(
+            &mut state,
+            guild_id,
+            channel_info(guild_id, forum_id, None, "forum", "forum"),
+        );
+
+        process_effect_in_default_context(
+            &mut state,
+            AppEvent::ForumPostsLoaded {
+                channel_id: forum_id,
+                archive_state: ForumPostArchiveState::Active,
+                offset: 0,
+                next_offset: 1,
+                posts: vec![channel_info(
+                    guild_id,
+                    thread_id,
+                    Some(forum_id),
+                    "welcome",
+                    "GuildPublicThread",
+                )],
+                preview_messages: vec![message_info(guild_id, thread_id, Id::new(20), author_id)],
+                has_more: false,
+            },
+        );
+
+        assert_eq!(
+            state.drain_pending_commands(),
+            vec![AppCommand::LoadGuildMembersByIds {
+                guild_id,
+                user_ids: vec![author_id],
+            }]
+        );
+    }
+
+    fn push_guild_with_channel(
+        state: &mut DashboardState,
+        guild_id: Id<crate::discord::ids::marker::GuildMarker>,
+        channel: ChannelInfo,
+    ) {
         state.push_event(AppEvent::GuildCreate {
             guild_id,
             name: "guild".to_owned(),
             member_count: None,
             owner_id: None,
-            channels: vec![ChannelInfo {
-                guild_id: Some(guild_id),
-                channel_id,
-                parent_id: None,
-                position: Some(0),
-                last_message_id: None,
-                name: "general".to_owned(),
-                kind: "GuildText".to_owned(),
-                message_count: None,
-                total_message_sent: None,
-                thread_archived: None,
-                thread_locked: None,
-                thread_pinned: None,
-                recipients: None,
-                permission_overwrites: Vec::new(),
-            }],
+            channels: vec![channel],
             members: Vec::<MemberInfo>::new(),
             presences: Vec::new(),
             roles: vec![RoleInfo {
@@ -425,6 +485,64 @@ mod tests {
             }],
             emojis: Vec::new(),
         });
+    }
+
+    fn channel_info(
+        guild_id: Id<crate::discord::ids::marker::GuildMarker>,
+        channel_id: Id<crate::discord::ids::marker::ChannelMarker>,
+        parent_id: Option<Id<crate::discord::ids::marker::ChannelMarker>>,
+        name: &str,
+        kind: &str,
+    ) -> ChannelInfo {
+        ChannelInfo {
+            guild_id: Some(guild_id),
+            channel_id,
+            parent_id,
+            position: Some(0),
+            last_message_id: None,
+            name: name.to_owned(),
+            kind: kind.to_owned(),
+            message_count: None,
+            total_message_sent: None,
+            thread_archived: None,
+            thread_locked: None,
+            thread_pinned: None,
+            recipients: None,
+            permission_overwrites: Vec::new(),
+        }
+    }
+
+    fn message_info(
+        guild_id: Id<crate::discord::ids::marker::GuildMarker>,
+        channel_id: Id<crate::discord::ids::marker::ChannelMarker>,
+        message_id: Id<crate::discord::ids::marker::MessageMarker>,
+        author_id: Id<crate::discord::ids::marker::UserMarker>,
+    ) -> MessageInfo {
+        MessageInfo {
+            guild_id: Some(guild_id),
+            channel_id,
+            message_id,
+            author_id,
+            author: "neo".to_owned(),
+            author_avatar_url: None,
+            author_role_ids: Vec::new(),
+            message_kind: MessageKind::regular(),
+            reference: None,
+            reply: None,
+            poll: None,
+            pinned: false,
+            reactions: Vec::new(),
+            content: Some("hello".to_owned()),
+            sticker_names: Vec::new(),
+            mentions: Vec::new(),
+            attachments: Vec::new(),
+            embeds: Vec::new(),
+            forwarded_snapshots: Vec::new(),
+            edited_timestamp: None,
+        }
+    }
+
+    fn process_effect_in_default_context(state: &mut DashboardState, event: AppEvent) {
         let mut image_previews = ImagePreviewCache::new();
         let mut avatar_images = AvatarImageCache::new();
         let mut emoji_images = EmojiImageCache::new();
@@ -435,7 +553,7 @@ mod tests {
         let mut thread_preview_requests = ThreadPreviewRequests::default();
         let (preview_decode_tx, _preview_decode_rx) = mpsc::unbounded_channel();
         let mut ctx = EffectContext {
-            state: &mut state,
+            state,
             image_previews: &mut image_previews,
             avatar_images: &mut avatar_images,
             emoji_images: &mut emoji_images,
@@ -447,43 +565,6 @@ mod tests {
             preview_decode_tx: &preview_decode_tx,
         };
 
-        process_effect_event(
-            AppEvent::MessageHistoryLoaded {
-                channel_id,
-                before: None,
-                messages: vec![MessageInfo {
-                    guild_id: Some(guild_id),
-                    channel_id,
-                    message_id: Id::new(20),
-                    author_id,
-                    author: "neo".to_owned(),
-                    author_avatar_url: None,
-                    author_role_ids: Vec::new(),
-                    message_kind: MessageKind::regular(),
-                    reference: None,
-                    reply: None,
-                    poll: None,
-                    pinned: false,
-                    reactions: Vec::new(),
-                    content: Some("hello".to_owned()),
-                    sticker_names: Vec::new(),
-                    mentions: Vec::new(),
-                    attachments: Vec::new(),
-                    embeds: Vec::new(),
-                    forwarded_snapshots: Vec::new(),
-                    edited_timestamp: None,
-                }],
-            },
-            &mut ctx,
-        );
-        drop(ctx);
-
-        assert_eq!(
-            state.drain_pending_commands(),
-            vec![AppCommand::LoadGuildMembersByIds {
-                guild_id,
-                user_ids: vec![author_id],
-            }]
-        );
+        process_effect_event(event, &mut ctx);
     }
 }
