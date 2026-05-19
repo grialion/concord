@@ -27,9 +27,10 @@ use super::{
         visible_dashboard_signature,
     },
     requests::{
-        ForumPostRequestTarget, ForumPostRequests, HistoryRequests, MemberRequests,
-        MentionMemberSearchRequests, MentionMemberSearchTarget, MessageAuthorMemberRequests,
-        PinnedMessageRequests, ThreadPreviewRequests,
+        ForumPostRequestTarget, ForumPostRequests, HistoryRequests, MemberListSubscriptionRequests,
+        MemberListSubscriptionTarget, MemberRequests, MentionMemberSearchRequests,
+        MentionMemberSearchTarget, MessageAuthorMemberRequests, PinnedMessageRequests,
+        ThreadPreviewRequests,
     },
     state::DashboardState,
     ui,
@@ -68,8 +69,8 @@ pub(super) async fn run_dashboard(
     let mut message_author_member_requests = MessageAuthorMemberRequests::default();
     let mut member_requests = MemberRequests::default();
     let mut mention_member_search_requests = MentionMemberSearchRequests::default();
+    let mut member_list_subscription_requests = MemberListSubscriptionRequests::default();
     let mut thread_preview_requests = ThreadPreviewRequests::default();
-    let mut last_member_subscription: Option<(Id<GuildMarker>, Id<ChannelMarker>, u32)> = None;
     let mut last_reported_active_guild: Option<Id<GuildMarker>> = None;
     let mut last_reported_message_channel: Option<Id<ChannelMarker>> = None;
     let mut image_targets = Vec::new();
@@ -174,6 +175,8 @@ pub(super) async fn run_dashboard(
         let pending_toast_deadline = state.next_toast_deadline();
         let pending_mention_member_search_deadline =
             mention_member_search_requests.pending_deadline();
+        let pending_member_list_subscription_deadline =
+            member_list_subscription_requests.pending_deadline();
 
         tokio::select! {
             maybe_event = terminal_events.next() => {
@@ -377,6 +380,15 @@ pub(super) async fn run_dashboard(
                 }
             } => {}
             _ = async {
+                match pending_member_list_subscription_deadline {
+                    Some(deadline) => tokio::time::sleep_until(
+                        tokio::time::Instant::from_std(deadline),
+                    )
+                    .await,
+                    None => std::future::pending::<()>().await,
+                }
+            } => {}
+            _ = async {
                 match pending_toast_deadline {
                     Some(deadline) => tokio::time::sleep_until(
                         tokio::time::Instant::from_std(deadline),
@@ -537,34 +549,29 @@ pub(super) async fn run_dashboard(
             }
         }
 
-        // Resubscribe the member-list ranges whenever the user scrolls into a
-        // new 100-member bucket so Discord keeps shipping fresh member rows
-        // and presence events for what's actually visible.
-        if let Some((guild_id, channel_id)) = state.member_list_subscription_target() {
-            let bucket = state.member_subscription_top_bucket();
-            let needs_update = match last_member_subscription {
-                Some((prev_guild, prev_channel, prev_bucket)) => {
-                    prev_guild != guild_id || prev_channel != channel_id || prev_bucket != bucket
-                }
-                None => bucket > 0,
-            };
-            if needs_update {
-                let ranges = state.member_subscription_ranges();
-                if commands
-                    .send(AppCommand::UpdateMemberListSubscription {
-                        guild_id,
-                        channel_id,
-                        ranges,
-                    })
-                    .await
-                    .is_err()
-                {
-                    command_helpers::record_command_channel_closed(&mut state);
-                    dirty = true;
-                } else {
-                    last_member_subscription = Some((guild_id, channel_id, bucket));
-                }
-            }
+        let member_list_subscription_target =
+            state
+                .member_list_subscription_target()
+                .map(|(guild_id, channel_id)| MemberListSubscriptionTarget {
+                    guild_id,
+                    channel_id,
+                    bucket: state.member_subscription_top_bucket(),
+                    ranges: state.member_subscription_ranges(),
+                });
+        member_list_subscription_requests
+            .set_target(member_list_subscription_target, std::time::Instant::now());
+        if let Some(target) = member_list_subscription_requests.next_due(std::time::Instant::now())
+            && commands
+                .send(AppCommand::UpdateMemberListSubscription {
+                    guild_id: target.guild_id,
+                    channel_id: target.channel_id,
+                    ranges: target.ranges,
+                })
+                .await
+                .is_err()
+        {
+            command_helpers::record_command_channel_closed(&mut state);
+            dirty = true;
         }
     }
 

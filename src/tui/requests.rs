@@ -44,6 +44,19 @@ pub(super) struct MessageAuthorMemberRequests {
     requested_order: VecDeque<MessageAuthorMemberRequestKey>,
 }
 
+pub(super) struct MemberListSubscriptionTarget {
+    pub(super) guild_id: Id<GuildMarker>,
+    pub(super) channel_id: Id<ChannelMarker>,
+    pub(super) bucket: u32,
+    pub(super) ranges: Vec<(u32, u32)>,
+}
+
+#[derive(Default)]
+pub(super) struct MemberListSubscriptionRequests {
+    last_sent: Option<MemberListSubscriptionKey>,
+    pending: Option<PendingMemberListSubscription>,
+}
+
 #[derive(Default)]
 pub(super) struct MentionMemberSearchRequests {
     requested: HashMap<MentionMemberSearchKey, Instant>,
@@ -291,6 +304,59 @@ impl MessageAuthorMemberRequests {
     }
 }
 
+impl MemberListSubscriptionRequests {
+    const DEBOUNCE: Duration = Duration::from_millis(100);
+
+    pub(super) fn set_target(
+        &mut self,
+        target: Option<MemberListSubscriptionTarget>,
+        now: Instant,
+    ) {
+        let Some(target) = target else {
+            self.pending = None;
+            self.last_sent = None;
+            return;
+        };
+        let key = target.key();
+
+        // The initial guild subscription already covers bucket 0. Only send a
+        // bucket-0 update when it resets a previously wider subscription.
+        if self.last_sent.is_none() && key.bucket == 0 {
+            self.pending = None;
+            return;
+        }
+        if self.last_sent.as_ref() == Some(&key) {
+            self.pending = None;
+            return;
+        }
+        if self
+            .pending
+            .as_ref()
+            .is_some_and(|pending| pending.target.key() == key)
+        {
+            return;
+        }
+        self.pending = Some(PendingMemberListSubscription {
+            target,
+            ready_at: now + Self::DEBOUNCE,
+        });
+    }
+
+    pub(super) fn pending_deadline(&self) -> Option<Instant> {
+        self.pending.as_ref().map(|pending| pending.ready_at)
+    }
+
+    pub(super) fn next_due(&mut self, now: Instant) -> Option<MemberListSubscriptionTarget> {
+        let pending = self.pending.as_ref()?;
+        if pending.ready_at > now {
+            return None;
+        }
+        let pending = self.pending.take()?;
+        self.last_sent = Some(pending.target.key());
+        Some(pending.target)
+    }
+}
+
 #[derive(Default)]
 pub(super) struct MemberRequests {
     requests: HashSet<Id<GuildMarker>>,
@@ -429,15 +495,36 @@ impl MentionMemberSearchRequests {
 type MentionMemberSearchKey = (Id<GuildMarker>, String);
 type MessageAuthorMemberRequestKey = (Id<GuildMarker>, Id<UserMarker>);
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(PartialEq)]
+struct MemberListSubscriptionKey {
+    guild_id: Id<GuildMarker>,
+    channel_id: Id<ChannelMarker>,
+    bucket: u32,
+}
+
 struct PendingMentionMemberSearch {
     target: MentionMemberSearchTarget,
+    ready_at: Instant,
+}
+
+struct PendingMemberListSubscription {
+    target: MemberListSubscriptionTarget,
     ready_at: Instant,
 }
 
 impl MentionMemberSearchTarget {
     fn key(&self) -> MentionMemberSearchKey {
         (self.guild_id, self.query.clone())
+    }
+}
+
+impl MemberListSubscriptionTarget {
+    fn key(&self) -> MemberListSubscriptionKey {
+        MemberListSubscriptionKey {
+            guild_id: self.guild_id,
+            channel_id: self.channel_id,
+            bucket: self.bucket,
+        }
     }
 }
 
@@ -607,9 +694,9 @@ mod tests {
     use crate::discord::{AppEvent, ChannelInfo, ForumPostArchiveState, MemberInfo};
 
     use super::{
-        ForumPostRequestTarget, ForumPostRequests, HistoryRequests, MemberRequests,
-        MentionMemberSearchRequests, MentionMemberSearchTarget, MessageAuthorMemberRequests,
-        ThreadPreviewRequests,
+        ForumPostRequestTarget, ForumPostRequests, HistoryRequests, MemberListSubscriptionRequests,
+        MemberListSubscriptionTarget, MemberRequests, MentionMemberSearchRequests,
+        MentionMemberSearchTarget, MessageAuthorMemberRequests, ThreadPreviewRequests,
     };
 
     #[test]
@@ -803,14 +890,17 @@ mod tests {
         }
     }
 
-    fn member(user_id: Id<crate::discord::ids::marker::UserMarker>) -> MemberInfo {
-        MemberInfo {
-            user_id,
-            display_name: "neo".to_owned(),
-            username: Some("neo".to_owned()),
-            is_bot: false,
-            avatar_url: None,
-            role_ids: Vec::new(),
+    fn subscription_target(bucket: u32) -> MemberListSubscriptionTarget {
+        let ranges = if bucket == 0 {
+            vec![(0, 99)]
+        } else {
+            vec![(0, 99), (bucket * 100, bucket * 100 + 99)]
+        };
+        MemberListSubscriptionTarget {
+            guild_id: Id::new(1),
+            channel_id: Id::new(2),
+            bucket,
+            ranges,
         }
     }
 
@@ -857,7 +947,14 @@ mod tests {
 
         requests.record_event(&AppEvent::GuildMemberUpsert {
             guild_id,
-            member: member(user_id),
+            member: MemberInfo {
+                user_id,
+                display_name: "neo".to_owned(),
+                username: Some("neo".to_owned()),
+                is_bot: false,
+                avatar_url: None,
+                role_ids: Vec::new(),
+            },
         });
         assert_eq!(
             requests.next(vec![(guild_id, vec![user_id, other_user_id])], now),
@@ -870,6 +967,44 @@ mod tests {
             requests.next(vec![(guild_id, vec![other_user_id])], retry_at),
             vec![(guild_id, vec![other_user_id])]
         );
+    }
+
+    #[test]
+    fn member_list_subscription_debounces_and_coalesces_bucket_updates() {
+        let mut requests = MemberListSubscriptionRequests::default();
+        let now = std::time::Instant::now();
+
+        requests.set_target(Some(subscription_target(0)), now);
+        assert_eq!(requests.pending_deadline(), None);
+
+        requests.set_target(Some(subscription_target(1)), now);
+        let first_deadline = requests
+            .pending_deadline()
+            .expect("bucket one should arm debounce");
+        assert!(
+            requests
+                .next_due(first_deadline - std::time::Duration::from_millis(1))
+                .is_none()
+        );
+
+        requests.set_target(
+            Some(subscription_target(2)),
+            now + std::time::Duration::from_millis(1),
+        );
+        let second_deadline = requests
+            .pending_deadline()
+            .expect("latest bucket should stay pending");
+        let target = requests
+            .next_due(second_deadline)
+            .expect("latest bucket should be sent after debounce");
+        assert_eq!(target.bucket, 2);
+        assert_eq!(target.ranges, vec![(0, 99), (200, 299)]);
+
+        requests.set_target(Some(subscription_target(2)), second_deadline);
+        assert_eq!(requests.pending_deadline(), None);
+
+        requests.set_target(Some(subscription_target(0)), second_deadline);
+        assert!(requests.pending_deadline().is_some());
     }
 
     #[test]

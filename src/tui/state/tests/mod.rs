@@ -760,7 +760,8 @@ fn message_history_author_member_requests_chunk_at_gateway_limit() {
         })
         .collect::<Vec<_>>();
 
-    state.enqueue_missing_message_author_member_requests(&messages);
+    let requests = state.missing_message_author_member_requests(&messages);
+    state.enqueue_message_author_member_requests(requests);
 
     assert_eq!(
         state.drain_pending_commands(),
@@ -3317,6 +3318,7 @@ fn channel_show_pinned_messages_action_enters_pinned_message_view() {
 
     assert_eq!(command, None);
     assert!(state.is_pinned_message_view());
+    assert!(!state.is_channel_leader_action_active());
     assert_eq!(state.selected_message(), 0);
     assert_eq!(state.message_scroll(), 0);
     assert_eq!(state.message_line_scroll(), 0);
@@ -5694,19 +5696,6 @@ fn channel_leader_action_open_thread_activates_and_subscribes() {
             channel_id: Id::new(10),
         })
     );
-}
-
-#[test]
-fn channel_leader_action_loads_pinned_messages_for_selected_channel() {
-    let mut state = state_with_messages(1);
-    state.focus_pane(FocusPane::Channels);
-    state.open_selected_channel_actions();
-
-    let command = state.activate_selected_channel_action();
-
-    assert_eq!(command, None);
-    assert!(state.is_pinned_message_view());
-    assert!(!state.is_channel_leader_action_active());
 }
 
 #[test]

@@ -341,13 +341,6 @@ impl DashboardState {
             .collect()
     }
 
-    #[cfg(test)]
-    pub fn enqueue_missing_message_author_member_requests(&mut self, messages: &[MessageInfo]) {
-        self.enqueue_message_author_member_requests(
-            self.missing_message_author_member_requests(messages),
-        );
-    }
-
     pub fn enqueue_message_author_member_requests(
         &mut self,
         requests: Vec<(Id<GuildMarker>, Vec<Id<UserMarker>>)>,
