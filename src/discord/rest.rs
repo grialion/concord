@@ -1223,11 +1223,10 @@ mod tests {
             ChannelInfo, MAX_UPLOAD_FILE_BYTES, MessageAttachmentUpload, ReactionEmoji,
             rest::{
                 ForumPostPage, ForumSearchSort, REACTION_USERS_MAX_PAGES, is_search_index_warming,
-                merge_forum_pages, message_multipart_form, message_request_body,
-                mute_request_body, next_reaction_users_after, parse_forum_preview_messages,
-                parse_forum_thread_page, parse_user_profile_response, poll_vote_request_body,
-                reaction_route_component, upload_content_type, validate_message_content,
-                validate_message_payload,
+                merge_forum_pages, message_multipart_form, message_request_body, mute_request_body,
+                next_reaction_users_after, parse_forum_preview_messages, parse_forum_thread_page,
+                parse_user_profile_response, poll_vote_request_body, reaction_route_component,
+                upload_content_type, validate_message_content, validate_message_payload,
             },
         },
     };

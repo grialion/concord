@@ -966,7 +966,13 @@ mod tests {
         client
             .update_voice_state(Id::new(1), Some(Id::new(10)), true, false)
             .expect("initial join should queue");
-        assert_voice_update(&mut gateway_commands, Id::new(1), Some(Id::new(10)), true, false);
+        assert_voice_update(
+            &mut gateway_commands,
+            Id::new(1),
+            Some(Id::new(10)),
+            true,
+            false,
+        );
 
         client
             .update_voice_state(Id::new(1), Some(Id::new(10)), true, false)
@@ -979,7 +985,13 @@ mod tests {
         client
             .update_voice_state(Id::new(1), Some(Id::new(10)), false, false)
             .expect("mute change should queue");
-        assert_voice_update(&mut gateway_commands, Id::new(1), Some(Id::new(10)), false, false);
+        assert_voice_update(
+            &mut gateway_commands,
+            Id::new(1),
+            Some(Id::new(10)),
+            false,
+            false,
+        );
 
         client
             .update_voice_state(Id::new(1), None, false, false)

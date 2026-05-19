@@ -889,9 +889,9 @@ mod tests {
     use super::{
         GATEWAY_WEBSOCKET_LIMIT, GatewayCommand, SessionState, SubscriptionDeduper,
         USER_ACCOUNT_CAPABILITIES, build_identify_payload, build_resume_payload,
-        direct_message_subscribe_payload, gateway_websocket_config, guild_channel_subscribe_payload,
-        request_guild_members_by_ids_payload, request_guild_members_payload,
-        voice_state_update_payload,
+        direct_message_subscribe_payload, gateway_websocket_config,
+        guild_channel_subscribe_payload, request_guild_members_by_ids_payload,
+        request_guild_members_payload, voice_state_update_payload,
     };
 
     #[test]
@@ -1078,44 +1078,58 @@ mod tests {
 
         assert!(deduper.should_send(&GatewayCommand::SubscribeDirectMessage { channel_id }));
         assert!(!deduper.should_send(&GatewayCommand::SubscribeDirectMessage { channel_id }));
-        assert!(deduper.should_send(&GatewayCommand::SubscribeDirectMessage {
-            channel_id: other_channel_id,
-        }));
+        assert!(
+            deduper.should_send(&GatewayCommand::SubscribeDirectMessage {
+                channel_id: other_channel_id,
+            })
+        );
 
         assert!(deduper.should_send(&GatewayCommand::SubscribeGuildChannel {
             guild_id,
             channel_id,
         }));
-        assert!(!deduper.should_send(&GatewayCommand::SubscribeGuildChannel {
-            guild_id,
-            channel_id,
-        }));
+        assert!(
+            !deduper.should_send(&GatewayCommand::SubscribeGuildChannel {
+                guild_id,
+                channel_id,
+            })
+        );
 
-        assert!(deduper.should_send(&GatewayCommand::UpdateMemberListSubscription {
-            guild_id,
-            channel_id,
-            ranges: vec![(0, 99), (100, 199)],
-        }));
-        assert!(!deduper.should_send(&GatewayCommand::UpdateMemberListSubscription {
-            guild_id,
-            channel_id,
-            ranges: vec![(0, 99), (100, 199)],
-        }));
-        assert!(deduper.should_send(&GatewayCommand::UpdateMemberListSubscription {
-            guild_id,
-            channel_id,
-            ranges: vec![(0, 99)],
-        }));
-        assert!(!deduper.should_send(&GatewayCommand::UpdateMemberListSubscription {
-            guild_id,
-            channel_id,
-            ranges: vec![(0, 99)],
-        }));
-        assert!(deduper.should_send(&GatewayCommand::RequestGuildMembersByIds {
-            guild_id,
-            user_ids: vec![Id::new(40)],
-            presences: false,
-        }));
+        assert!(
+            deduper.should_send(&GatewayCommand::UpdateMemberListSubscription {
+                guild_id,
+                channel_id,
+                ranges: vec![(0, 99), (100, 199)],
+            })
+        );
+        assert!(
+            !deduper.should_send(&GatewayCommand::UpdateMemberListSubscription {
+                guild_id,
+                channel_id,
+                ranges: vec![(0, 99), (100, 199)],
+            })
+        );
+        assert!(
+            deduper.should_send(&GatewayCommand::UpdateMemberListSubscription {
+                guild_id,
+                channel_id,
+                ranges: vec![(0, 99)],
+            })
+        );
+        assert!(
+            !deduper.should_send(&GatewayCommand::UpdateMemberListSubscription {
+                guild_id,
+                channel_id,
+                ranges: vec![(0, 99)],
+            })
+        );
+        assert!(
+            deduper.should_send(&GatewayCommand::RequestGuildMembersByIds {
+                guild_id,
+                user_ids: vec![Id::new(40)],
+                presences: false,
+            })
+        );
     }
 
     #[test]
