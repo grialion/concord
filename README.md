@@ -305,13 +305,13 @@ number key directly shows and focuses it again.
 You can paste copied files into the composer to attach them. Pending uploads
 are shown above the input before sending.
 
-| Shortcut                  | Action            | Description                                        |
-| ------------------------- | ----------------- | -------------------------------------------------- |
-| `Ctrl+e`                  | open $EDITOR      | Open $EDITOR on the current draft for long editing |
-| `Ctrl+c`                  | clear             | Clear current draft                                |
-| `Ctrl+Left`/ `Ctrl+Right` | Jump word         | Jump the cursor by word                            |
-| `Ctrl+Backspace`          | Delete word       | Delete the word before the cursor                  |
-| `Delete`                  | Detach attachment | Removes the last pending attachment                |
+| Shortcut                   | Action            | Description                                        |
+| -------------------------- | ----------------- | -------------------------------------------------- |
+| `Ctrl+e`                   | open $EDITOR      | Open $EDITOR on the current draft for long editing |
+| `Ctrl+c`                   | clear             | Clear current draft                                |
+| `Ctrl+Left`/ `Ctrl+Right`  | Jump word         | Jump the cursor by word                            |
+| `Ctrl+Backspace`/ `Ctrl+w` | Delete word       | Delete the word before the cursor                  |
+| `Delete`                   | Detach attachment | Removes the last pending attachment                |
 
 #### Mention picker
 
