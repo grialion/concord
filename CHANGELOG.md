@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.5] - 2026-05-21
+
+### Documentation
+
+- Update composer keybinding docs by @chojs23
+
+### Features
+
+- Handle MessageDeleteBulk event by @chojs23
+- Add clipboard image paste (#114) in [#114](https://github.com/chojs23/concord/pull/114) by @chojs23
+- Include embed URLs in open url picker (#115) in [#115](https://github.com/chojs23/concord/pull/115) by @chojs23
+
 ## [2.0.4] - 2026-05-20
 
 ### Bug Fixes
@@ -20,7 +32,7 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - Add mute,deafen state on header by @chojs23
-- Add ctrl+w composer word deletion
+- Add ctrl+w composer word deletion by @chojs23
 
 ### Performance
 
