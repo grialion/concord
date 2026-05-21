@@ -1,5 +1,8 @@
 use super::forum;
-use super::panes::{render_composer, render_composer_emoji_picker, render_composer_mention_picker};
+use super::panes::{
+    render_composer, render_composer_command_picker, render_composer_emoji_picker,
+    render_composer_mention_picker,
+};
 use super::*;
 use crate::tui::message_time::{
     format_message_local_time, message_local_date, message_local_datetime,
@@ -15,6 +18,7 @@ struct InlinePreviewSpacer {
 struct MessageItemLinesInput<'a> {
     author: String,
     author_style: Style,
+    author_is_bot: bool,
     sent_time: String,
     show_header: bool,
     content: Vec<MessageContentLine>,
@@ -84,6 +88,7 @@ pub(super) fn render_messages(
         );
         render_typing_footer(frame, message_areas.typing, state);
         render_composer(frame, message_areas.composer, state, emoji_images);
+        render_composer_command_picker(frame, message_areas, state);
         render_composer_mention_picker(frame, message_areas, state);
         render_composer_emoji_picker(frame, message_areas, state, emoji_images);
         return;
@@ -210,6 +215,7 @@ pub(super) fn render_messages(
     render_new_messages_notice(frame, message_areas.list, state);
     render_typing_footer(frame, message_areas.typing, state);
     render_composer(frame, message_areas.composer, state, emoji_images);
+    render_composer_command_picker(frame, message_areas, state);
     render_composer_mention_picker(frame, message_areas, state);
     render_composer_emoji_picker(frame, message_areas, state, emoji_images);
 }
@@ -692,6 +698,7 @@ pub(super) fn message_viewport_lines(
         let item_lines = message_item_lines_with_previews(MessageItemLinesInput {
             author,
             author_style,
+            author_is_bot: message.author_is_bot,
             sent_time: sent_time.clone(),
             show_header,
             content,
@@ -757,6 +764,7 @@ pub(super) fn message_item_lines(
     message_item_lines_with_previews(MessageItemLinesInput {
         author,
         author_style,
+        author_is_bot: false,
         sent_time,
         show_header: true,
         content,
@@ -772,6 +780,7 @@ fn message_item_lines_with_previews(input: MessageItemLinesInput<'_>) -> Vec<Lin
     let MessageItemLinesInput {
         author,
         author_style,
+        author_is_bot,
         sent_time,
         show_header,
         content,
@@ -782,18 +791,23 @@ fn message_item_lines_with_previews(input: MessageItemLinesInput<'_>) -> Vec<Lin
         line_offset,
     } = input;
     let sent_time_width = sent_time.as_str().width();
+    let bot_badge_width = usize::from(author_is_bot) * " [bot]".width();
     let author_width = content_width
         .saturating_sub(sent_time_width)
+        .saturating_sub(bot_badge_width)
         .saturating_sub(1)
         .max(1);
     let author = truncate_display_width(&author, author_width);
     let mut lines = if show_header {
-        vec![Line::from(vec![
-            message_avatar_span(),
-            Span::styled(author, author_style),
+        let mut header = vec![message_avatar_span(), Span::styled(author, author_style)];
+        if author_is_bot {
+            header.push(bot_badge_span());
+        }
+        header.extend([
             Span::raw(" "),
             Span::styled(sent_time, Style::default().fg(DIM)),
-        ])]
+        ]);
+        vec![Line::from(header)]
     } else {
         Vec::new()
     };
@@ -824,6 +838,16 @@ pub(super) fn message_author_style(role_color: Option<u32>) -> Style {
     Style::default()
         .fg(discord_color(role_color, Color::White))
         .bold()
+}
+
+fn bot_badge_span() -> Span<'static> {
+    Span::styled(
+        " [bot]",
+        Style::default()
+            .fg(Color::White)
+            .bg(Color::Rgb(88, 101, 242))
+            .add_modifier(Modifier::BOLD),
+    )
 }
 
 pub(super) fn message_avatar_area(

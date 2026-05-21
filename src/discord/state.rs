@@ -563,6 +563,8 @@ impl DiscordState {
             AppEvent::MessageHistoryLoadFailed { .. }
             | AppEvent::PinnedMessagesLoadFailed { .. }
             | AppEvent::CurrentUserCapabilities { .. }
+            | AppEvent::GatewaySessionReady { .. }
+            | AppEvent::ApplicationCommandsLoaded { .. }
             | AppEvent::GatewayError { .. }
             | AppEvent::AttachmentDownloadCompleted { .. }
             | AppEvent::UpdateAvailable { .. }
@@ -753,8 +755,10 @@ impl DiscordState {
                 author_id,
                 author,
                 author_avatar_url,
+                author_is_bot,
                 author_role_ids,
                 message_kind,
+                interaction,
                 reference,
                 reply,
                 poll,
@@ -817,7 +821,9 @@ impl DiscordState {
                         *author_id,
                         author_avatar_url,
                     ),
+                    author_is_bot: *author_is_bot,
                     message_kind: *message_kind,
+                    interaction: interaction.clone(),
                     reference: reference.clone(),
                     reply: reply.clone(),
                     poll: poll.clone(),
@@ -1249,6 +1255,8 @@ impl DiscordState {
                 self.upsert_notification_settings(settings);
             }
             AppEvent::GatewayError { .. }
+            | AppEvent::GatewaySessionReady { .. }
+            | AppEvent::ApplicationCommandsLoaded { .. }
             | AppEvent::AttachmentDownloadCompleted { .. }
             | AppEvent::UpdateAvailable { .. }
             | AppEvent::ReactionUsersLoaded { .. }

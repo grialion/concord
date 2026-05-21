@@ -500,6 +500,29 @@ fn start_command_loop(
                                 .await;
                         }
                     },
+                    AppCommand::LoadApplicationCommands { guild_id } => {
+                        match client.load_application_commands(guild_id).await {
+                            Ok(commands) => {
+                                client
+                                    .publish_event(AppEvent::ApplicationCommandsLoaded {
+                                        guild_id,
+                                        commands,
+                                    })
+                                    .await;
+                            }
+                            Err(error) => log_app_error("load application commands failed", &error),
+                        }
+                    }
+                    AppCommand::RunApplicationCommand { interaction } => {
+                        if let Err(error) = client.run_application_command(&interaction).await {
+                            log_app_error("run application command failed", &error);
+                            client
+                                .publish_event(AppEvent::GatewayError {
+                                    message: format!("run application command failed: {error}"),
+                                })
+                                .await;
+                        }
+                    }
                     AppCommand::EditMessage {
                         channel_id,
                         message_id,
@@ -976,8 +999,10 @@ fn message_create_event(message: MessageInfo) -> AppEvent {
         author_id: message.author_id,
         author: message.author,
         author_avatar_url: message.author_avatar_url,
+        author_is_bot: message.author_is_bot,
         author_role_ids: message.author_role_ids,
         message_kind: message.message_kind,
+        interaction: message.interaction,
         reference: message.reference,
         reply: message.reply,
         poll: message.poll,

@@ -16,19 +16,20 @@ pub use client::DiscordClient;
 pub(crate) use client::validate_token_header;
 pub use commands::{AppCommand, DownloadAttachmentSource, ForumPostArchiveState, MuteDuration};
 pub use commands::{
-    MAX_UPLOAD_ATTACHMENT_COUNT, MAX_UPLOAD_FILE_BYTES, MAX_UPLOAD_TOTAL_BYTES,
-    MessageAttachmentUpload, ReactionEmoji,
+    ApplicationCommandChoiceInfo, ApplicationCommandInfo, ApplicationCommandInteraction,
+    ApplicationCommandInteractionOption, ApplicationCommandOptionInfo, MAX_UPLOAD_ATTACHMENT_COUNT,
+    MAX_UPLOAD_FILE_BYTES, MAX_UPLOAD_TOTAL_BYTES, MessageAttachmentUpload, ReactionEmoji,
 };
 pub use events::{
     ActivityEmoji, ActivityInfo, ActivityKind, AppEvent, AttachmentInfo, AttachmentUpdate,
     ChannelInfo, ChannelNotificationOverrideInfo, ChannelRecipientInfo, CustomEmojiInfo,
     EmbedFieldInfo, EmbedInfo, FriendStatus, GuildFolder, GuildNotificationSettingsInfo,
-    InlinePreviewInfo, MemberInfo, MentionInfo, MessageInfo, MessageKind, MessageReferenceInfo,
-    MessageSnapshotInfo, MutualGuildInfo, NotificationLevel, PermissionOverwriteInfo,
-    PermissionOverwriteKind, PollAnswerInfo, PollInfo, PresenceStatus, ReactionInfo,
-    ReactionUserInfo, ReactionUsersInfo, ReadStateInfo, RelationshipInfo, ReplyInfo, RoleInfo,
-    SequencedAppEvent, UserProfileInfo, VoiceConnectionStatus, VoiceServerInfo, VoiceSoundKind,
-    VoiceStateInfo,
+    InlinePreviewInfo, MemberInfo, MentionInfo, MessageInfo, MessageInteractionInfo, MessageKind,
+    MessageReferenceInfo, MessageSnapshotInfo, MutualGuildInfo, NotificationLevel,
+    PermissionOverwriteInfo, PermissionOverwriteKind, PollAnswerInfo, PollInfo, PresenceStatus,
+    ReactionInfo, ReactionUserInfo, ReactionUsersInfo, ReadStateInfo, RelationshipInfo, ReplyInfo,
+    RoleInfo, SequencedAppEvent, UserProfileInfo, VoiceConnectionStatus, VoiceServerInfo,
+    VoiceSoundKind, VoiceStateInfo,
 };
 pub use ids::{Id, marker};
 pub use rest::ForumPostPage;
