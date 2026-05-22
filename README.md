@@ -219,21 +219,22 @@ Concord has a four-pane layout like Discord.
 
 With vim-style navigation:
 
-| Key                       | Action                               |
-| ------------------------- | ------------------------------------ |
-| `1` `2` `3` `4`           | Focus pane                           |
-| `Tab` / `Shift+Tab`       | Cycle focus forward / backward       |
-| `h` / `l`, `←` / `→`      | Move focus left / right              |
-| `j` / `k`, `↑` / `↓`      | Move down / up                       |
-| `J`, `K` / `H`, `L`       | Scroll viewport                      |
-| `Ctrl+d` / `Ctrl+u`       | Half-page scroll                     |
-| `Alt+h/l/←/→`             | Resize focused pane width            |
-| `g` / `G`, `Home` / `End` | Jump or scroll to top / bottom       |
-| `Enter`                   | Open or activate the selected item   |
-| `Space`                   | Open leader shortcut window          |
-| `i`                       | Text insert mode                     |
-| `Esc`                     | Close popup, cancel mode, or go back |
-| `q`                       | Quit                                 |
+| Key                       | Action                                     |
+| ------------------------- | ------------------------------------------ |
+| `1` `2` `3` `4`           | Focus pane                                 |
+| `Tab` / `Shift+Tab`       | Cycle focus forward / backward             |
+| `h` / `l`, `←` / `→`      | Move focus left / right                    |
+| `j` / `k`, `↑` / `↓`      | Move down / up                             |
+| `J`, `K` / `H`, `L`       | Scroll viewport                            |
+| `Ctrl+d` / `Ctrl+u`       | Half-page scroll                           |
+| `Alt+h/l/←/→`             | Resize focused pane width                  |
+| `g` / `G`, `Home` / `End` | Jump or scroll to top / bottom             |
+| `Enter`                   | Open or activate the selected item         |
+| `/`                       | Filter the focused Guilds or Channels pane |
+| `Space`                   | Open leader shortcut window                |
+| `i`                       | Text insert mode                           |
+| `Esc`                     | Close popup, cancel mode, or go back       |
+| `q`                       | Quit                                       |
 
 #### Leader key
 
