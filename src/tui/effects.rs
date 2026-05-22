@@ -77,9 +77,13 @@ pub(super) fn process_effect_event(
         AppEvent::MessageHistoryLoaded { messages, .. }
         | AppEvent::PinnedMessagesLoaded { messages, .. }
         | AppEvent::ForumPostsLoaded {
-            preview_messages: messages,
+            first_messages: messages,
             ..
         } => Some(messages.clone()),
+        _ => None,
+    };
+    let thread_owner_hydration_infos = match &event {
+        AppEvent::ForumPostsLoaded { threads, .. } => Some(threads.clone()),
         _ => None,
     };
     if let Some(notification) = ctx.state.desktop_notification_for_event(&event) {
@@ -100,6 +104,13 @@ pub(super) fn process_effect_event(
     }
     if let Some(messages) = member_hydration_messages {
         let missing = ctx.state.missing_message_author_member_requests(&messages);
+        let requests = ctx
+            .client
+            .next_message_author_member_requests(missing, std::time::Instant::now());
+        ctx.state.enqueue_message_author_member_requests(requests);
+    }
+    if let Some(threads) = thread_owner_hydration_infos {
+        let missing = ctx.state.missing_thread_owner_member_requests(&threads);
         let requests = ctx
             .client
             .next_message_author_member_requests(missing, std::time::Instant::now());
@@ -428,14 +439,14 @@ mod tests {
                 archive_state: ForumPostArchiveState::Active,
                 offset: 0,
                 next_offset: 1,
-                posts: vec![channel_info(
+                threads: vec![channel_info(
                     guild_id,
                     thread_id,
                     Some(forum_id),
                     "welcome",
                     "GuildPublicThread",
                 )],
-                preview_messages: vec![message_info(guild_id, thread_id, Id::new(20), author_id)],
+                first_messages: vec![message_info(guild_id, thread_id, Id::new(20), author_id)],
                 has_more: false,
             },
         );
@@ -445,6 +456,50 @@ mod tests {
             vec![AppCommand::LoadGuildMembersByIds {
                 guild_id,
                 user_ids: vec![author_id],
+            }]
+        );
+    }
+
+    #[test]
+    fn forum_posts_loaded_enqueues_missing_thread_owner_member_request() {
+        let guild_id = Id::new(1);
+        let forum_id = Id::new(2);
+        let thread_id = Id::new(3);
+        let owner_id = Id::new(99);
+        let mut state = DashboardState::new();
+        push_guild_with_channel(
+            &mut state,
+            guild_id,
+            channel_info(guild_id, forum_id, None, "forum", "forum"),
+        );
+
+        process_effect_in_default_context(
+            &mut state,
+            AppEvent::ForumPostsLoaded {
+                channel_id: forum_id,
+                archive_state: ForumPostArchiveState::Active,
+                offset: 0,
+                next_offset: 1,
+                threads: vec![ChannelInfo {
+                    owner_id: Some(owner_id),
+                    ..channel_info(
+                        guild_id,
+                        thread_id,
+                        Some(forum_id),
+                        "welcome",
+                        "GuildPublicThread",
+                    )
+                }],
+                first_messages: Vec::new(),
+                has_more: false,
+            },
+        );
+
+        assert_eq!(
+            state.drain_pending_commands(),
+            vec![AppCommand::LoadGuildMembersByIds {
+                guild_id,
+                user_ids: vec![owner_id],
             }]
         );
     }
@@ -485,15 +540,16 @@ mod tests {
             guild_id: Some(guild_id),
             channel_id,
             parent_id,
+            owner_id: None,
             position: Some(0),
             last_message_id: None,
             name: name.to_owned(),
             kind: kind.to_owned(),
             message_count: None,
+            member_count: None,
             total_message_sent: None,
-            thread_archived: None,
-            thread_locked: None,
-            thread_pinned: None,
+            thread_metadata: None,
+            flags: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }

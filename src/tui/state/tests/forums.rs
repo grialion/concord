@@ -45,7 +45,7 @@ fn forum_posts_loaded_event_populates_selected_forum_items() {
     state.confirm_selected_channel();
 
     let mut preview =
-        forum_preview_message(guild_id, Id::new(30), 300, "neo", "first message preview");
+        forum_preview_message(guild_id, Id::new(30), 30, "neo", "first message preview");
     preview.reactions = vec![ReactionInfo {
         emoji: ReactionEmoji::Unicode("👍".to_owned()),
         count: 2,
@@ -57,13 +57,15 @@ fn forum_posts_loaded_event_populates_selected_forum_items() {
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
         next_offset: 1,
-        posts: vec![ChannelInfo {
+        threads: vec![ChannelInfo {
+            owner_id: Some(Id::new(88)),
             position: Some(0),
             message_count: Some(1),
+            member_count: None,
             total_message_sent: Some(1),
             ..forum_thread_info(guild_id, forum_id, 30, "welcome", None, false)
         }],
-        preview_messages: vec![preview],
+        first_messages: vec![preview],
         has_more: false,
     });
 
@@ -85,8 +87,224 @@ fn forum_posts_loaded_event_populates_selected_forum_items() {
     );
     assert_eq!(post.preview_reactions.len(), 1);
     assert_eq!(post.comment_count, Some(1));
-    assert_eq!(post.last_activity_message_id, Some(Id::new(300)));
+    assert_eq!(post.last_activity_message_id, Some(Id::new(30)));
     assert_eq!(post.section_label.as_deref(), Some("Active posts"));
+}
+
+#[test]
+fn forum_post_preview_ignores_latest_message_when_starter_is_missing() {
+    let guild_id = Id::new(1);
+    let forum_id = Id::new(20);
+    let mut state = DashboardState::new();
+
+    state.push_event(guild_create_event(
+        guild_id,
+        "guild",
+        vec![forum_channel_info(guild_id, forum_id)],
+    ));
+    state.confirm_selected_guild();
+    state.confirm_selected_channel();
+
+    state.push_event(AppEvent::ForumPostsLoaded {
+        channel_id: forum_id,
+        archive_state: ForumPostArchiveState::Active,
+        offset: 0,
+        next_offset: 1,
+        threads: vec![forum_thread_info(
+            guild_id,
+            forum_id,
+            30,
+            "welcome",
+            Some(300),
+            false,
+        )],
+        first_messages: vec![forum_preview_message(
+            guild_id,
+            Id::new(30),
+            300,
+            "neo",
+            "latest reply",
+        )],
+        has_more: false,
+    });
+
+    let post = state
+        .selected_forum_post_items()
+        .into_iter()
+        .next()
+        .expect("forum post should be visible");
+
+    assert_eq!(post.preview_author, None);
+    assert_eq!(post.preview_content, None);
+    assert_eq!(post.last_activity_message_id, Some(Id::new(300)));
+}
+
+#[test]
+fn forum_post_preview_uses_thread_creator_when_starter_is_missing() {
+    let guild_id = Id::new(1);
+    let forum_id = Id::new(20);
+    let thread_id = Id::new(30);
+    let owner_id = Id::new(88);
+    let role_id = Id::<RoleMarker>::new(7);
+    let mut state = DashboardState::new();
+
+    state.push_event(AppEvent::GuildCreate {
+        guild_id,
+        name: "guild".to_owned(),
+        member_count: None,
+        owner_id: None,
+        channels: vec![forum_channel_info(guild_id, forum_id)],
+        members: vec![member_with_roles(owner_id, "neo", vec![role_id])],
+        presences: Vec::new(),
+        roles: vec![RoleInfo {
+            id: role_id,
+            name: "Maintainer".to_owned(),
+            color: Some(0xFFAA00),
+            position: 10,
+            hoist: false,
+            permissions: 0,
+        }],
+        emojis: Vec::new(),
+    });
+    state.confirm_selected_guild();
+    state.confirm_selected_channel();
+
+    state.push_event(AppEvent::ForumPostsLoaded {
+        channel_id: forum_id,
+        archive_state: ForumPostArchiveState::Active,
+        offset: 0,
+        next_offset: 1,
+        threads: vec![ChannelInfo {
+            owner_id: Some(owner_id),
+            ..forum_thread_info(
+                guild_id,
+                forum_id,
+                thread_id.get(),
+                "welcome",
+                Some(300),
+                false,
+            )
+        }],
+        first_messages: vec![forum_preview_message(
+            guild_id,
+            thread_id,
+            300,
+            "latest-replier",
+            "latest reply",
+        )],
+        has_more: false,
+    });
+
+    let post = state
+        .selected_forum_post_items()
+        .into_iter()
+        .next()
+        .expect("forum post should be visible");
+
+    assert_eq!(post.preview_author_id, Some(owner_id));
+    assert_eq!(post.preview_author.as_deref(), Some("neo"));
+    assert_eq!(post.preview_author_color, Some(0xFFAA00));
+    assert_eq!(
+        post.preview_content.as_deref(),
+        Some("original message deleted")
+    );
+    assert_eq!(post.last_activity_message_id, Some(Id::new(300)));
+}
+
+#[test]
+fn forum_post_preview_shows_deleted_starter_with_author() {
+    let guild_id = Id::new(1);
+    let forum_id = Id::new(20);
+    let mut state = DashboardState::new();
+
+    state.push_event(guild_create_event(
+        guild_id,
+        "guild",
+        vec![forum_channel_info(guild_id, forum_id)],
+    ));
+    state.confirm_selected_guild();
+    state.confirm_selected_channel();
+
+    let mut deleted_starter = forum_preview_message(guild_id, Id::new(30), 30, "neo", "");
+    deleted_starter.content = None;
+    state.push_event(AppEvent::ForumPostsLoaded {
+        channel_id: forum_id,
+        archive_state: ForumPostArchiveState::Active,
+        offset: 0,
+        next_offset: 1,
+        threads: vec![forum_thread_info(
+            guild_id,
+            forum_id,
+            30,
+            "welcome",
+            Some(300),
+            false,
+        )],
+        first_messages: vec![deleted_starter],
+        has_more: false,
+    });
+
+    let post = state
+        .selected_forum_post_items()
+        .into_iter()
+        .next()
+        .expect("forum post should be visible");
+
+    assert_eq!(post.preview_author.as_deref(), Some("neo"));
+    assert_eq!(
+        post.preview_content.as_deref(),
+        Some("original message deleted")
+    );
+}
+
+#[test]
+fn forum_post_preview_keeps_literal_unavailable_text() {
+    let guild_id = Id::new(1);
+    let forum_id = Id::new(20);
+    let mut state = DashboardState::new();
+
+    state.push_event(guild_create_event(
+        guild_id,
+        "guild",
+        vec![forum_channel_info(guild_id, forum_id)],
+    ));
+    state.confirm_selected_guild();
+    state.confirm_selected_channel();
+
+    state.push_event(AppEvent::ForumPostsLoaded {
+        channel_id: forum_id,
+        archive_state: ForumPostArchiveState::Active,
+        offset: 0,
+        next_offset: 1,
+        threads: vec![forum_thread_info(
+            guild_id,
+            forum_id,
+            30,
+            "welcome",
+            Some(300),
+            false,
+        )],
+        first_messages: vec![forum_preview_message(
+            guild_id,
+            Id::new(30),
+            30,
+            "neo",
+            "<message content unavailable>",
+        )],
+        has_more: false,
+    });
+
+    let post = state
+        .selected_forum_post_items()
+        .into_iter()
+        .next()
+        .expect("forum post should be visible");
+
+    assert_eq!(post.preview_author.as_deref(), Some("neo"));
+    assert_eq!(
+        post.preview_content.as_deref(),
+        Some("<message content unavailable>")
+    );
 }
 
 #[test]
@@ -109,11 +327,11 @@ fn forum_post_first_page_starts_cursor_at_top_and_next_page_appends() {
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
         next_offset: 2,
-        posts: vec![
+        threads: vec![
             forum_thread_info(guild_id, forum_id, 30, "newest", Some(300), false),
             forum_thread_info(guild_id, forum_id, 31, "middle", Some(200), false),
         ],
-        preview_messages: Vec::new(),
+        first_messages: Vec::new(),
         has_more: true,
     });
 
@@ -133,7 +351,7 @@ fn forum_post_first_page_starts_cursor_at_top_and_next_page_appends() {
         archive_state: ForumPostArchiveState::Active,
         offset: 2,
         next_offset: 3,
-        posts: vec![forum_thread_info(
+        threads: vec![forum_thread_info(
             guild_id,
             forum_id,
             32,
@@ -141,7 +359,7 @@ fn forum_post_first_page_starts_cursor_at_top_and_next_page_appends() {
             Some(100),
             false,
         )],
-        preview_messages: Vec::new(),
+        first_messages: Vec::new(),
         has_more: false,
     });
 
@@ -175,11 +393,11 @@ fn archived_forum_posts_render_after_active_posts_without_moving_shared_active_p
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
         next_offset: 2,
-        posts: vec![
+        threads: vec![
             forum_thread_info(guild_id, forum_id, 30, "active", Some(300), false),
             forum_thread_info(guild_id, forum_id, 31, "shared", Some(200), false),
         ],
-        preview_messages: Vec::new(),
+        first_messages: Vec::new(),
         has_more: false,
     });
     state.push_event(AppEvent::ForumPostsLoaded {
@@ -187,11 +405,11 @@ fn archived_forum_posts_render_after_active_posts_without_moving_shared_active_p
         archive_state: ForumPostArchiveState::Archived,
         offset: 0,
         next_offset: 2,
-        posts: vec![
+        threads: vec![
             forum_thread_info(guild_id, forum_id, 31, "shared", Some(400), true),
             forum_thread_info(guild_id, forum_id, 32, "archived", Some(100), true),
         ],
-        preview_messages: Vec::new(),
+        first_messages: Vec::new(),
         has_more: false,
     });
 
@@ -242,12 +460,12 @@ fn forum_posts_resort_by_last_message_id_when_server_index_is_stale() {
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
         next_offset: 3,
-        posts: vec![
+        threads: vec![
             forum_thread_info(guild_id, forum_id, 30, "stale-top", Some(100), false),
             forum_thread_info(guild_id, forum_id, 31, "newest-activity", Some(500), false),
             forum_thread_info(guild_id, forum_id, 32, "older", Some(200), false),
         ],
-        preview_messages: Vec::new(),
+        first_messages: Vec::new(),
         has_more: false,
     });
 
@@ -279,21 +497,21 @@ fn forum_pinned_posts_float_to_top_preserving_relative_order() {
     // pinned post sits in the middle, and the official client lifts it to the
     // top while keeping the rest in delivered order.
     let mut newest = forum_thread_info(guild_id, forum_id, 30, "newest", Some(300), false);
-    newest.thread_pinned = Some(false);
+    newest.flags = Some(0);
     let mut pinned = forum_thread_info(guild_id, forum_id, 31, "pinned-post", Some(200), false);
-    pinned.thread_pinned = Some(true);
+    pinned.flags = Some(1 << 1);
     let mut middle = forum_thread_info(guild_id, forum_id, 32, "middle", Some(150), false);
-    middle.thread_pinned = Some(false);
+    middle.flags = Some(0);
     let mut older = forum_thread_info(guild_id, forum_id, 33, "older", Some(100), false);
-    older.thread_pinned = Some(false);
+    older.flags = Some(0);
 
     state.push_event(AppEvent::ForumPostsLoaded {
         channel_id: forum_id,
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
         next_offset: 4,
-        posts: vec![newest, pinned, middle, older],
-        preview_messages: Vec::new(),
+        threads: vec![newest, pinned, middle, older],
+        first_messages: Vec::new(),
         has_more: false,
     });
 
@@ -331,10 +549,10 @@ fn forum_channel_upsert_inserts_new_thread_at_top_of_active_list() {
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
         next_offset: 1,
-        posts: vec![forum_thread_info(
+        threads: vec![forum_thread_info(
             guild_id, forum_id, 30, "welcome", None, false,
         )],
-        preview_messages: Vec::new(),
+        first_messages: Vec::new(),
         has_more: false,
     });
 
@@ -388,8 +606,8 @@ fn forum_channel_upsert_effect_inserts_new_thread_after_snapshot_restore() {
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
         next_offset: 1,
-        posts: vec![welcome_thread.clone()],
-        preview_messages: Vec::new(),
+        threads: vec![welcome_thread.clone()],
+        first_messages: Vec::new(),
         has_more: false,
     });
 
@@ -596,7 +814,7 @@ fn hidden_forum_child_posts_are_not_listed_or_acked() {
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
         next_offset: 2,
-        posts: vec![
+        threads: vec![
             forum_thread_info(
                 guild_id,
                 forum_id,
@@ -607,7 +825,7 @@ fn hidden_forum_child_posts_are_not_listed_or_acked() {
             ),
             private_thread,
         ],
-        preview_messages: Vec::new(),
+        first_messages: Vec::new(),
         has_more: false,
     });
     state.push_event(AppEvent::ReadStateInit {

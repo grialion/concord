@@ -309,10 +309,10 @@ fn threads_inherit_parent_permission() {
     state.apply_event(&AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(guild),
         parent_id: Some(parent),
+        owner_id: None,
         name: "design-discussion".to_owned(),
         kind: "GuildPublicThread".to_owned(),
-        thread_archived: Some(false),
-        thread_locked: Some(false),
+        thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
         permission_overwrites: Vec::new(),
         ..channel_info(thread, "GuildPublicThread", Vec::new())
     }));
@@ -663,10 +663,10 @@ fn private_threads_are_hidden_without_membership_state() {
     state.apply_event(&AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(guild),
         parent_id: Some(parent),
+        owner_id: None,
         name: "private planning".to_owned(),
         kind: "GuildPrivateThread".to_owned(),
-        thread_archived: Some(false),
-        thread_locked: Some(false),
+        thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
         permission_overwrites: Vec::new(),
         ..channel_info(thread, "GuildPrivateThread", Vec::new())
     }));
@@ -683,10 +683,10 @@ fn private_threads_are_hidden_while_permission_state_is_missing() {
     state.apply_event(&AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(guild),
         parent_id: Some(Id::new(2)),
+        owner_id: None,
         name: "private planning".to_owned(),
         kind: "GuildPrivateThread".to_owned(),
-        thread_archived: Some(false),
-        thread_locked: Some(false),
+        thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
         permission_overwrites: Vec::new(),
         ..channel_info(thread, "GuildPrivateThread", Vec::new())
     }));
@@ -732,10 +732,10 @@ fn channel_visibility_stats_count_only_top_level() {
             ChannelInfo {
                 guild_id: Some(guild),
                 parent_id: Some(visible_channel),
+                owner_id: None,
                 name: "design".to_owned(),
                 kind: "GuildPublicThread".to_owned(),
-                thread_archived: Some(false),
-                thread_locked: Some(false),
+                thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
                 permission_overwrites: Vec::new(),
                 ..channel_info(visible_thread, "GuildPublicThread", Vec::new())
             },

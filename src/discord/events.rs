@@ -95,24 +95,108 @@ pub struct ChannelInfo {
     pub guild_id: Option<Id<GuildMarker>>,
     pub channel_id: Id<ChannelMarker>,
     pub parent_id: Option<Id<ChannelMarker>>,
+    /// Discord's `owner_id` channel field. For group DMs this is the group DM
+    /// owner. For thread channels this is the user that started the thread.
+    pub owner_id: Option<Id<UserMarker>>,
     pub position: Option<i32>,
     pub last_message_id: Option<Id<MessageMarker>>,
     pub name: String,
     pub kind: String,
+    /// Discord's `message_count` channel field. Discord only defines this for
+    /// thread channels, where it counts messages in that one thread.
     pub message_count: Option<u64>,
+    /// Discord's `member_count` channel field. Discord only defines this for
+    /// thread channels and caps the approximate count at 50.
+    pub member_count: Option<u64>,
+    /// Discord's `total_message_sent` channel field. For thread channels this
+    /// is the total number ever sent in that one thread and does not decrement
+    /// when messages are deleted.
     pub total_message_sent: Option<u64>,
-    pub thread_archived: Option<bool>,
-    pub thread_locked: Option<bool>,
-    /// Whether this thread is pinned in its parent forum/media channel.
-    /// Discord encodes the bit in `flags` (`PINNED = 1 << 1`). Only set on
-    /// threads inside forum-style parents.
-    pub thread_pinned: Option<bool>,
+    /// Discord's `thread_metadata` channel field. Present only for thread
+    /// channels and describes that one thread's archive/lock state.
+    pub thread_metadata: Option<ThreadMetadataInfo>,
+    /// Discord's raw `flags` channel bitfield. For thread channels in forum or
+    /// media parents, `PINNED = 1 << 1` means this one thread is pinned.
+    pub flags: Option<u64>,
     pub recipients: Option<Vec<ChannelRecipientInfo>>,
     /// Channel-level permission overrides. The empty default means a
     /// gateway/REST payload that omitted the field is treated as "no
     /// channel-specific overrides", which matches Discord's behavior of
     /// inheriting from the guild base permissions.
     pub permission_overwrites: Vec<PermissionOverwriteInfo>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ThreadMetadataInfo {
+    /// Discord's `thread_metadata.archived` field.
+    pub archived: bool,
+    /// Discord's `thread_metadata.auto_archive_duration` field, in minutes.
+    pub auto_archive_duration: Option<u64>,
+    /// Discord's `thread_metadata.archive_timestamp` field.
+    pub archive_timestamp: Option<String>,
+    /// Discord's `thread_metadata.locked` field.
+    pub locked: bool,
+    /// Discord's `thread_metadata.invitable` field. Only available on private
+    /// threads.
+    pub invitable: Option<bool>,
+    /// Discord's `thread_metadata.create_timestamp` field. Discord only
+    /// populates it for newer threads.
+    pub create_timestamp: Option<String>,
+}
+
+impl ChannelInfo {
+    pub fn thread_archived(&self) -> Option<bool> {
+        self.thread_metadata
+            .as_ref()
+            .map(|metadata| metadata.archived)
+    }
+
+    pub fn thread_locked(&self) -> Option<bool> {
+        self.thread_metadata
+            .as_ref()
+            .map(|metadata| metadata.locked)
+    }
+
+    pub fn thread_pinned(&self) -> Option<bool> {
+        self.flags.map(|flags| flags & (1 << 1) != 0)
+    }
+}
+
+#[cfg(test)]
+impl ChannelInfo {
+    pub(crate) fn test(channel_id: Id<ChannelMarker>, kind: impl Into<String>) -> Self {
+        Self {
+            guild_id: None,
+            channel_id,
+            parent_id: None,
+            owner_id: None,
+            position: None,
+            last_message_id: None,
+            name: String::new(),
+            kind: kind.into(),
+            message_count: None,
+            member_count: None,
+            total_message_sent: None,
+            thread_metadata: None,
+            flags: None,
+            recipients: None,
+            permission_overwrites: Vec::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl ThreadMetadataInfo {
+    pub(crate) fn test(archived: bool, locked: bool) -> Self {
+        Self {
+            archived,
+            auto_archive_duration: None,
+            archive_timestamp: None,
+            locked,
+            invitable: None,
+            create_timestamp: None,
+        }
+    }
 }
 
 /// Whether a `PermissionOverwriteInfo` targets a role or an individual member.
@@ -676,8 +760,8 @@ pub enum AppEvent {
         archive_state: ForumPostArchiveState,
         offset: usize,
         next_offset: usize,
-        posts: Vec<ChannelInfo>,
-        preview_messages: Vec<MessageInfo>,
+        threads: Vec<ChannelInfo>,
+        first_messages: Vec<MessageInfo>,
         has_more: bool,
     },
     ForumPostsLoadFailed {

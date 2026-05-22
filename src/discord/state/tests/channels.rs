@@ -39,6 +39,7 @@ fn stores_channel_parent_and_position() {
 
     state.apply_event(&AppEvent::ChannelUpsert(ChannelInfo {
         parent_id: Some(category_id),
+        owner_id: None,
         position: Some(7),
         last_message_id: Some(Id::new(9)),
         kind: "text".to_owned(),
@@ -504,6 +505,7 @@ fn live_thread_messages_increment_cached_counts_once() {
 
     state.apply_event(&AppEvent::ChannelUpsert(ChannelInfo {
         message_count: Some(12),
+        member_count: None,
         total_message_sent: Some(14),
         ..guild_thread_channel(Id::new(1), channel_id, Id::new(2), "release notes")
     }));
@@ -586,6 +588,7 @@ fn channel_delete_removes_cached_thread() {
 
     state.apply_event(&AppEvent::ChannelUpsert(ChannelInfo {
         message_count: Some(12),
+        member_count: None,
         total_message_sent: Some(14),
         ..guild_thread_channel(guild_id, channel_id, Id::new(2), "release notes")
     }));

@@ -9,7 +9,7 @@ use crate::discord::{
     MentionInfo, MessageInfo, MessageInteractionInfo, MessageKind, MessageReferenceInfo,
     MessageSnapshotInfo, PermissionOverwriteInfo, PermissionOverwriteKind, PollAnswerInfo,
     PollInfo, PresenceStatus, ReactionEmoji, ReactionInfo, ReadStateInfo, ReplyInfo, RoleInfo,
-    VoiceStateInfo,
+    ThreadMetadataInfo, VoiceStateInfo,
 };
 
 pub(super) const PERM_ADD_REACTIONS: u64 = 0x0000_0000_0000_0040;
@@ -96,20 +96,8 @@ pub(super) fn channel_info(
     permission_overwrites: Vec<PermissionOverwriteInfo>,
 ) -> ChannelInfo {
     ChannelInfo {
-        guild_id: None,
-        channel_id,
-        parent_id: None,
-        position: None,
-        last_message_id: None,
-        name: String::new(),
-        kind: kind.into(),
-        message_count: None,
-        total_message_sent: None,
-        thread_archived: None,
-        thread_locked: None,
-        thread_pinned: None,
-        recipients: None,
         permission_overwrites,
+        ..ChannelInfo::test(channel_id, kind)
     }
 }
 
@@ -160,6 +148,7 @@ pub(super) fn child_text_channel_info(
 ) -> ChannelInfo {
     ChannelInfo {
         parent_id: Some(parent_id),
+        owner_id: None,
         ..positioned_text_channel_info(guild_id, channel_id, name, position)
     }
 }
@@ -172,10 +161,10 @@ pub(super) fn thread_channel_info(
 ) -> ChannelInfo {
     ChannelInfo {
         parent_id: Some(parent_id),
+        owner_id: None,
         name: name.into(),
         kind: "thread".to_owned(),
-        thread_archived: Some(false),
-        thread_locked: Some(false),
+        thread_metadata: Some(ThreadMetadataInfo::test(false, false)),
         ..text_channel_info(guild_id, thread_id, "")
     }
 }
@@ -774,6 +763,7 @@ pub(super) fn state_with_thread_created_message() -> DashboardState {
             text_channel_info(guild_id, parent_id, "general"),
             ChannelInfo {
                 message_count: Some(12),
+                member_count: None,
                 total_message_sent: Some(14),
                 ..thread_channel_info(guild_id, parent_id, thread_id, "release notes")
             },

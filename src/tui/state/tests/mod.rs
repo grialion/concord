@@ -23,7 +23,7 @@ use crate::{
     config::{DisplayOptions, ImagePreviewQualityPreset, NotificationOptions, VoiceOptions},
     discord::ids::{
         Id,
-        marker::{ChannelMarker, GuildMarker, MessageMarker, UserMarker},
+        marker::{ChannelMarker, GuildMarker, MessageMarker, RoleMarker, UserMarker},
     },
 };
 use unicode_width::UnicodeWidthStr;
@@ -183,6 +183,7 @@ fn state_with_thread_created_message_after_regular_message() -> DashboardState {
             text_channel_info(guild_id, parent_id, "general"),
             ChannelInfo {
                 message_count: Some(12),
+                member_count: None,
                 total_message_sent: Some(14),
                 ..thread_channel_info(guild_id, parent_id, thread_id, "release notes")
             },
@@ -222,19 +223,9 @@ fn state_with_forum_channel_posts() -> DashboardState {
 fn forum_channel_info(guild_id: Id<GuildMarker>, forum_id: Id<ChannelMarker>) -> ChannelInfo {
     ChannelInfo {
         guild_id: Some(guild_id),
-        channel_id: forum_id,
-        parent_id: None,
         position: Some(0),
-        last_message_id: None,
         name: "announcements".to_owned(),
-        kind: "forum".to_owned(),
-        message_count: None,
-        total_message_sent: None,
-        thread_archived: None,
-        thread_locked: None,
-        thread_pinned: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(forum_id, "forum")
     }
 }
 
@@ -248,19 +239,11 @@ fn forum_thread_info(
 ) -> ChannelInfo {
     ChannelInfo {
         guild_id: Some(guild_id),
-        channel_id: Id::new(channel_id),
         parent_id: Some(forum_id),
-        position: None,
         last_message_id: last_message_id.map(Id::<MessageMarker>::new),
         name: name.to_owned(),
-        kind: "GuildPublicThread".to_owned(),
-        message_count: None,
-        total_message_sent: None,
-        thread_archived: Some(archived),
-        thread_locked: Some(false),
-        thread_pinned: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(archived, false)),
+        ..ChannelInfo::test(Id::new(channel_id), "GuildPublicThread")
     }
 }
 
@@ -309,14 +292,15 @@ fn state_with_many_forum_channel_posts(count: u64) -> DashboardState {
     state.confirm_selected_guild();
     state.confirm_selected_channel();
 
-    // Discord's `/threads/search` returns posts newest-first, so emit them in
-    // reverse channel-id order to match what the live API would deliver.
-    let posts: Vec<_> = (0..count)
+    // Discord's `/threads/search` returns threads newest-first, so emit them
+    // in reverse channel-id order to match what the live API would deliver.
+    let threads: Vec<_> = (0..count)
         .rev()
         .map(|index| ChannelInfo {
             guild_id: Some(guild_id),
             channel_id: Id::new(30 + index),
             parent_id: Some(forum_id),
+            owner_id: None,
             position: Some(i32::try_from(index).expect("test index fits i32")),
             last_message_id: None,
             name: if count == 2 && index == 0 {
@@ -328,10 +312,10 @@ fn state_with_many_forum_channel_posts(count: u64) -> DashboardState {
             },
             kind: "GuildPublicThread".to_owned(),
             message_count: Some(index + 1),
+            member_count: None,
             total_message_sent: Some(index + 1),
-            thread_archived: Some(false),
-            thread_locked: Some(false),
-            thread_pinned: None,
+            thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
+            flags: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         })
@@ -340,9 +324,9 @@ fn state_with_many_forum_channel_posts(count: u64) -> DashboardState {
         channel_id: forum_id,
         archive_state: ForumPostArchiveState::Active,
         offset: 0,
-        next_offset: posts.len(),
-        posts,
-        preview_messages: Vec::new(),
+        next_offset: threads.len(),
+        threads,
+        first_messages: Vec::new(),
         has_more: false,
     });
     state
@@ -377,6 +361,7 @@ fn state_with_voice_channel_participant() -> DashboardState {
             category_channel_info(guild_id, category_id, "Channels", 0),
             ChannelInfo {
                 parent_id: Some(category_id),
+                owner_id: None,
                 ..voice_channel_info(guild_id, voice_id, "Lobby")
             },
             child_text_channel_info(guild_id, text_id, category_id, "general", 1),

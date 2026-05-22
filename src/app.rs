@@ -230,8 +230,8 @@ fn start_command_loop(
                                         archive_state,
                                         offset,
                                         next_offset: page.next_offset,
-                                        posts: page.posts,
-                                        preview_messages: page.preview_messages,
+                                        threads: page.threads,
+                                        first_messages: page.first_messages,
                                         has_more: page.has_more,
                                     })
                                     .await;

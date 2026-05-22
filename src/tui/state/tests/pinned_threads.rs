@@ -193,6 +193,7 @@ fn missing_thread_preview_requests_exact_latest_message_until_loaded() {
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         last_message_id: Some(Id::new(30)),
         message_count: Some(12),
+        member_count: None,
         total_message_sent: Some(14),
         ..thread_channel_info(Id::new(1), Id::new(2), Id::new(10), "release notes")
     }));
@@ -224,7 +225,7 @@ fn missing_thread_preview_requests_exact_latest_message_until_loaded() {
 }
 
 #[test]
-fn missing_thread_preview_requests_include_visible_forum_posts_with_unavailable_content() {
+fn missing_thread_preview_requests_skip_forum_posts_without_starter_preview() {
     let mut state = state_with_forum_channel_posts();
     state.push_event(AppEvent::SelectedMessageChannelChanged { channel_id: None });
     state.push_event(AppEvent::ChannelUpsert(forum_thread_info(
@@ -249,14 +250,8 @@ fn missing_thread_preview_requests_include_visible_forum_posts_with_unavailable_
         .into_iter()
         .find(|post| post.channel_id == Id::new(30))
         .expect("forum post should be visible");
-    assert_eq!(
-        post.preview_content.as_deref(),
-        Some("<message content unavailable>")
-    );
-    assert_eq!(
-        state.missing_thread_preview_load_requests(),
-        vec![(Id::new(30), Id::new(300))]
-    );
+    assert_eq!(post.preview_content.as_deref(), None);
+    assert_eq!(state.missing_thread_preview_load_requests(), Vec::new());
 }
 
 #[test]
@@ -265,6 +260,7 @@ fn thread_summary_suppresses_preview_when_channel_latest_is_newer_than_cache() {
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         last_message_id: Some(Id::new(40)),
         message_count: Some(12),
+        member_count: None,
         total_message_sent: Some(14),
         ..thread_channel_info(Id::new(1), Id::new(2), Id::new(10), "release notes")
     }));

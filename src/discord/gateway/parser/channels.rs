@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use crate::discord::{
-    ChannelInfo, ChannelRecipientInfo,
+    ChannelInfo, ChannelRecipientInfo, ThreadMetadataInfo,
     events::{AppEvent, PermissionOverwriteInfo, PermissionOverwriteKind},
     ids::{
         Id,
@@ -24,6 +24,7 @@ pub(crate) fn parse_channel_info(
         .and_then(parse_id::<GuildMarker>)
         .or(default_guild);
     let parent_id = value.get("parent_id").and_then(parse_id::<ChannelMarker>);
+    let owner_id = value.get("owner_id").and_then(parse_id::<UserMarker>);
     let position = value
         .get("position")
         .and_then(Value::as_i64)
@@ -92,29 +93,35 @@ pub(crate) fn parse_channel_info(
         guild_id,
         channel_id,
         parent_id,
+        owner_id,
         position,
         last_message_id,
         name,
         kind,
         message_count: value.get("message_count").and_then(Value::as_u64),
+        member_count: value.get("member_count").and_then(Value::as_u64),
         total_message_sent: value.get("total_message_sent").and_then(Value::as_u64),
-        thread_archived: value
-            .get("thread_metadata")
-            .and_then(|metadata| metadata.get("archived"))
-            .and_then(Value::as_bool),
-        thread_locked: value
-            .get("thread_metadata")
-            .and_then(|metadata| metadata.get("locked"))
-            .and_then(Value::as_bool),
-        // Discord's `flags` bitfield includes PINNED (1 << 1) for forum/media
-        // threads. Surface it as `Some(true)` only when the bit is set, leaving
-        // non-thread channels and unpinned threads as `None`/`Some(false)`.
-        thread_pinned: value
-            .get("flags")
-            .and_then(Value::as_u64)
-            .map(|flags| flags & (1 << 1) != 0),
+        thread_metadata: value.get("thread_metadata").and_then(parse_thread_metadata),
+        flags: value.get("flags").and_then(Value::as_u64),
         recipients,
         permission_overwrites,
+    })
+}
+
+fn parse_thread_metadata(value: &Value) -> Option<ThreadMetadataInfo> {
+    Some(ThreadMetadataInfo {
+        archived: value.get("archived")?.as_bool()?,
+        auto_archive_duration: value.get("auto_archive_duration").and_then(Value::as_u64),
+        archive_timestamp: value
+            .get("archive_timestamp")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        locked: value.get("locked")?.as_bool()?,
+        invitable: value.get("invitable").and_then(Value::as_bool),
+        create_timestamp: value
+            .get("create_timestamp")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
     })
 }
 

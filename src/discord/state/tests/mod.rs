@@ -167,20 +167,8 @@ fn channel_info(
     permission_overwrites: Vec<PermissionOverwriteInfo>,
 ) -> ChannelInfo {
     ChannelInfo {
-        guild_id: None,
-        channel_id,
-        parent_id: None,
-        position: None,
-        last_message_id: None,
-        name: String::new(),
-        kind: kind.into(),
-        message_count: None,
-        total_message_sent: None,
-        thread_archived: None,
-        thread_locked: None,
-        thread_pinned: None,
-        recipients: None,
         permission_overwrites,
+        ..ChannelInfo::test(channel_id, kind)
     }
 }
 
@@ -211,6 +199,7 @@ fn guild_child_text_channel(
         name: name.into(),
         kind: "text".to_owned(),
         parent_id: Some(parent_id),
+        owner_id: None,
         position: Some(position),
         ..channel_info(channel_id, "text", Vec::new())
     }
@@ -246,10 +235,10 @@ fn guild_thread_channel(
     ChannelInfo {
         guild_id: Some(guild_id),
         parent_id: Some(parent_id),
+        owner_id: None,
         name: name.into(),
         kind: "thread".to_owned(),
-        thread_archived: Some(false),
-        thread_locked: Some(false),
+        thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
         ..channel_info(channel_id, "thread", Vec::new())
     }
 }

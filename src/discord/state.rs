@@ -36,8 +36,9 @@ use reads::ChannelReadState;
 pub use voice::{CurrentVoiceConnectionState, VoiceParticipantState};
 
 use super::{
-    ActivityInfo, AppEvent, CustomEmojiInfo, FriendStatus, GuildFolder, PresenceStatus,
-    RelationshipInfo, UserProfileInfo, display_name::display_name_from_parts_or_unknown,
+    ActivityInfo, AppEvent, ChannelInfo, CustomEmojiInfo, FriendStatus, GuildFolder,
+    PresenceStatus, RelationshipInfo, UserProfileInfo,
+    display_name::display_name_from_parts_or_unknown,
 };
 
 /// Maximum number of recent messages kept per channel in the normal message cache.
@@ -73,10 +74,17 @@ pub struct DiscordState {
 struct NavigationIndex {
     guilds: BTreeMap<Id<GuildMarker>, GuildState>,
     channels: BTreeMap<Id<ChannelMarker>, ChannelState>,
+    thread_creators: BTreeMap<Id<ChannelMarker>, ThreadCreatorState>,
     custom_emojis: BTreeMap<Id<GuildMarker>, Vec<CustomEmojiInfo>>,
     /// User's `guild_folders` setting in display order. Empty until READY
     /// delivers it. The dashboard falls back to a flat guild list.
     guild_folders: Vec<GuildFolder>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ThreadCreatorState {
+    pub guild_id: Option<Id<GuildMarker>>,
+    pub user_id: Id<UserMarker>,
 }
 
 #[derive(Clone, Debug)]
@@ -401,6 +409,27 @@ impl DiscordState {
         }
     }
 
+    pub fn thread_creator(&self, thread_id: Id<ChannelMarker>) -> Option<ThreadCreatorState> {
+        self.navigation.thread_creators.get(&thread_id).copied()
+    }
+
+    fn record_thread_creators(&mut self, threads: &[ChannelInfo]) {
+        for thread in threads {
+            let Some(user_id) = thread.owner_id else {
+                continue;
+            };
+            let guild_id = thread.guild_id.or_else(|| {
+                self.navigation
+                    .channels
+                    .get(&thread.channel_id)
+                    .and_then(|channel| channel.guild_id)
+            });
+            self.navigation
+                .thread_creators
+                .insert(thread.channel_id, ThreadCreatorState { guild_id, user_id });
+        }
+    }
+
     pub fn cache_counts(&self) -> DiscordStateCacheCounts {
         DiscordStateCacheCounts {
             guilds: self.navigation.guilds.len(),
@@ -676,6 +705,9 @@ impl DiscordState {
                 self.navigation
                     .channels
                     .retain(|_, channel| channel.guild_id != Some(*guild_id));
+                self.navigation
+                    .thread_creators
+                    .retain(|channel_id, _| self.navigation.channels.contains_key(channel_id));
                 self.message_cache
                     .messages
                     .retain(|channel_id, _| self.navigation.channels.contains_key(channel_id));
@@ -719,14 +751,15 @@ impl DiscordState {
             }
             AppEvent::ChannelUpsert(channel) => self.upsert_channel(channel),
             AppEvent::ForumPostsLoaded {
-                posts,
-                preview_messages,
+                threads,
+                first_messages,
                 ..
             } => {
-                for post in posts {
-                    self.upsert_channel(post);
+                for thread in threads {
+                    self.upsert_channel(thread);
                 }
-                for message in preview_messages {
+                self.record_thread_creators(threads);
+                for message in first_messages {
                     self.merge_message_history(
                         message.channel_id,
                         None,
@@ -736,6 +769,7 @@ impl DiscordState {
             }
             AppEvent::ChannelDelete { channel_id, .. } => {
                 self.navigation.channels.remove(channel_id);
+                self.navigation.thread_creators.remove(channel_id);
                 self.message_cache.messages.remove(channel_id);
                 self.message_cache.cold_message_channels.remove(channel_id);
                 self.message_cache

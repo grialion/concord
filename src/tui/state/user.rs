@@ -11,7 +11,9 @@ use crate::discord::ids::{
     Id,
     marker::{GuildMarker, UserMarker},
 };
-use crate::discord::{ActivityInfo, MessageInfo, MessageState, PresenceStatus, UserProfileInfo};
+use crate::discord::{
+    ActivityInfo, ChannelInfo, MessageInfo, MessageState, PresenceStatus, UserProfileInfo,
+};
 
 use super::{ActiveGuildScope, DashboardState};
 use super::{
@@ -351,6 +353,36 @@ impl DashboardState {
                     .entry(guild_id)
                     .or_default()
                     .insert(message.author_id);
+            }
+        }
+
+        by_guild
+            .into_iter()
+            .map(|(guild_id, user_ids)| (guild_id, user_ids.into_iter().collect()))
+            .collect()
+    }
+
+    pub fn missing_thread_owner_member_requests(
+        &self,
+        threads: &[ChannelInfo],
+    ) -> Vec<(Id<GuildMarker>, Vec<Id<UserMarker>>)> {
+        let mut by_guild: BTreeMap<Id<GuildMarker>, BTreeSet<Id<UserMarker>>> = BTreeMap::new();
+
+        for thread in threads {
+            let Some(user_id) = thread.owner_id else {
+                continue;
+            };
+            let guild_id = thread.guild_id.or_else(|| {
+                self.discord
+                    .cache
+                    .channel(thread.channel_id)
+                    .and_then(|channel| channel.guild_id)
+            });
+            let Some(guild_id) = guild_id else {
+                continue;
+            };
+            if !self.discord.cache.member_has_known_name(guild_id, user_id) {
+                by_guild.entry(guild_id).or_default().insert(user_id);
             }
         }
 

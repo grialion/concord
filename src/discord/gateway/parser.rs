@@ -1090,8 +1090,8 @@ mod tests {
         assert_eq!(channel.kind, "GuildPublicThread");
         assert_eq!(channel.message_count, Some(12));
         assert_eq!(channel.total_message_sent, Some(14));
-        assert_eq!(channel.thread_archived, Some(true));
-        assert_eq!(channel.thread_locked, Some(false));
+        assert_eq!(channel.thread_archived(), Some(true));
+        assert_eq!(channel.thread_locked(), Some(false));
     }
 
     #[test]
@@ -1114,8 +1114,8 @@ mod tests {
                     && channel.kind == "GuildPublicThread"
                     && channel.message_count == Some(12)
                     && channel.total_message_sent == Some(14)
-                    && channel.thread_archived == Some(false)
-                    && channel.thread_locked == Some(false)
+                    && channel.thread_archived() == Some(false)
+                    && channel.thread_locked() == Some(false)
         ));
     }
 

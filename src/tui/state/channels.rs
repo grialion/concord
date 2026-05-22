@@ -360,7 +360,7 @@ impl DashboardState {
         threads
             .into_iter()
             .map(|thread| {
-                self.forum_thread_item(thread, None, thread.thread_archived.unwrap_or(false))
+                self.forum_thread_item(thread, None, thread.thread_archived().unwrap_or(false))
             })
             .collect()
     }
@@ -389,7 +389,7 @@ impl DashboardState {
                     && post.parent_id == Some(forum_channel_id)
                     && self.discord.cache.can_view_channel(post)
             })
-            .partition(|post| post.thread_pinned.unwrap_or(false));
+            .partition(|post| post.thread_pinned().unwrap_or(false));
         let by_last_message = |post: &&ChannelState| {
             std::cmp::Reverse(post.last_message_id.map(|id| id.get()).unwrap_or(0))
         };
@@ -416,23 +416,69 @@ impl DashboardState {
         section_label: Option<String>,
         archived: bool,
     ) -> ChannelThreadItem {
-        let preview = self
-            .discord
-            .messages_for_channel(channel.id)
-            .into_iter()
-            .next();
+        let messages = self.discord.messages_for_channel(channel.id);
+        let is_forum_post = channel
+            .parent_id
+            .and_then(|parent_id| self.discord.cache.channel(parent_id))
+            .is_some_and(|parent| parent.is_forum());
+        let preview = if is_forum_post {
+            messages
+                .into_iter()
+                .find(|message| message.id.get() == channel.id.get())
+        } else {
+            messages.into_iter().next()
+        };
+        let deleted_starter_creator = (is_forum_post && preview.is_none())
+            .then(|| self.discord.cache.thread_creator(channel.id))
+            .flatten();
+        let deleted_starter_author_id = deleted_starter_creator.map(|creator| creator.user_id);
+        let deleted_starter_author = deleted_starter_creator.map(|creator| {
+            creator
+                .guild_id
+                .or(channel.guild_id)
+                .and_then(|guild_id| {
+                    self.discord
+                        .cache
+                        .member_display_name(guild_id, creator.user_id)
+                })
+                .map(str::to_owned)
+                .unwrap_or_else(|| format!("user-{}", creator.user_id.get()))
+        });
+        let deleted_starter_author_color = deleted_starter_creator.and_then(|creator| {
+            creator.guild_id.or(channel.guild_id).and_then(|guild_id| {
+                self.discord
+                    .cache
+                    .user_role_color(guild_id, creator.user_id)
+            })
+        });
         ChannelThreadItem {
             channel_id: channel.id,
             section_label,
             label: channel.name.clone(),
             archived,
-            locked: channel.thread_locked.unwrap_or(false),
-            pinned: channel.thread_pinned.unwrap_or(false),
-            preview_author_id: preview.map(|message| message.author_id),
-            preview_author: preview.map(|message| message.author.clone()),
+            locked: channel.thread_locked().unwrap_or(false),
+            pinned: channel.thread_pinned().unwrap_or(false),
+            preview_author_id: preview
+                .map(|message| message.author_id)
+                .or(deleted_starter_author_id),
+            preview_author: preview
+                .map(|message| message.author.clone())
+                .or(deleted_starter_author),
             preview_author_color: preview
-                .and_then(|message| self.message_author_role_color(message)),
-            preview_content: preview.map(|message| self.thread_message_preview_text(message)),
+                .and_then(|message| self.message_author_role_color(message))
+                .or(deleted_starter_author_color),
+            preview_content: preview
+                .map(|message| {
+                    if is_forum_post && message.content.is_none() && message.attachments.is_empty()
+                    {
+                        "original message deleted".to_owned()
+                    } else {
+                        self.thread_message_preview_text(message)
+                    }
+                })
+                .or_else(|| {
+                    deleted_starter_author_id.map(|_| "original message deleted".to_owned())
+                }),
             preview_reactions: preview
                 .map(|message| message.reactions.clone())
                 .unwrap_or_default(),

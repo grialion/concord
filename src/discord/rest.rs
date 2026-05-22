@@ -36,8 +36,8 @@ const FORUM_POST_SEARCH_RETRY_DELAYS: [Duration; 2] =
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ForumPostPage {
-    pub posts: Vec<ChannelInfo>,
-    pub preview_messages: Vec<MessageInfo>,
+    pub threads: Vec<ChannelInfo>,
+    pub first_messages: Vec<MessageInfo>,
     pub has_more: bool,
     pub next_offset: usize,
 }
@@ -528,13 +528,13 @@ impl DiscordRest {
                 AppError::DiscordRequest(format!("forum post search decode failed: {error}"))
             })?;
 
-        let posts = parse_forum_thread_page(&raw, Some(guild_id), channel_id, true);
-        let preview_messages = parse_forum_preview_messages(&raw, &posts);
+        let threads = parse_forum_threads(&raw, Some(guild_id), channel_id, true);
+        let first_messages = parse_forum_first_messages(&raw, &threads);
 
         Ok(ForumPostPage {
-            next_offset: offset.saturating_add(posts.len()),
-            posts,
-            preview_messages,
+            next_offset: offset.saturating_add(threads.len()),
+            threads,
+            first_messages,
             has_more: raw
                 .get("has_more")
                 .and_then(Value::as_bool)
@@ -979,7 +979,7 @@ fn reaction_route_component(emoji: &ReactionEmoji) -> String {
     }
 }
 
-fn parse_forum_thread_page(
+fn parse_forum_threads(
     raw: &Value,
     guild_id: Option<Id<GuildMarker>>,
     parent_channel_id: Id<ChannelMarker>,
@@ -991,30 +991,31 @@ fn parse_forum_thread_page(
             threads
                 .iter()
                 .filter_map(|thread| {
-                    let mut info = parse_channel_info(thread, guild_id)?;
-                    if fill_missing_parent && info.parent_id.is_none() {
-                        info.parent_id = Some(parent_channel_id);
+                    let mut channel = parse_channel_info(thread, guild_id)?;
+                    if fill_missing_parent && channel.parent_id.is_none() {
+                        channel.parent_id = Some(parent_channel_id);
                     }
-                    Some(info)
+                    if channel.parent_id != Some(parent_channel_id) {
+                        return None;
+                    }
+                    Some(channel)
                 })
-                .filter(|thread| thread.parent_id == Some(parent_channel_id))
                 .collect()
         })
         .unwrap_or_default()
 }
 
-fn parse_forum_preview_messages(raw: &Value, posts: &[ChannelInfo]) -> Vec<MessageInfo> {
+fn parse_forum_first_messages(raw: &Value, threads: &[ChannelInfo]) -> Vec<MessageInfo> {
     let mut seen = std::collections::HashSet::new();
-    ["first_messages", "messages", "most_recent_messages"]
+    parse_forum_messages_from_field(raw, threads, "first_messages")
         .into_iter()
-        .flat_map(|field| parse_forum_messages_from_field(raw, posts, field))
         .filter(|message| seen.insert(message.message_id))
         .collect()
 }
 
 fn parse_forum_messages_from_field(
     raw: &Value,
-    posts: &[ChannelInfo],
+    threads: &[ChannelInfo],
     field: &str,
 ) -> Vec<MessageInfo> {
     raw.get(field)
@@ -1024,9 +1025,9 @@ fn parse_forum_messages_from_field(
                 .iter()
                 .filter_map(parse_message_info)
                 .filter(|message| {
-                    posts
+                    threads
                         .iter()
-                        .any(|post| post.channel_id == message.channel_id)
+                        .any(|thread| thread.channel_id == message.channel_id)
                 })
                 .collect()
         })
@@ -1064,29 +1065,29 @@ impl ForumSearchSort {
 /// re-sorts by `last_message_id` snowflake. `has_more` only follows the
 /// `last_message_time` cursor since subsequent pages use that sort alone.
 fn merge_forum_pages(active: ForumPostPage, recent: ForumPostPage) -> ForumPostPage {
-    let mut seen_posts = std::collections::HashSet::new();
-    let mut posts = Vec::with_capacity(active.posts.len() + recent.posts.len());
-    for post in active.posts.into_iter().chain(recent.posts) {
-        if seen_posts.insert(post.channel_id) {
-            posts.push(post);
+    let mut seen_threads = std::collections::HashSet::new();
+    let mut threads = Vec::with_capacity(active.threads.len() + recent.threads.len());
+    for thread in active.threads.into_iter().chain(recent.threads) {
+        if seen_threads.insert(thread.channel_id) {
+            threads.push(thread);
         }
     }
-    let mut seen_previews = std::collections::HashSet::new();
-    let mut preview_messages =
-        Vec::with_capacity(active.preview_messages.len() + recent.preview_messages.len());
+    let mut seen_first_messages = std::collections::HashSet::new();
+    let mut first_messages =
+        Vec::with_capacity(active.first_messages.len() + recent.first_messages.len());
     for message in active
-        .preview_messages
+        .first_messages
         .into_iter()
-        .chain(recent.preview_messages)
+        .chain(recent.first_messages)
     {
-        if seen_previews.insert(message.message_id) {
-            preview_messages.push(message);
+        if seen_first_messages.insert(message.message_id) {
+            first_messages.push(message);
         }
     }
     ForumPostPage {
         next_offset: active.next_offset,
-        posts,
-        preview_messages,
+        threads,
+        first_messages,
         has_more: active.has_more,
     }
 }
@@ -1464,7 +1465,7 @@ mod tests {
 
     use crate::discord::ids::{
         Id,
-        marker::{ApplicationMarker, ChannelMarker, EmojiMarker, GuildMarker},
+        marker::{ApplicationMarker, ChannelMarker, EmojiMarker, GuildMarker, UserMarker},
     };
 
     use crate::{
@@ -1478,10 +1479,9 @@ mod tests {
                 application_command_interaction_body, application_command_option_body,
                 is_search_index_warming, merge_forum_pages, message_multipart_form,
                 message_request_body, mute_request_body, next_reaction_users_after,
-                parse_application_command_index, parse_forum_preview_messages,
-                parse_forum_thread_page, parse_user_profile_response, poll_vote_request_body,
-                reaction_route_component, upload_content_type, validate_message_content,
-                validate_message_payload,
+                parse_application_command_index, parse_forum_first_messages, parse_forum_threads,
+                parse_user_profile_response, poll_vote_request_body, reaction_route_component,
+                upload_content_type, validate_message_content, validate_message_payload,
             },
         },
     };
@@ -1778,6 +1778,8 @@ mod tests {
                 {
                     "id": "30",
                     "parent_id": "20",
+                    "guild_id": "1",
+                    "owner_id": "88",
                     "type": 11,
                     "name": "welcome",
                     "thread_metadata": { "archived": false, "locked": false }
@@ -1792,13 +1794,14 @@ mod tests {
             "has_more": false
         });
 
-        let posts = parse_forum_thread_page(&raw, Some(guild_id), forum_id, false);
+        let threads = parse_forum_threads(&raw, Some(guild_id), forum_id, false);
 
-        assert_eq!(posts.len(), 1);
-        assert_eq!(posts[0].guild_id, Some(guild_id));
-        assert_eq!(posts[0].channel_id, Id::new(30));
-        assert_eq!(posts[0].parent_id, Some(forum_id));
-        assert_eq!(posts[0].name, "welcome");
+        assert_eq!(threads.len(), 1);
+        assert_eq!(threads[0].guild_id, Some(guild_id));
+        assert_eq!(threads[0].channel_id, Id::new(30));
+        assert_eq!(threads[0].parent_id, Some(forum_id));
+        assert_eq!(threads[0].name, "welcome");
+        assert_eq!(threads[0].owner_id, Some(Id::new(88)));
 
         let raw = serde_json::json!({
             "threads": [
@@ -1812,17 +1815,17 @@ mod tests {
             "has_more": false
         });
 
-        let posts = parse_forum_thread_page(&raw, Some(guild_id), forum_id, true);
+        let threads = parse_forum_threads(&raw, Some(guild_id), forum_id, true);
 
-        assert_eq!(posts.len(), 1);
-        assert_eq!(posts[0].parent_id, Some(forum_id));
+        assert_eq!(threads.len(), 1);
+        assert_eq!(threads[0].parent_id, Some(forum_id));
     }
 
     #[test]
     fn forum_first_messages_are_filtered_to_loaded_posts() {
         let guild_id = Id::<GuildMarker>::new(1);
         let forum_id = Id::<ChannelMarker>::new(20);
-        let posts = vec![forum_post(forum_id, 30, "welcome")];
+        let threads = vec![forum_thread(forum_id, 30, "welcome")];
         let raw = serde_json::json!({
             "first_messages": [
                 {
@@ -1852,7 +1855,7 @@ mod tests {
             ]
         });
 
-        let messages = parse_forum_preview_messages(&raw, &posts);
+        let messages = parse_forum_first_messages(&raw, &threads);
 
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].guild_id, Some(guild_id));
@@ -1865,10 +1868,9 @@ mod tests {
     }
 
     #[test]
-    fn forum_preview_messages_accept_search_message_fields() {
-        let guild_id = Id::<GuildMarker>::new(1);
+    fn forum_first_messages_ignore_non_discord_alias_fields() {
         let forum_id = Id::<ChannelMarker>::new(20);
-        let posts = vec![forum_post(forum_id, 30, "welcome")];
+        let threads = vec![forum_thread(forum_id, 30, "welcome")];
         let raw = serde_json::json!({
             "messages": [
                 {
@@ -1900,15 +1902,9 @@ mod tests {
             ]
         });
 
-        let messages = parse_forum_preview_messages(&raw, &posts);
+        let messages = parse_forum_first_messages(&raw, &threads);
 
-        assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].guild_id, Some(guild_id));
-        assert_eq!(messages[0].channel_id, Id::new(30));
-        assert_eq!(
-            messages[0].content.as_deref(),
-            Some("archived search preview")
-        );
+        assert!(messages.is_empty());
     }
 
     #[test]
@@ -1921,24 +1917,24 @@ mod tests {
     }
 
     #[test]
-    fn merge_forum_pages_dedupes_posts_and_keeps_last_message_time_has_more() {
+    fn merge_forum_pages_dedupes_threads_and_keeps_last_message_time_has_more() {
         let forum_id = Id::<ChannelMarker>::new(20);
         let active = ForumPostPage {
             next_offset: 25,
-            posts: vec![
-                forum_post(forum_id, 100, "active-only"),
-                forum_post(forum_id, 200, "shared"),
+            threads: vec![
+                forum_thread_info(forum_id, 100, 10, "active-only"),
+                forum_thread_info(forum_id, 200, 20, "shared"),
             ],
-            preview_messages: Vec::new(),
+            first_messages: Vec::new(),
             has_more: true,
         };
         let recent = ForumPostPage {
             next_offset: 25,
-            posts: vec![
-                forum_post(forum_id, 200, "shared-from-creation"),
-                forum_post(forum_id, 300, "creation-only"),
+            threads: vec![
+                forum_thread_info(forum_id, 200, 99, "shared-from-creation"),
+                forum_thread_info(forum_id, 300, 30, "creation-only"),
             ],
-            preview_messages: Vec::new(),
+            first_messages: Vec::new(),
             // Ignore `has_more` from the creation_time side. Pagination beyond
             // the first page only follows last_message_time.
             has_more: false,
@@ -1946,10 +1942,34 @@ mod tests {
 
         let merged = merge_forum_pages(active, recent);
 
-        let names: Vec<_> = merged.posts.iter().map(|p| p.name.as_str()).collect();
+        let names: Vec<_> = merged
+            .threads
+            .iter()
+            .map(|thread| thread.name.as_str())
+            .collect();
         assert_eq!(names, vec!["active-only", "shared", "creation-only"]);
+        assert_eq!(
+            merged
+                .threads
+                .iter()
+                .map(|thread| (thread.channel_id.get(), thread.owner_id.map(Id::get)))
+                .collect::<Vec<_>>(),
+            vec![(100, Some(10)), (200, Some(20)), (300, Some(30))]
+        );
         assert!(merged.has_more, "must follow last_message_time has_more");
         assert_eq!(merged.next_offset, 25);
+    }
+
+    fn forum_thread_info(
+        parent_id: Id<ChannelMarker>,
+        thread_id: u64,
+        owner_id: u64,
+        name: &str,
+    ) -> ChannelInfo {
+        ChannelInfo {
+            owner_id: Some(Id::<UserMarker>::new(owner_id)),
+            ..forum_thread(parent_id, thread_id, name)
+        }
     }
 
     #[test]
@@ -2024,22 +2044,13 @@ mod tests {
         assert_eq!(profile.role_ids, vec![Id::new(90), Id::new(91)]);
     }
 
-    fn forum_post(parent_id: Id<ChannelMarker>, post_id: u64, name: &str) -> ChannelInfo {
+    fn forum_thread(parent_id: Id<ChannelMarker>, thread_id: u64, name: &str) -> ChannelInfo {
         ChannelInfo {
             guild_id: Some(Id::new(1)),
-            channel_id: Id::new(post_id),
             parent_id: Some(parent_id),
-            position: None,
-            last_message_id: None,
             name: name.to_owned(),
-            kind: "public_thread".to_owned(),
-            message_count: None,
-            total_message_sent: None,
-            thread_archived: Some(false),
-            thread_locked: Some(false),
-            thread_pinned: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
+            ..ChannelInfo::test(Id::new(thread_id), "public_thread")
         }
     }
 }

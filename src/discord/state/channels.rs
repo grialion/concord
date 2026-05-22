@@ -11,15 +11,16 @@ pub struct ChannelState {
     pub id: Id<ChannelMarker>,
     pub guild_id: Option<Id<GuildMarker>>,
     pub parent_id: Option<Id<ChannelMarker>>,
+    pub owner_id: Option<Id<UserMarker>>,
     pub position: Option<i32>,
     pub last_message_id: Option<Id<MessageMarker>>,
     pub name: String,
     pub kind: String,
     pub message_count: Option<u64>,
+    pub member_count: Option<u64>,
     pub total_message_sent: Option<u64>,
-    pub thread_archived: Option<bool>,
-    pub thread_locked: Option<bool>,
-    pub thread_pinned: Option<bool>,
+    pub thread_metadata: Option<crate::discord::ThreadMetadataInfo>,
+    pub flags: Option<u64>,
     pub recipients: Vec<ChannelRecipientState>,
     /// Channel-level permission overrides used by `can_view_channel`. Threads
     /// inherit from their parent channel, so this stays empty for threads
@@ -49,6 +50,22 @@ impl ChannelState {
 
     pub fn is_private_thread(&self) -> bool {
         matches!(self.kind.as_str(), "GuildPrivateThread" | "private-thread")
+    }
+
+    pub fn thread_archived(&self) -> Option<bool> {
+        self.thread_metadata
+            .as_ref()
+            .map(|metadata| metadata.archived)
+    }
+
+    pub fn thread_locked(&self) -> Option<bool> {
+        self.thread_metadata
+            .as_ref()
+            .map(|metadata| metadata.locked)
+    }
+
+    pub fn thread_pinned(&self) -> Option<bool> {
+        self.flags.map(|flags| flags & (1 << 1) != 0)
     }
 }
 
@@ -252,15 +269,16 @@ impl DiscordState {
                 id: channel.channel_id,
                 guild_id: channel.guild_id,
                 parent_id: channel.parent_id,
+                owner_id: channel.owner_id,
                 position: channel.position,
                 last_message_id,
                 name,
                 kind: channel.kind.clone(),
                 message_count: channel.message_count,
+                member_count: channel.member_count,
                 total_message_sent: channel.total_message_sent,
-                thread_archived: channel.thread_archived,
-                thread_locked: channel.thread_locked,
-                thread_pinned: channel.thread_pinned,
+                thread_metadata: channel.thread_metadata.clone(),
+                flags: channel.flags,
                 recipients,
                 permission_overwrites,
             },

@@ -676,7 +676,7 @@ impl DashboardState {
                 archive_state,
                 offset,
                 next_offset: _,
-                posts,
+                threads,
                 has_more,
                 ..
             } => {
@@ -684,7 +684,7 @@ impl DashboardState {
                     *channel_id,
                     *archive_state,
                     *offset,
-                    posts,
+                    threads,
                     *has_more,
                 );
             }
@@ -838,8 +838,8 @@ impl DashboardState {
             archive_state: ForumPostArchiveState::Archived,
             offset,
             next_offset,
-            posts,
-            preview_messages,
+            threads,
+            first_messages,
             has_more,
         } = event
         else {
@@ -854,12 +854,12 @@ impl DashboardState {
             archive_state: ForumPostArchiveState::Archived,
             offset: *offset,
             next_offset: *next_offset,
-            posts: posts
+            threads: threads
                 .iter()
-                .filter(|post| !list.active_post_ids.contains(&post.channel_id))
+                .filter(|thread| !list.active_post_ids.contains(&thread.channel_id))
                 .cloned()
                 .collect(),
-            preview_messages: preview_messages
+            first_messages: first_messages
                 .iter()
                 .filter(|message| !list.active_post_ids.contains(&message.channel_id))
                 .cloned()
@@ -1376,8 +1376,8 @@ impl DashboardState {
                 name: channel.name.clone(),
                 message_count: channel.message_count,
                 total_message_sent: channel.total_message_sent,
-                archived: channel.thread_archived,
-                locked: channel.thread_locked,
+                archived: channel.thread_archived(),
+                locked: channel.thread_locked(),
                 latest_message_id,
                 latest_message_preview,
             }
@@ -1542,7 +1542,7 @@ impl DashboardState {
         if list.active_post_ids.contains(&id) || list.archived_post_ids.contains(&id) {
             return;
         }
-        if channel.thread_archived == Some(true) {
+        if channel.thread_archived() == Some(true) {
             list.archived_post_ids.insert(0, id);
         } else {
             list.active_post_ids.insert(0, id);
@@ -1554,7 +1554,7 @@ impl DashboardState {
         channel_id: Id<ChannelMarker>,
         archive_state: ForumPostArchiveState,
         offset: usize,
-        posts: &[crate::discord::ChannelInfo],
+        threads: &[crate::discord::ChannelInfo],
         has_more: bool,
     ) {
         let list = self
@@ -1573,19 +1573,20 @@ impl DashboardState {
         } else if archive_state == ForumPostArchiveState::Archived && offset == 0 {
             list.archived_post_ids.clear();
         }
-        for post in posts {
+        for thread in threads {
+            let thread_id = thread.channel_id;
             match archive_state {
                 ForumPostArchiveState::Active => {
-                    list.archived_post_ids.retain(|id| *id != post.channel_id);
-                    if !list.active_post_ids.contains(&post.channel_id) {
-                        list.active_post_ids.push(post.channel_id);
+                    list.archived_post_ids.retain(|id| *id != thread_id);
+                    if !list.active_post_ids.contains(&thread_id) {
+                        list.active_post_ids.push(thread_id);
                     }
                 }
                 ForumPostArchiveState::Archived => {
-                    if !list.active_post_ids.contains(&post.channel_id)
-                        && !list.archived_post_ids.contains(&post.channel_id)
+                    if !list.active_post_ids.contains(&thread_id)
+                        && !list.archived_post_ids.contains(&thread_id)
                     {
-                        list.archived_post_ids.push(post.channel_id);
+                        list.archived_post_ids.push(thread_id);
                     }
                 }
             }
@@ -1748,18 +1749,6 @@ impl DashboardState {
                     .is_none()
                     .then_some((summary.channel_id, latest_message_id))
             })
-            .chain(
-                self.visible_forum_post_items()
-                    .into_iter()
-                    .filter_map(|post| {
-                        let latest_message_id = post.last_activity_message_id?;
-                        let missing_preview = post.preview_author.is_none()
-                            || post.preview_content.is_none()
-                            || post.preview_content.as_deref()
-                                == Some("<message content unavailable>");
-                        missing_preview.then_some((post.channel_id, latest_message_id))
-                    }),
-            )
             .filter(|key| seen.insert(*key))
             .collect()
     }

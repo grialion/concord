@@ -1278,8 +1278,8 @@ mod tests {
             archive_state: ForumPostArchiveState::Active,
             offset: 0,
             next_offset: 2,
-            posts: vec![forum_post(channel, 10), forum_post(channel, 11)],
-            preview_messages: Vec::new(),
+            threads: vec![forum_post(channel, 10), forum_post(channel, 11)],
+            first_messages: Vec::new(),
             has_more: true,
         });
 
@@ -1293,8 +1293,8 @@ mod tests {
             archive_state: ForumPostArchiveState::Active,
             offset: 2,
             next_offset: 3,
-            posts: vec![forum_post(channel, 12)],
-            preview_messages: Vec::new(),
+            threads: vec![forum_post(channel, 12)],
+            first_messages: Vec::new(),
             has_more: false,
         });
 
@@ -1308,8 +1308,8 @@ mod tests {
             archive_state: ForumPostArchiveState::Archived,
             offset: 0,
             next_offset: 2,
-            posts: vec![forum_post(channel, 11), forum_post(channel, 12)],
-            preview_messages: Vec::new(),
+            threads: vec![forum_post(channel, 11), forum_post(channel, 12)],
+            first_messages: Vec::new(),
             has_more: true,
         });
 
@@ -1330,8 +1330,8 @@ mod tests {
             archive_state: ForumPostArchiveState::Active,
             offset: 0,
             next_offset: 25,
-            posts: vec![forum_post(channel, 10), forum_post(channel, 11)],
-            preview_messages: Vec::new(),
+            threads: vec![forum_post(channel, 10), forum_post(channel, 11)],
+            first_messages: Vec::new(),
             has_more: true,
         });
 
@@ -1361,15 +1361,16 @@ mod tests {
             guild_id: Some(Id::new(100)),
             channel_id: Id::new(channel_id),
             parent_id: Some(forum_id),
+            owner_id: None,
             position: None,
             last_message_id: None,
             name: format!("post {channel_id}"),
             kind: "GuildPublicThread".to_owned(),
             message_count: None,
+            member_count: None,
             total_message_sent: None,
-            thread_archived: Some(false),
-            thread_locked: Some(false),
-            thread_pinned: None,
+            thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
+            flags: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }
