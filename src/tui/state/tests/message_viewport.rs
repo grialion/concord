@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::AppCommand;
 
 #[test]
 fn message_creation_keeps_viewport_on_latest() {

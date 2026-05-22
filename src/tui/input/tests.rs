@@ -9,10 +9,11 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent,
 use ratatui::layout::Rect;
 
 use super::{MouseClickTracker, handle_key, handle_mouse, handle_mouse_event, handle_paste};
+use crate::discord::AppCommand;
 use crate::{
     config::{AppOptions, ImagePreviewQualityPreset, MicrophoneSensitivityDb, VoiceVolumePercent},
     discord::{
-        AppCommand, AppEvent, ChannelInfo, ChannelNotificationOverrideInfo, ChannelRecipientInfo,
+        AppEvent, ChannelInfo, ChannelNotificationOverrideInfo, ChannelRecipientInfo,
         CustomEmojiInfo, DownloadAttachmentSource, GuildFolder, GuildNotificationSettingsInfo,
         MemberInfo, MessageReferenceInfo, NotificationLevel, PollAnswerInfo, PollInfo,
         PresenceStatus, ReactionEmoji, ReactionUserInfo, ReactionUsersInfo,
@@ -1821,7 +1822,7 @@ fn enter_submits_multiline_composer() {
     assert_eq!(state.composer_input(), "");
     assert_eq!(
         command,
-        Some(crate::discord::AppCommand::SendMessage {
+        Some(AppCommand::SendMessage {
             channel_id: Id::new(11),
             content: "h\ni".to_owned(),
             reply_to: None,

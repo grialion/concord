@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::AppCommand;
 
 #[test]
 fn message_action_items_reflect_selected_message_capabilities() {

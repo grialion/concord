@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crossterm::event::{KeyEvent, KeyEventKind};
 
-use crate::discord::{AppCommand, MessageAttachmentUpload};
+use crate::discord::MessageAttachmentUpload;
 use crate::tui::keybindings::{
     ChannelSwitcherAction, ComposerAction, ComposerCompletionAction, DashboardAction,
     DebugLogPopupAction, EmojiReactionPickerAction, GlobalAction, ImageViewerAction, LeaderAction,
@@ -12,6 +12,7 @@ use crate::tui::keybindings::{
 };
 
 use super::super::state::{DashboardState, FocusPane};
+use crate::discord::AppCommand;
 
 pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppCommand> {
     if key.kind != KeyEventKind::Press {

@@ -595,14 +595,12 @@ impl DashboardState {
             return;
         };
 
-        self.requests
-            .pending_commands
-            .push_back(AppCommand::UpdateVoiceState {
-                guild_id: voice.guild_id,
-                channel_id,
-                self_mute: self.options.voice_options.self_mute,
-                self_deaf: self.options.voice_options.self_deaf,
-            });
+        self.enqueue_pending_command(AppCommand::UpdateVoiceState {
+            guild_id: voice.guild_id,
+            channel_id,
+            self_mute: self.options.voice_options.self_mute,
+            self_deaf: self.options.voice_options.self_deaf,
+        });
     }
 
     fn queue_current_voice_capture_permission_update(&mut self) {
@@ -613,16 +611,14 @@ impl DashboardState {
             return;
         };
 
-        self.requests
-            .pending_commands
-            .push_back(AppCommand::UpdateVoiceCapturePermission {
-                guild_id: voice.guild_id,
-                channel_id,
-                allow_microphone_transmit: self.options.voice_options.allow_microphone_transmit,
-                microphone_sensitivity: self.options.voice_options.microphone_sensitivity,
-                microphone_volume: self.options.voice_options.microphone_volume,
-                voice_output_volume: self.options.voice_options.voice_output_volume,
-            });
+        self.enqueue_pending_command(AppCommand::UpdateVoiceCapturePermission {
+            guild_id: voice.guild_id,
+            channel_id,
+            allow_microphone_transmit: self.options.voice_options.allow_microphone_transmit,
+            microphone_sensitivity: self.options.voice_options.microphone_sensitivity,
+            microphone_volume: self.options.voice_options.microphone_volume,
+            voice_output_volume: self.options.voice_options.voice_output_volume,
+        });
     }
 
     pub(in crate::tui) fn take_options_save_request(&mut self) -> Option<AppOptions> {

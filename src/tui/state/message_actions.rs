@@ -1,4 +1,4 @@
-use crate::discord::{AppCommand, EmbedInfo, MessageState, ReactionEmoji};
+use crate::discord::{EmbedInfo, MessageState, ReactionEmoji};
 use crate::tui::format::detected_urls;
 
 use super::scroll::{clamp_selected_index, move_index_down, move_index_up};
@@ -6,6 +6,7 @@ use super::{
     DashboardState, FocusPane, MessageActionItem, MessageActionKind, MessageActionMenuPhase,
     MessageActionMenuState, MessageUrlItem, popups,
 };
+use crate::discord::AppCommand;
 
 impl DashboardState {
     pub fn activate_selected_message_pane_item(&mut self) -> Option<AppCommand> {

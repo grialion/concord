@@ -540,8 +540,42 @@ impl DashboardState {
             .len()
     }
 
-    pub fn drain_pending_commands(&mut self) -> Vec<AppCommand> {
+    pub(in crate::tui) fn drain_pending_commands(&mut self) -> Vec<AppCommand> {
         self.requests.pending_commands.drain(..).collect()
+    }
+
+    fn enqueue_pending_command(&mut self, command: AppCommand) {
+        self.requests.pending_commands.push_back(command);
+    }
+
+    fn queue_application_command_load(&mut self, guild_id: Option<Id<GuildMarker>>) {
+        self.enqueue_pending_command(AppCommand::LoadApplicationCommands { guild_id });
+    }
+
+    fn queue_ack_channel_command(
+        &mut self,
+        channel_id: Id<ChannelMarker>,
+        message_id: Id<MessageMarker>,
+    ) {
+        self.enqueue_pending_command(AppCommand::AckChannel {
+            channel_id,
+            message_id,
+        });
+    }
+
+    fn queue_scheduled_ack_channel_command(
+        &mut self,
+        channel_id: Id<ChannelMarker>,
+        message_id: Id<MessageMarker>,
+    ) {
+        self.enqueue_pending_command(AppCommand::ScheduleAckChannel {
+            channel_id,
+            message_id,
+        });
+    }
+
+    fn queue_ack_channels_command(&mut self, targets: Vec<(Id<ChannelMarker>, Id<MessageMarker>)>) {
+        self.enqueue_pending_command(AppCommand::AckChannels { targets });
     }
 
     #[cfg(test)]

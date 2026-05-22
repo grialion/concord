@@ -6,13 +6,12 @@ use ratatui::{
     text::{Line, Span},
 };
 
+use crate::discord::AppCommand;
 use crate::discord::ids::{
     Id,
     marker::{GuildMarker, UserMarker},
 };
-use crate::discord::{
-    ActivityInfo, AppCommand, MessageInfo, MessageState, PresenceStatus, UserProfileInfo,
-};
+use crate::discord::{ActivityInfo, MessageInfo, MessageState, PresenceStatus, UserProfileInfo};
 
 use super::{ActiveGuildScope, DashboardState};
 use super::{
@@ -399,12 +398,10 @@ impl DashboardState {
         let mut enqueued = false;
         for (guild_id, user_ids) in requests {
             for chunk in user_ids.chunks(MAX_GUILD_MEMBER_BY_ID_REQUEST_USERS) {
-                self.requests
-                    .pending_commands
-                    .push_back(AppCommand::LoadGuildMembersByIds {
-                        guild_id,
-                        user_ids: chunk.to_vec(),
-                    });
+                self.enqueue_pending_command(AppCommand::LoadGuildMembersByIds {
+                    guild_id,
+                    user_ids: chunk.to_vec(),
+                });
                 enqueued = true;
             }
         }

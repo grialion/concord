@@ -324,12 +324,8 @@ mod tests {
     fn clipboard_paste_data_prefers_image_before_text() {
         let image = MessageAttachmentUpload::from_bytes("clipboard.png".to_owned(), vec![1, 2]);
 
-        let data = paste_data_from_parts(
-            None,
-            Some(image.clone()),
-            Some("plain text".to_owned()),
-        )
-        .expect("image-backed clipboard data is pasteable");
+        let data = paste_data_from_parts(None, Some(image.clone()), Some("plain text".to_owned()))
+            .expect("image-backed clipboard data is pasteable");
 
         assert_eq!(data.image_attachment, Some(image));
         assert_eq!(data.text, None);
@@ -338,19 +334,12 @@ mod tests {
 
     #[test]
     fn clipboard_paste_data_prefers_file_list_before_image() {
-        let file = MessageAttachmentUpload::from_path(
-            "/tmp/note.txt".into(),
-            "note.txt".to_owned(),
-            1,
-        );
+        let file =
+            MessageAttachmentUpload::from_path("/tmp/note.txt".into(), "note.txt".to_owned(), 1);
         let image = MessageAttachmentUpload::from_bytes("clipboard.png".to_owned(), vec![1, 2]);
 
-        let data = paste_data_from_parts(
-            Some(vec![file.clone()]),
-            Some(image),
-            None,
-        )
-        .expect("file-backed clipboard data is pasteable");
+        let data = paste_data_from_parts(Some(vec![file.clone()]), Some(image), None)
+            .expect("file-backed clipboard data is pasteable");
 
         assert_eq!(data.file_attachments, Some(vec![file]));
         assert_eq!(data.image_attachment, None);

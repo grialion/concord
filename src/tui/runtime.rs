@@ -30,10 +30,6 @@ use super::{
     ui,
 };
 
-use crate::discord::request_lifecycle::{
-    ForumPostRequestTarget, MemberListSubscriptionTarget, MentionMemberSearchTarget,
-};
-
 type ClipboardPasteResult = std::result::Result<
     std::result::Result<ClipboardPasteData, ClipboardError>,
     tokio::task::JoinError,
@@ -394,12 +390,9 @@ pub(super) async fn run_dashboard(
                     None => std::future::pending::<()>().await,
                 }
             } => {
-                for (channel_id, message_id) in client.flush_due_read_acks(std::time::Instant::now()) {
+                for command in client.due_read_ack_commands(std::time::Instant::now()) {
                     if commands
-                        .send(AppCommand::AckChannel {
-                            channel_id,
-                            message_id,
-                        })
+                        .send(command)
                         .await
                         .is_err()
                     {
@@ -443,15 +436,14 @@ pub(super) async fn run_dashboard(
         }
 
         client.set_mention_member_search_target(
-            mention_member_search_target(&state),
+            state.selected_guild_id(),
+            state.composer_mention_query(),
             std::time::Instant::now(),
         );
-        if let Some(target) = client.next_due_mention_member_search(std::time::Instant::now())
+        if let Some((guild_id, query)) =
+            client.next_due_mention_member_search(std::time::Instant::now())
             && commands
-                .send(AppCommand::SearchGuildMembers {
-                    guild_id: target.guild_id,
-                    query: target.query,
-                })
+                .send(AppCommand::SearchGuildMembers { guild_id, query })
                 .await
                 .is_err()
         {
@@ -517,15 +509,8 @@ pub(super) async fn run_dashboard(
             dirty = true;
         }
 
-        let forum_post_target = state.selected_forum_channel_with_load_more().map(
-            |(guild_id, channel_id, should_load_more)| ForumPostRequestTarget {
-                guild_id,
-                channel_id,
-                should_load_more,
-            },
-        );
         if let Some((guild_id, channel_id, archive_state, offset)) =
-            client.next_forum_post_request(forum_post_target)
+            client.next_forum_post_request(state.selected_forum_channel_with_load_more())
             && commands
                 .send(AppCommand::LoadForumPosts {
                     guild_id,
@@ -599,22 +584,25 @@ pub(super) async fn run_dashboard(
         let member_list_subscription_target =
             state
                 .member_list_subscription_target()
-                .map(|(guild_id, channel_id)| MemberListSubscriptionTarget {
-                    guild_id,
-                    channel_id,
-                    bucket: state.member_subscription_top_bucket(),
-                    ranges: state.member_subscription_ranges(),
+                .map(|(guild_id, channel_id)| {
+                    (
+                        guild_id,
+                        channel_id,
+                        state.member_subscription_top_bucket(),
+                        state.member_subscription_ranges(),
+                    )
                 });
         client.set_member_list_subscription_target(
             member_list_subscription_target,
             std::time::Instant::now(),
         );
-        if let Some(target) = client.next_due_member_list_subscription(std::time::Instant::now())
+        if let Some((guild_id, channel_id, ranges)) =
+            client.next_due_member_list_subscription(std::time::Instant::now())
             && commands
                 .send(AppCommand::UpdateMemberListSubscription {
-                    guild_id: target.guild_id,
-                    channel_id: target.channel_id,
-                    ranges: target.ranges,
+                    guild_id,
+                    channel_id,
+                    ranges,
                 })
                 .await
                 .is_err()
@@ -625,13 +613,6 @@ pub(super) async fn run_dashboard(
     }
 
     Ok(())
-}
-
-fn mention_member_search_target(state: &DashboardState) -> Option<MentionMemberSearchTarget> {
-    Some(MentionMemberSearchTarget {
-        guild_id: state.selected_guild_id()?,
-        query: state.composer_mention_query()?.to_owned(),
-    })
 }
 
 fn apply_clipboard_paste_result(state: &mut DashboardState, result: ClipboardPasteResult) {

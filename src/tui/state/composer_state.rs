@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use crate::discord::{
-    AppCommand, ApplicationCommandInfo, ApplicationCommandInvocation, MAX_UPLOAD_ATTACHMENT_COUNT,
+    ApplicationCommandInfo, ApplicationCommandInvocation, MAX_UPLOAD_ATTACHMENT_COUNT,
     MessageAttachmentUpload, application_command_content_is_complete,
     application_command_option_scope, parsed_application_command_option_names,
 };
@@ -14,6 +14,7 @@ use super::composer::{
     should_start_completion_query,
 };
 use super::{CommandPickerEntry, DashboardState, EmojiPickerEntry, FocusPane, MentionPickerEntry};
+use crate::discord::AppCommand;
 
 impl DashboardState {
     pub fn is_composing(&self) -> bool {
@@ -724,9 +725,7 @@ impl DashboardState {
         if self.discord.application_commands.contains_key(&guild_id) {
             return;
         }
-        self.requests
-            .pending_commands
-            .push_back(AppCommand::LoadApplicationCommands { guild_id });
+        self.queue_application_command_load(guild_id);
     }
 
     fn command_completion_at_cursor(&mut self) -> Option<(usize, Vec<CommandPickerEntry>)> {

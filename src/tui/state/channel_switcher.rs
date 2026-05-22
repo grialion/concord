@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::discord::{AppCommand, ChannelState, ChannelUnreadState};
+use crate::discord::{ChannelState, ChannelUnreadState};
 use crate::{
     discord::ids::{
         Id,
@@ -17,6 +17,7 @@ use super::{
     presentation::{is_direct_message_channel, sort_channels, sort_direct_message_channels},
     scroll::{clamp_selected_index, move_index_down, move_index_up},
 };
+use crate::discord::AppCommand;
 
 #[derive(Debug)]
 pub(super) struct ChannelSwitcherState {

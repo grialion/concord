@@ -4,7 +4,7 @@ use crate::discord::ids::{
     Id,
     marker::{ChannelMarker, GuildMarker, MessageMarker},
 };
-use crate::discord::{AppCommand, AppEvent, GuildFolder, GuildState};
+use crate::discord::{GuildFolder, GuildState};
 
 use super::{ActiveGuildScope, DashboardState, FolderKey, PaneFilterState};
 use super::{
@@ -17,6 +17,7 @@ use super::{
         clamp_list_viewport, clamp_selected_index, pane_content_height, toggle_collapsed_key,
     },
 };
+use crate::discord::AppCommand;
 use crate::tui::fuzzy::fuzzy_text_score;
 
 impl DashboardState {
@@ -494,12 +495,7 @@ impl DashboardState {
             return None;
         }
 
-        for (channel_id, message_id) in targets.iter().copied() {
-            self.discord.cache.apply_event(&AppEvent::MessageAck {
-                channel_id,
-                message_id,
-                mention_count: 0,
-            });
+        for (channel_id, _) in targets.iter().copied() {
             if self.navigation.active_channel_id == Some(channel_id) {
                 self.messages.unread_divider_last_acked_id = None;
                 self.messages.pending_unread_anchor_scroll = false;

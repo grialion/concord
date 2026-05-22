@@ -1,9 +1,10 @@
 use crate::discord::{
-    AppCommand, DownloadAttachmentSource, InlinePreviewInfo, ids::Id, ids::marker::MessageMarker,
+    DownloadAttachmentSource, InlinePreviewInfo, ids::Id, ids::marker::MessageMarker,
 };
 
 use super::scroll::clamp_selected_index;
 use super::{DashboardState, ImageViewerItem};
+use crate::discord::AppCommand;
 use crate::tui::state::popups::ImageViewerState;
 
 impl DashboardState {

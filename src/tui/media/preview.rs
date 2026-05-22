@@ -178,7 +178,7 @@ impl ImagePreviewCache {
         &mut self,
         targets: &[ImagePreviewTarget],
     ) -> Vec<AppCommand> {
-        let mut commands = Vec::new();
+        let mut intents = Vec::new();
         let mut requested_urls = self
             .entries
             .iter()
@@ -202,11 +202,11 @@ impl ImagePreviewCache {
                 },
             );
             if requested_urls.insert(url.clone()) {
-                commands.push(AppCommand::LoadAttachmentPreview { url });
+                intents.push(AppCommand::LoadAttachmentPreview { url });
             }
         }
         self.prune_to_limit(targets);
-        commands
+        intents
     }
 
     pub(in crate::tui) fn record_event(&mut self, event: &AppEvent) -> Vec<ImagePreviewDecodeJob> {

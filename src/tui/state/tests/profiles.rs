@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::AppCommand;
 
 #[test]
 fn opening_profile_uses_cache_for_same_guild() {

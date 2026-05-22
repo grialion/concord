@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::AppCommand;
 
 #[test]
 fn channel_show_pinned_messages_action_enters_pinned_message_view() {

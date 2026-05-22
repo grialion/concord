@@ -101,6 +101,39 @@ fn drain_debounced_read_ack(state: &mut DashboardState) -> Vec<AppCommand> {
     state.drain_pending_commands()
 }
 
+fn apply_optimistic_ack_commands<C>(state: &mut DashboardState, commands: &[C])
+where
+    C: Clone,
+    AppCommand: From<C>,
+{
+    for command in commands {
+        match AppCommand::from(command.clone()) {
+            AppCommand::AckChannel {
+                channel_id,
+                message_id,
+            }
+            | AppCommand::ScheduleAckChannel {
+                channel_id,
+                message_id,
+            } => state.push_event(AppEvent::MessageAck {
+                channel_id,
+                message_id,
+                mention_count: 0,
+            }),
+            AppCommand::AckChannels { targets } => {
+                for (channel_id, message_id) in targets {
+                    state.push_event(AppEvent::MessageAck {
+                        channel_id,
+                        message_id,
+                        mention_count: 0,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 fn clear_scheduled_read_ack(state: &mut DashboardState) {
     state.drain_pending_commands();
 }

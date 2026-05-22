@@ -298,6 +298,8 @@ fn collapsed_category_keeps_unread_child_visible_until_another_channel_is_select
     assert_eq!(channel_entry_names(&state), vec!["general"]);
 
     state.activate_channel(Id::new(11));
+    let commands = state.drain_pending_commands();
+    apply_optimistic_ack_commands(&mut state, &commands);
     assert_eq!(channel_entry_names(&state), vec!["general"]);
 
     state.activate_channel(Id::new(12));

@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::AppCommand;
 use crate::discord::{ApplicationCommandInfo, ApplicationCommandOptionInfo};
 use serde_json::json;
 
@@ -73,6 +74,20 @@ fn start_composer_refused_in_read_only_channel() {
     assert!(
         !state.is_composing(),
         "composer must not open when SEND_MESSAGES is denied"
+    );
+}
+
+#[test]
+fn start_composer_queues_application_command_load_when_missing() {
+    let mut state = state_with_writable_channel();
+
+    state.start_composer();
+
+    assert_eq!(
+        state.drain_pending_commands(),
+        vec![AppCommand::LoadApplicationCommands {
+            guild_id: Some(Id::new(1)),
+        }]
     );
 }
 

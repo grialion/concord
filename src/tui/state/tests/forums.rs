@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::AppCommand;
 
 #[test]
 fn forum_channel_renders_loaded_posts_in_message_pane() {
@@ -542,13 +543,15 @@ fn opening_forum_channel_marks_unread_child_posts_as_read() {
         ChannelUnreadState::Unread
     );
     state.confirm_selected_channel();
+    let commands = state.drain_pending_commands();
+    apply_optimistic_ack_commands(&mut state, &commands);
 
     assert_eq!(
         state.sidebar_channel_unread(forum_id),
         ChannelUnreadState::Seen
     );
     assert_eq!(
-        state.drain_pending_commands(),
+        commands,
         vec![AppCommand::AckChannels {
             targets: vec![(forum_id, Id::new(200)), (thread_id, Id::new(300))]
         }]

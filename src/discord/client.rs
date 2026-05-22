@@ -22,7 +22,7 @@ use super::{
     ApplicationCommandInfo, ApplicationCommandInvocation, MessageAttachmentUpload, MessageInfo,
     ReactionEmoji, ReactionUserInfo, UserProfileInfo,
     application_commands::application_command_interaction_from_invocation,
-    commands::ForumPostArchiveState,
+    commands::{AppCommand, ForumPostArchiveState},
     events::{AppEvent, SequencedAppEvent},
     gateway::{GatewayCommand, GatewayRuntime, run_gateway},
     request_lifecycle::{
@@ -171,13 +171,21 @@ impl DiscordClient {
 
     pub(crate) fn next_forum_post_request(
         &self,
-        target: Option<ForumPostRequestTarget>,
+        target: Option<(Id<GuildMarker>, Id<ChannelMarker>, bool)>,
     ) -> Option<(
         Id<GuildMarker>,
         Id<ChannelMarker>,
         ForumPostArchiveState,
         usize,
     )> {
+        let target =
+            target.map(
+                |(guild_id, channel_id, should_load_more)| ForumPostRequestTarget {
+                    guild_id,
+                    channel_id,
+                    should_load_more,
+                },
+            );
         self.request_lifecycle
             .lock()
             .expect("request lifecycle lock is not poisoned")
@@ -254,9 +262,16 @@ impl DiscordClient {
 
     pub(crate) fn set_mention_member_search_target(
         &self,
-        target: Option<MentionMemberSearchTarget>,
+        guild_id: Option<Id<GuildMarker>>,
+        query: Option<&str>,
         now: std::time::Instant,
     ) {
+        let target = guild_id
+            .zip(query)
+            .map(|(guild_id, query)| MentionMemberSearchTarget {
+                guild_id,
+                query: query.to_owned(),
+            });
         self.request_lifecycle
             .lock()
             .expect("request lifecycle lock is not poisoned")
@@ -273,18 +288,28 @@ impl DiscordClient {
     pub(crate) fn next_due_mention_member_search(
         &self,
         now: std::time::Instant,
-    ) -> Option<MentionMemberSearchTarget> {
+    ) -> Option<(Id<GuildMarker>, String)> {
         self.request_lifecycle
             .lock()
             .expect("request lifecycle lock is not poisoned")
             .next_due_mention_member_search(now)
+            .map(|target| (target.guild_id, target.query))
     }
 
     pub(crate) fn set_member_list_subscription_target(
         &self,
-        target: Option<MemberListSubscriptionTarget>,
+        target: Option<(Id<GuildMarker>, Id<ChannelMarker>, u32, Vec<(u32, u32)>)>,
         now: std::time::Instant,
     ) {
+        let target =
+            target.map(
+                |(guild_id, channel_id, bucket, ranges)| MemberListSubscriptionTarget {
+                    guild_id,
+                    channel_id,
+                    bucket,
+                    ranges,
+                },
+            );
         self.request_lifecycle
             .lock()
             .expect("request lifecycle lock is not poisoned")
@@ -301,11 +326,12 @@ impl DiscordClient {
     pub(crate) fn next_due_member_list_subscription(
         &self,
         now: std::time::Instant,
-    ) -> Option<MemberListSubscriptionTarget> {
+    ) -> Option<(Id<GuildMarker>, Id<ChannelMarker>, Vec<(u32, u32)>)> {
         self.request_lifecycle
             .lock()
             .expect("request lifecycle lock is not poisoned")
             .next_due_member_list_subscription(now)
+            .map(|target| (target.guild_id, target.channel_id, target.ranges))
     }
 
     pub(crate) fn next_thread_preview_requests(
@@ -386,6 +412,29 @@ impl DiscordClient {
             .schedule_read_ack(channel_id, message_id, now);
     }
 
+    pub(crate) async fn publish_optimistic_read_ack(
+        &self,
+        channel_id: Id<ChannelMarker>,
+        message_id: Id<MessageMarker>,
+    ) {
+        self.publish_event(AppEvent::MessageAck {
+            channel_id,
+            message_id,
+            mention_count: 0,
+        })
+        .await;
+    }
+
+    pub(crate) async fn publish_optimistic_read_acks(
+        &self,
+        targets: &[(Id<ChannelMarker>, Id<MessageMarker>)],
+    ) {
+        for (channel_id, message_id) in targets.iter().copied() {
+            self.publish_optimistic_read_ack(channel_id, message_id)
+                .await;
+        }
+    }
+
     pub(crate) fn clear_read_ack(&self, channel_id: Id<ChannelMarker>) {
         self.request_lifecycle
             .lock()
@@ -415,6 +464,16 @@ impl DiscordClient {
             .lock()
             .expect("request lifecycle lock is not poisoned")
             .flush_due_read_acks(now)
+    }
+
+    pub(crate) fn due_read_ack_commands(&self, now: std::time::Instant) -> Vec<AppCommand> {
+        self.flush_due_read_acks(now)
+            .into_iter()
+            .map(|(channel_id, message_id)| AppCommand::AckChannel {
+                channel_id,
+                message_id,
+            })
+            .collect()
     }
 
     pub fn start_gateway(&self) -> JoinHandle<()> {

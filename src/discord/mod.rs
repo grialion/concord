@@ -9,7 +9,7 @@ mod gateway;
 pub mod ids;
 pub mod password_auth;
 pub mod qr_auth;
-pub(crate) mod request_lifecycle;
+mod request_lifecycle;
 mod rest;
 mod state;
 mod voice;

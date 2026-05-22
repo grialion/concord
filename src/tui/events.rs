@@ -1,12 +1,10 @@
 use crossterm::event::{Event as TerminalEvent, KeyEventKind};
 use ratatui::layout::Rect;
 
-use crate::{
-    Result, config,
-    discord::{AppCommand, AppEvent},
-};
+use crate::{Result, config, discord::AppEvent};
 
 use super::{input, state::DashboardState};
+use crate::discord::AppCommand;
 
 #[derive(Default)]
 pub(super) struct TerminalEventOutcome {

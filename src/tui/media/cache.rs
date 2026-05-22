@@ -244,7 +244,7 @@ impl AvatarImageCache {
     }
 
     pub(in crate::tui) fn next_requests(&mut self, targets: &[AvatarTarget]) -> Vec<AppCommand> {
-        let commands = targets
+        let intents = targets
             .iter()
             .take(MAX_AVATAR_IMAGE_CACHE_ENTRIES)
             .filter_map(|target| {
@@ -254,7 +254,7 @@ impl AvatarImageCache {
             })
             .collect();
         self.prune_to_limit(targets);
-        commands
+        intents
     }
 
     /// Schedules an out-of-band avatar fetch (used by the profile popup,
@@ -401,7 +401,7 @@ impl EmojiImageCache {
             return Vec::new();
         }
 
-        let mut commands = Vec::new();
+        let mut intents = Vec::new();
         for target in targets.iter().take(MAX_EMOJI_IMAGE_CACHE_ENTRIES) {
             if self.entries.contains_key(&target.url) {
                 continue;
@@ -410,12 +410,12 @@ impl EmojiImageCache {
             let last_used = self.next_tick();
             self.entries
                 .insert(target.url.clone(), EmojiImageEntry::Loading { last_used });
-            commands.push(AppCommand::LoadAttachmentPreview {
+            intents.push(AppCommand::LoadAttachmentPreview {
                 url: target.url.clone(),
             });
         }
         self.prune_to_limit(targets);
-        commands
+        intents
     }
 
     pub(in crate::tui) fn record_event(&mut self, event: &AppEvent) {

@@ -52,7 +52,10 @@ fn active_channel_read_state_coalesces_when_new_messages_arrive_at_latest() {
 
         state.push_event(direct_message_create_event(Id::new(20), 201));
         let scheduled = state.drain_pending_commands();
+        apply_optimistic_ack_commands(&mut state, &scheduled);
         state.push_event(direct_message_create_event(Id::new(20), 202));
+        let next_scheduled = state.drain_pending_commands();
+        apply_optimistic_ack_commands(&mut state, &next_scheduled);
 
         assert_eq!(state.direct_message_unread_count(), 0);
         assert_eq!(state.channel_unread(Id::new(20)), ChannelUnreadState::Seen);
@@ -64,7 +67,7 @@ fn active_channel_read_state_coalesces_when_new_messages_arrive_at_latest() {
             }]
         );
         assert_eq!(
-            state.drain_pending_commands(),
+            next_scheduled,
             vec![AppCommand::ScheduleAckChannel {
                 channel_id: Id::new(20),
                 message_id: Id::new(202),
@@ -87,10 +90,12 @@ fn active_channel_read_state_coalesces_when_new_messages_arrive_at_latest() {
         });
 
         state.push_event(notification_message_event(Id::new(2), "hello"));
+        let scheduled = drain_debounced_read_ack(&mut state);
+        apply_optimistic_ack_commands(&mut state, &scheduled);
 
         assert_eq!(state.channel_unread(Id::new(2)), ChannelUnreadState::Seen);
         assert_eq!(
-            drain_debounced_read_ack(&mut state),
+            scheduled,
             vec![AppCommand::ScheduleAckChannel {
                 channel_id: Id::new(2),
                 message_id: Id::new(50),

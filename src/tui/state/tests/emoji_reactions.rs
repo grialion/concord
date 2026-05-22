@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::AppCommand;
 
 #[test]
 fn emoji_picker_items_include_available_custom_emojis_for_selected_message_guild() {

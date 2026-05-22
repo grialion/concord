@@ -4,9 +4,7 @@ use crate::discord::ids::{
     Id,
     marker::{ChannelMarker, GuildMarker},
 };
-use crate::discord::{
-    AppCommand, AppEvent, ChannelState, ChannelUnreadState, TypingUserState, VoiceParticipantState,
-};
+use crate::discord::{ChannelState, ChannelUnreadState, TypingUserState, VoiceParticipantState};
 
 use super::{ActiveGuildScope, DashboardState, PaneFilterState, ThreadReturnTarget};
 use super::{
@@ -20,6 +18,7 @@ use super::{
         clamp_list_viewport, clamp_selected_index, pane_content_height, toggle_collapsed_key,
     },
 };
+use crate::discord::AppCommand;
 use crate::tui::fuzzy::fuzzy_text_score;
 
 const RECENT_CHANNEL_LIMIT: usize = 10;
@@ -1400,16 +1399,7 @@ impl DashboardState {
             return;
         }
 
-        for (channel_id, message_id) in targets.iter().copied() {
-            self.discord.cache.apply_event(&AppEvent::MessageAck {
-                channel_id,
-                message_id,
-                mention_count: 0,
-            });
-        }
-        self.requests
-            .pending_commands
-            .push_back(AppCommand::AckChannels { targets });
+        self.queue_ack_channels_command(targets);
     }
 
     /// Optimistic local ack + queued REST POST so the unread badge clears
@@ -1418,34 +1408,14 @@ impl DashboardState {
         let Some(message_id) = self.discord.cache.channel_ack_target(channel_id) else {
             return;
         };
-        self.discord.cache.apply_event(&AppEvent::MessageAck {
-            channel_id,
-            message_id,
-            mention_count: 0,
-        });
-        self.requests
-            .pending_commands
-            .push_back(AppCommand::AckChannel {
-                channel_id,
-                message_id,
-            });
+        self.queue_ack_channel_command(channel_id, message_id);
     }
 
     pub(super) fn schedule_channel_ack(&mut self, channel_id: Id<ChannelMarker>) {
         let Some(message_id) = self.discord.cache.channel_ack_target(channel_id) else {
             return;
         };
-        self.discord.cache.apply_event(&AppEvent::MessageAck {
-            channel_id,
-            message_id,
-            mention_count: 0,
-        });
-        self.requests
-            .pending_commands
-            .push_back(AppCommand::ScheduleAckChannel {
-                channel_id,
-                message_id,
-            });
+        self.queue_scheduled_ack_channel_command(channel_id, message_id);
     }
 
     fn selected_channel_category_id(&self) -> Option<Id<ChannelMarker>> {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::AppCommand;
 
 #[test]
 fn channel_leader_action_lists_threads_for_selected_channel() {
@@ -231,6 +232,8 @@ fn guild_leader_action_marks_unread_server_channels_as_read() {
     assert!(actions[0].enabled);
 
     let command = state.activate_selected_guild_action();
+    let ack_commands = command.clone().into_iter().collect::<Vec<_>>();
+    apply_optimistic_ack_commands(&mut state, &ack_commands);
 
     assert_eq!(
         state.sidebar_guild_unread(guild_id),
@@ -262,6 +265,8 @@ fn guild_leader_action_skips_hidden_channels_when_marking_server_read() {
     state.move_down();
     state.open_selected_guild_actions();
     let command = state.activate_selected_guild_action();
+    let ack_commands = command.clone().into_iter().collect::<Vec<_>>();
+    apply_optimistic_ack_commands(&mut state, &ack_commands);
 
     let Some(AppCommand::AckChannels { targets }) = command else {
         panic!("expected bulk channel ack command");
