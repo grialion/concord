@@ -6,7 +6,7 @@ use crate::discord::ids::{
 };
 use crate::discord::{ChannelState, ChannelUnreadState, TypingUserState, VoiceParticipantState};
 
-use super::{ActiveGuildScope, DashboardState, PaneFilterState, ThreadReturnTarget};
+use super::{ActiveGuildScope, DashboardState, ThreadReturnTarget};
 use super::{
     model::{
         ChannelActionItem, ChannelActionKind, ChannelBranch, ChannelPaneEntry, ChannelThreadItem,
@@ -19,7 +19,7 @@ use super::{
     },
 };
 use crate::discord::AppCommand;
-use crate::tui::fuzzy::fuzzy_text_score;
+use crate::tui::fuzzy::{FuzzyMatchQuality, FuzzyScore, fuzzy_name_match_score};
 
 const RECENT_CHANNEL_LIMIT: usize = 10;
 
@@ -816,49 +816,70 @@ impl DashboardState {
         };
         // Search directly over channels() so children inside collapsed
         // categories are included in results even when not normally visible.
-        let mut channels = self.channels();
-        channels.retain(|c| {
-            !c.is_thread() && !c.is_category() && fuzzy_text_score(&c.name, &query).is_some()
-        });
-        channels
+        let mut scored: Vec<(FuzzyMatchQuality, FuzzyScore, usize, &ChannelState)> = self
+            .channel_pane_search_channels()
             .into_iter()
-            .map(|state| ChannelPaneEntry::Channel {
+            .enumerate()
+            .filter_map(|(index, channel)| {
+                if channel.is_thread() || channel.is_category() {
+                    return None;
+                }
+                fuzzy_name_match_score(&channel.name, &query)
+                    .map(|(quality, score)| (quality, score, index, channel))
+            })
+            .collect();
+        scored
+            .sort_by_key(|(quality, score, original_index, _)| (*quality, *score, *original_index));
+        scored
+            .into_iter()
+            .map(|(_, _, _, state)| ChannelPaneEntry::Channel {
                 state,
                 branch: ChannelBranch::None,
             })
             .collect()
     }
 
-    pub fn is_channel_pane_filter_active(&self) -> bool {
-        self.navigation.channel_pane_filter.is_some()
-    }
+    fn channel_pane_search_channels(&self) -> Vec<&ChannelState> {
+        let mut channels = self.channels();
+        channels.retain(|channel| !channel.is_thread());
+        if self.navigation.active_guild == ActiveGuildScope::DirectMessages {
+            sort_direct_message_channels(&mut channels);
+            return channels;
+        }
 
-    pub fn channel_pane_filter_query(&self) -> Option<&str> {
-        self.navigation
-            .channel_pane_filter
-            .as_ref()
-            .map(|f| f.query())
-    }
+        let category_ids: HashSet<Id<ChannelMarker>> = channels
+            .iter()
+            .filter(|channel| channel.is_category())
+            .map(|channel| channel.id)
+            .collect();
+        let mut roots: Vec<&ChannelState> = channels
+            .iter()
+            .copied()
+            .filter(|channel| {
+                channel.is_category()
+                    || channel
+                        .parent_id
+                        .is_none_or(|parent_id| !category_ids.contains(&parent_id))
+            })
+            .collect();
+        sort_channels(&mut roots);
 
-    pub fn channel_pane_filter_cursor(&self) -> Option<usize> {
-        self.navigation
-            .channel_pane_filter
-            .as_ref()
-            .map(|f| f.cursor_byte_index())
-    }
+        let mut search_channels = Vec::new();
+        for root in roots {
+            if !root.is_category() {
+                search_channels.push(root);
+                continue;
+            }
 
-    pub fn open_channel_pane_filter(&mut self) {
-        self.navigation.selected_channel = 0;
-        self.navigation.channel_scroll = 0;
-        self.navigation.channel_keep_selection_visible = true;
-        self.navigation.channel_pane_filter = Some(PaneFilterState::new());
-    }
-
-    pub fn close_channel_pane_filter(&mut self) {
-        self.navigation.channel_pane_filter = None;
-        self.navigation.selected_channel = 0;
-        self.navigation.channel_scroll = 0;
-        self.navigation.channel_keep_selection_visible = true;
+            let mut children: Vec<&ChannelState> = channels
+                .iter()
+                .copied()
+                .filter(|channel| !channel.is_category() && channel.parent_id == Some(root.id))
+                .collect();
+            sort_channels(&mut children);
+            search_channels.extend(children);
+        }
+        search_channels
     }
 
     pub fn confirm_channel_pane_filter(&mut self) -> Option<AppCommand> {
@@ -870,47 +891,12 @@ impl DashboardState {
                 _ => None,
             }
         };
-        self.navigation.channel_pane_filter = None;
         if let Some(channel_id) = channel_id {
             let command = self.activate_channel_command(channel_id);
-            // Restore selection to the unfiltered position
-            if let Some(idx) = self.channel_pane_entries().iter().position(
-                |e| matches!(e, ChannelPaneEntry::Channel { state, .. } if state.id == channel_id),
-            ) {
-                self.navigation.selected_channel = idx;
-            }
             self.navigation.channel_keep_selection_visible = true;
             return command;
         }
         None
-    }
-
-    pub fn push_channel_pane_filter_char(&mut self, value: char) {
-        if let Some(f) = self.navigation.channel_pane_filter.as_mut() {
-            f.push_char(value);
-            self.navigation.selected_channel = 0;
-            self.navigation.channel_scroll = 0;
-        }
-    }
-
-    pub fn pop_channel_pane_filter_char(&mut self) {
-        if let Some(f) = self.navigation.channel_pane_filter.as_mut() {
-            f.pop_char();
-            self.navigation.selected_channel = 0;
-            self.navigation.channel_scroll = 0;
-        }
-    }
-
-    pub fn move_channel_pane_filter_cursor_left(&mut self) {
-        if let Some(f) = self.navigation.channel_pane_filter.as_mut() {
-            f.cursor_left();
-        }
-    }
-
-    pub fn move_channel_pane_filter_cursor_right(&mut self) {
-        if let Some(f) = self.navigation.channel_pane_filter.as_mut() {
-            f.cursor_right();
-        }
     }
 
     pub fn selected_channel(&self) -> usize {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::discord::GuildFolder;
 
 #[test]
 fn channel_pane_excludes_threads() {
@@ -126,6 +127,99 @@ fn channel_switcher_query_prefers_channel_name_before_context() {
         .collect();
 
     assert_eq!(filtered, vec![Id::new(21), Id::new(11)]);
+}
+
+#[test]
+fn pane_filters_prioritize_prefix_matches() {
+    let mut state = DashboardState::new();
+    state.push_event(guild_create_event(
+        Id::new(1),
+        "Rust Programming language",
+        vec![
+            positioned_text_channel_info(Id::new(1), Id::new(11), "Rust Programming language", 0),
+            positioned_text_channel_info(Id::new(1), Id::new(12), "MINECRAFT", 1),
+        ],
+    ));
+    state.push_event(guild_create_event(Id::new(2), "MINECRAFT", Vec::new()));
+
+    state.open_guild_pane_filter();
+    for ch in "mi".chars() {
+        state.push_guild_pane_filter_char(ch);
+    }
+    let guild_ids: Vec<Id<GuildMarker>> = state
+        .guild_pane_filtered_entries()
+        .into_iter()
+        .filter_map(|entry| match entry {
+            GuildPaneEntry::Guild { state, .. } => Some(state.id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(guild_ids, vec![Id::new(2), Id::new(1)]);
+
+    state.activate_guild(ActiveGuildScope::Guild(Id::new(1)));
+    state.open_channel_pane_filter();
+    for ch in "mi".chars() {
+        state.push_channel_pane_filter_char(ch);
+    }
+    let channel_ids: Vec<Id<ChannelMarker>> = state
+        .channel_pane_filtered_entries()
+        .into_iter()
+        .filter_map(|entry| match entry {
+            ChannelPaneEntry::Channel { state, .. } => Some(state.id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(channel_ids, vec![Id::new(12), Id::new(11)]);
+
+    let mut state = DashboardState::new();
+    state.push_event(guild_create_event(Id::new(1), "Alpha One", Vec::new()));
+    state.push_event(guild_create_event(Id::new(2), "Alpha Two", Vec::new()));
+    state.push_event(AppEvent::GuildFoldersUpdate {
+        folders: vec![GuildFolder {
+            id: Some(42),
+            name: Some("folder".to_owned()),
+            color: None,
+            guild_ids: vec![Id::new(2), Id::new(1)],
+        }],
+    });
+
+    state.open_guild_pane_filter();
+    for ch in "al".chars() {
+        state.push_guild_pane_filter_char(ch);
+    }
+    let guild_ids: Vec<Id<GuildMarker>> = state
+        .guild_pane_filtered_entries()
+        .into_iter()
+        .filter_map(|entry| match entry {
+            GuildPaneEntry::Guild { state, .. } => Some(state.id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(guild_ids, vec![Id::new(2), Id::new(1)]);
+
+    let mut state = DashboardState::new();
+    state.push_event(guild_create_event(
+        Id::new(1),
+        "guild",
+        vec![
+            positioned_text_channel_info(Id::new(1), Id::new(11), "Alpha One", 1),
+            positioned_text_channel_info(Id::new(1), Id::new(12), "Alpha Two", 0),
+        ],
+    ));
+    state.activate_guild(ActiveGuildScope::Guild(Id::new(1)));
+    state.open_channel_pane_filter();
+    for ch in "al".chars() {
+        state.push_channel_pane_filter_char(ch);
+    }
+    let channel_ids: Vec<Id<ChannelMarker>> = state
+        .channel_pane_filtered_entries()
+        .into_iter()
+        .filter_map(|entry| match entry {
+            ChannelPaneEntry::Channel { state, .. } => Some(state.id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(channel_ids, vec![Id::new(12), Id::new(11)]);
 }
 
 #[test]

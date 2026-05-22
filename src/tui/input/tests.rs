@@ -142,6 +142,13 @@ fn channel_filter_opens_child_inside_collapsed_category() {
     }
     let command = handle_key(&mut state, key(KeyCode::Enter));
 
+    assert_eq!(command, None);
+    assert_eq!(state.selected_channel_id(), None);
+    assert_eq!(state.selected_channel(), 0);
+    assert_eq!(state.channel_pane_filter_query(), Some("random"));
+    assert_selected_channel_category_collapsed(&state, true);
+
+    let command = handle_key(&mut state, key(KeyCode::Enter));
     assert_eq!(
         command,
         Some(AppCommand::SubscribeGuildChannel {
@@ -150,8 +157,13 @@ fn channel_filter_opens_child_inside_collapsed_category() {
         })
     );
     assert_eq!(state.selected_channel_id(), Some(Id::new(12)));
-    assert_eq!(state.selected_channel(), 1);
+    assert_eq!(state.selected_channel(), 0);
+    assert_eq!(state.channel_pane_filter_query(), Some("random"));
+    assert_eq!(state.focus(), FocusPane::Messages);
     assert_selected_channel_category_collapsed(&state, true);
+
+    handle_key(&mut state, key(KeyCode::Esc));
+    assert_eq!(state.channel_pane_filter_query(), None);
 }
 
 #[test]
@@ -167,10 +179,21 @@ fn guild_filter_opens_child_inside_collapsed_folder() {
     }
     handle_key(&mut state, key(KeyCode::Enter));
 
-    assert_eq!(state.selected_guild_id(), Some(Id::new(2)));
-    assert_eq!(state.selected_guild_cursor_id(), Some(Id::new(2)));
-    assert_eq!(state.selected_guild(), 2);
+    assert_eq!(state.selected_guild_id(), None);
+    assert_eq!(state.selected_guild(), 0);
+    assert_eq!(state.guild_pane_filter_query(), Some("second"));
     assert_selected_folder_collapsed(&state, true);
+
+    handle_key(&mut state, key(KeyCode::Enter));
+
+    assert_eq!(state.selected_guild_id(), Some(Id::new(2)));
+    assert_eq!(state.selected_guild(), 0);
+    assert_eq!(state.guild_pane_filter_query(), Some("second"));
+    assert_eq!(state.focus(), FocusPane::Channels);
+    assert_selected_folder_collapsed(&state, true);
+
+    handle_key(&mut state, key(KeyCode::Esc));
+    assert_eq!(state.guild_pane_filter_query(), None);
 }
 
 #[test]
@@ -878,7 +901,7 @@ fn left_click_selects_visible_channel_row() {
 }
 
 #[test]
-fn double_click_activates_selected_channel_like_enter() {
+fn double_click_activates_pane_rows_like_enter() {
     let mut state = state_with_channel_tree();
     let mut clicks = MouseClickTracker::default();
     let (column, row) = channel_row_point(1);
@@ -907,6 +930,91 @@ fn double_click_activates_selected_channel_like_enter() {
             channel_id: Id::new(11),
         })
     );
+
+    let mut state = state_with_channel_tree();
+    state.focus_pane(FocusPane::Channels);
+    handle_key(&mut state, char_key('/'));
+    for value in "random".chars() {
+        handle_key(&mut state, char_key(value));
+    }
+    let mut clicks = MouseClickTracker::default();
+    let (column, row) = channel_row_point(0);
+
+    let first = handle_mouse_event(
+        &mut state,
+        mouse(MouseEventKind::Down(MouseButton::Left), column, row),
+        dashboard_area(),
+        &mut clicks,
+    );
+    let second = handle_mouse_event(
+        &mut state,
+        mouse(MouseEventKind::Down(MouseButton::Left), column, row),
+        dashboard_area(),
+        &mut clicks,
+    );
+
+    assert!(first.handled);
+    assert_eq!(first.command, None);
+    assert!(second.handled);
+    assert_eq!(state.selected_channel_id(), None);
+    assert_eq!(state.channel_pane_filter_query(), Some("random"));
+
+    assert_eq!(second.command, None);
+
+    let mut clicks = MouseClickTracker::default();
+    let first = handle_mouse_event(
+        &mut state,
+        mouse(MouseEventKind::Down(MouseButton::Left), column, row),
+        dashboard_area(),
+        &mut clicks,
+    );
+    let second = handle_mouse_event(
+        &mut state,
+        mouse(MouseEventKind::Down(MouseButton::Left), column, row),
+        dashboard_area(),
+        &mut clicks,
+    );
+
+    assert!(first.handled);
+    assert_eq!(first.command, None);
+    assert!(second.handled);
+    assert_eq!(
+        second.command,
+        Some(AppCommand::SubscribeGuildChannel {
+            guild_id: Id::new(1),
+            channel_id: Id::new(12),
+        })
+    );
+    assert_eq!(state.selected_channel_id(), Some(Id::new(12)));
+    assert_eq!(state.focus(), FocusPane::Messages);
+
+    let mut state = state_with_folder();
+    state.focus_pane(FocusPane::Guilds);
+    handle_key(&mut state, char_key('/'));
+    for value in "second".chars() {
+        handle_key(&mut state, char_key(value));
+    }
+    let mut clicks = MouseClickTracker::default();
+    let event = mouse(MouseEventKind::Down(MouseButton::Left), 1, 2);
+
+    let first = handle_mouse_event(&mut state, event, dashboard_area(), &mut clicks);
+    let second = handle_mouse_event(&mut state, event, dashboard_area(), &mut clicks);
+
+    assert!(first.handled);
+    assert!(second.handled);
+    assert_eq!(state.guild_pane_filter_query(), Some("second"));
+    assert_eq!(second.command, None);
+
+    let mut clicks = MouseClickTracker::default();
+    let first = handle_mouse_event(&mut state, event, dashboard_area(), &mut clicks);
+    let second = handle_mouse_event(&mut state, event, dashboard_area(), &mut clicks);
+
+    assert!(first.handled);
+    assert_eq!(first.command, None);
+    assert!(second.handled);
+    assert_eq!(second.command, None);
+    assert_eq!(state.selected_guild_id(), Some(Id::new(2)));
+    assert_eq!(state.focus(), FocusPane::Channels);
 }
 
 #[test]
@@ -1410,6 +1518,23 @@ fn pane_filters_treat_vim_keys_as_text() {
 
     assert_eq!(guild_state.guild_pane_filter_query(), Some("jk"));
 
+    let mut guild_state = state_with_folder();
+    guild_state.focus_pane(FocusPane::Guilds);
+    handle_key(&mut guild_state, char_key('/'));
+    handle_key(&mut guild_state, char_key('s'));
+    handle_key(&mut guild_state, key(KeyCode::Enter));
+
+    assert_eq!(guild_state.guild_pane_filter_query(), Some("s"));
+    assert_eq!(guild_state.selected_guild(), 0);
+
+    handle_key(&mut guild_state, char_key('j'));
+    assert_eq!(guild_state.guild_pane_filter_query(), Some("s"));
+    assert_eq!(guild_state.selected_guild(), 1);
+
+    handle_key(&mut guild_state, char_key('k'));
+    assert_eq!(guild_state.guild_pane_filter_query(), Some("s"));
+    assert_eq!(guild_state.selected_guild(), 0);
+
     let mut channel_state = state_with_channel_tree();
     channel_state.focus_pane(FocusPane::Channels);
     handle_key(&mut channel_state, char_key('/'));
@@ -1418,6 +1543,35 @@ fn pane_filters_treat_vim_keys_as_text() {
     handle_key(&mut channel_state, char_key('k'));
 
     assert_eq!(channel_state.channel_pane_filter_query(), Some("jk"));
+
+    let mut channel_state = state_with_channel_tree();
+    channel_state.focus_pane(FocusPane::Channels);
+    handle_key(&mut channel_state, char_key('/'));
+    handle_key(&mut channel_state, char_key('a'));
+    handle_key(&mut channel_state, key(KeyCode::Enter));
+
+    assert_eq!(channel_state.channel_pane_filter_query(), Some("a"));
+    assert_eq!(channel_state.selected_channel(), 0);
+
+    handle_key(&mut channel_state, char_key('j'));
+    assert_eq!(channel_state.channel_pane_filter_query(), Some("a"));
+    assert_eq!(channel_state.selected_channel(), 1);
+
+    handle_key(&mut channel_state, char_key('k'));
+    assert_eq!(channel_state.channel_pane_filter_query(), Some("a"));
+    assert_eq!(channel_state.selected_channel(), 0);
+
+    let mut channel_state = state_with_channel_tree();
+    channel_state.focus_pane(FocusPane::Channels);
+    handle_key(&mut channel_state, char_key('/'));
+    handle_key(&mut channel_state, key(KeyCode::Enter));
+
+    assert_eq!(channel_state.channel_pane_filter_query(), Some(""));
+    assert_eq!(channel_state.selected_channel(), 0);
+
+    handle_key(&mut channel_state, char_key('j'));
+    assert_eq!(channel_state.channel_pane_filter_query(), Some(""));
+    assert_eq!(channel_state.selected_channel(), 1);
 }
 
 #[test]

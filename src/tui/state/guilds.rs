@@ -6,7 +6,7 @@ use crate::discord::ids::{
 };
 use crate::discord::{GuildFolder, GuildState};
 
-use super::{ActiveGuildScope, DashboardState, FolderKey, PaneFilterState};
+use super::{ActiveGuildScope, DashboardState, FolderKey};
 use super::{
     model::{
         FocusPane, GuildActionItem, GuildActionKind, GuildBranch, GuildPaneEntry,
@@ -18,7 +18,7 @@ use super::{
     },
 };
 use crate::discord::AppCommand;
-use crate::tui::fuzzy::fuzzy_text_score;
+use crate::tui::fuzzy::{FuzzyMatchQuality, FuzzyScore, best_fuzzy_name_match_score};
 
 impl DashboardState {
     pub fn guild_name(&self, guild_id: Id<GuildMarker>) -> Option<&str> {
@@ -137,56 +137,63 @@ impl DashboardState {
         };
         // Search directly over discord.guilds() so servers inside collapsed
         // folders appear in results even when they're not normally visible.
-        let mut results: Vec<GuildPaneEntry<'_>> = Vec::new();
-        if fuzzy_text_score("direct messages", &query).is_some()
-            || fuzzy_text_score("dm", &query).is_some()
+        let mut scored: Vec<(FuzzyMatchQuality, FuzzyScore, usize, GuildPaneEntry<'_>)> =
+            Vec::new();
+        if let Some((quality, score)) =
+            best_fuzzy_name_match_score(&["direct messages", "dm"], &query)
         {
-            results.push(GuildPaneEntry::DirectMessages);
+            scored.push((quality, score, 0, GuildPaneEntry::DirectMessages));
         }
-        for guild in self.discord.cache.guilds() {
-            if fuzzy_text_score(&guild.name, &query).is_some() {
-                results.push(GuildPaneEntry::Guild {
-                    state: guild,
-                    branch: GuildBranch::None,
-                });
+        for (index, guild) in self.guild_pane_search_guilds().into_iter().enumerate() {
+            if let Some((quality, score)) = best_fuzzy_name_match_score(&[&guild.name], &query) {
+                scored.push((
+                    quality,
+                    score,
+                    index + 1,
+                    GuildPaneEntry::Guild {
+                        state: guild,
+                        branch: GuildBranch::None,
+                    },
+                ));
             }
         }
-        results
+        scored
+            .sort_by_key(|(quality, score, original_index, _)| (*quality, *score, *original_index));
+        scored.into_iter().map(|(_, _, _, entry)| entry).collect()
     }
 
-    pub fn is_guild_pane_filter_active(&self) -> bool {
-        self.navigation.guild_pane_filter.is_some()
+    fn guild_pane_search_guilds(&self) -> Vec<&GuildState> {
+        let by_id: HashMap<Id<GuildMarker>, &GuildState> = self
+            .discord
+            .guilds()
+            .into_iter()
+            .map(|guild| (guild.id, guild))
+            .collect();
+        let mut placed: HashSet<Id<GuildMarker>> = HashSet::new();
+        let folders = self.discord.cache.guild_folders();
+
+        if folders.is_empty() {
+            return self.discord.cache.guilds();
+        }
+
+        let mut guilds = Vec::new();
+        for folder in folders {
+            for guild_id in &folder.guild_ids {
+                placed.insert(*guild_id);
+                if let Some(guild) = by_id.get(guild_id) {
+                    guilds.push(*guild);
+                }
+            }
+        }
+        for guild in self.discord.cache.guilds() {
+            if !placed.contains(&guild.id) {
+                guilds.push(guild);
+            }
+        }
+        guilds
     }
 
-    pub fn guild_pane_filter_query(&self) -> Option<&str> {
-        self.navigation
-            .guild_pane_filter
-            .as_ref()
-            .map(|f| f.query())
-    }
-
-    pub fn guild_pane_filter_cursor(&self) -> Option<usize> {
-        self.navigation
-            .guild_pane_filter
-            .as_ref()
-            .map(|f| f.cursor_byte_index())
-    }
-
-    pub fn open_guild_pane_filter(&mut self) {
-        self.navigation.selected_guild = 0;
-        self.navigation.guild_scroll = 0;
-        self.navigation.guild_keep_selection_visible = true;
-        self.navigation.guild_pane_filter = Some(PaneFilterState::new());
-    }
-
-    pub fn close_guild_pane_filter(&mut self) {
-        self.navigation.guild_pane_filter = None;
-        self.navigation.selected_guild = 0;
-        self.navigation.guild_scroll = 0;
-        self.navigation.guild_keep_selection_visible = true;
-    }
-
-    pub fn confirm_guild_pane_filter(&mut self) {
+    pub fn confirm_guild_pane_filter(&mut self) -> bool {
         let selected = self.selected_guild();
         let action = {
             let entries = self.guild_pane_filtered_entries();
@@ -198,59 +205,12 @@ impl DashboardState {
                 _ => None,
             }
         };
-        self.navigation.guild_pane_filter = None;
-        self.navigation.selected_guild = 0;
-        self.navigation.guild_scroll = 0;
         if let Some(scope) = action {
             self.activate_guild(scope);
-            match scope {
-                ActiveGuildScope::DirectMessages => {
-                    if let Some(idx) = self
-                        .guild_pane_entries()
-                        .iter()
-                        .position(|e| matches!(e, GuildPaneEntry::DirectMessages))
-                    {
-                        self.navigation.selected_guild = idx;
-                    }
-                }
-                ActiveGuildScope::Guild(guild_id) => {
-                    if let Some(idx) = self.guild_pane_entries().iter().position(|e| {
-                        matches!(e, GuildPaneEntry::Guild { state, .. } if state.id == guild_id)
-                    }) {
-                        self.navigation.selected_guild = idx;
-                    }
-                }
-                ActiveGuildScope::Unset => {}
-            }
+            self.navigation.guild_keep_selection_visible = true;
+            return true;
         }
-    }
-
-    pub fn push_guild_pane_filter_char(&mut self, value: char) {
-        if let Some(f) = self.navigation.guild_pane_filter.as_mut() {
-            f.push_char(value);
-            self.navigation.selected_guild = 0;
-            self.navigation.guild_scroll = 0;
-        }
-    }
-
-    pub fn pop_guild_pane_filter_char(&mut self) {
-        if let Some(f) = self.navigation.guild_pane_filter.as_mut() {
-            f.pop_char();
-            self.navigation.selected_guild = 0;
-            self.navigation.guild_scroll = 0;
-        }
-    }
-
-    pub fn move_guild_pane_filter_cursor_left(&mut self) {
-        if let Some(f) = self.navigation.guild_pane_filter.as_mut() {
-            f.cursor_left();
-        }
-    }
-
-    pub fn move_guild_pane_filter_cursor_right(&mut self) {
-        if let Some(f) = self.navigation.guild_pane_filter.as_mut() {
-            f.cursor_right();
-        }
+        false
     }
 
     pub fn selected_guild(&self) -> usize {

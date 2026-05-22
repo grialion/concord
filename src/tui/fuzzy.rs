@@ -22,6 +22,41 @@ impl FuzzyScore {
     pub const PREFIX: i32 = 9_000;
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub(super) enum FuzzyMatchQuality {
+    Exact,
+    Prefix,
+    Fuzzy,
+    Context,
+}
+
+pub(super) fn fuzzy_name_match_score(
+    value: &str,
+    query: &str,
+) -> Option<(FuzzyMatchQuality, FuzzyScore)> {
+    let score = fuzzy_text_score(value, query)?;
+    let value = value.to_lowercase();
+    let query = query.trim().to_lowercase();
+    let quality = if value == query {
+        FuzzyMatchQuality::Exact
+    } else if value.starts_with(&query) {
+        FuzzyMatchQuality::Prefix
+    } else {
+        FuzzyMatchQuality::Fuzzy
+    };
+    Some((quality, score))
+}
+
+pub(super) fn best_fuzzy_name_match_score(
+    values: &[&str],
+    query: &str,
+) -> Option<(FuzzyMatchQuality, FuzzyScore)> {
+    values
+        .iter()
+        .filter_map(|value| fuzzy_name_match_score(value, query))
+        .min_by_key(|(quality, score)| (*quality, *score))
+}
+
 pub(super) fn fuzzy_text_score(value: &str, query: &str) -> Option<FuzzyScore> {
     let query = query.trim();
 
@@ -57,7 +92,7 @@ pub(super) fn fuzzy_text_score(value: &str, query: &str) -> Option<FuzzyScore> {
             continue;
         }
 
-        dp[0][v] = character_score(&value_chars, &query_chars, v, true);
+        dp[0][v] = character_score(&value_chars, &query_chars, v, 0, true);
     }
 
     for q in 1..query_chars.len() {
@@ -88,7 +123,7 @@ pub(super) fn fuzzy_text_score(value: &str, query: &str) -> Option<FuzzyScore> {
                         score -= (gap as i32) * 3;
                     }
 
-                    score += character_score(&value_chars, &query_chars, v, false);
+                    score += character_score(&value_chars, &query_chars, v, q, false);
 
                     best = best.max(score);
                 });
@@ -117,6 +152,7 @@ fn character_score(
     value_chars: &[char],
     query_chars: &[char],
     index: usize,
+    query_index: usize,
     first_match: bool,
 ) -> i32 {
     let mut score = 10;
@@ -137,7 +173,7 @@ fn character_score(
     }
 
     // Exact case bonus.
-    if value_chars[index] == query_chars.get(index).copied().unwrap_or('\0') {
+    if value_chars[index] == query_chars.get(query_index).copied().unwrap_or('\0') {
         score += 5;
     }
 

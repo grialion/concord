@@ -1890,7 +1890,7 @@ fn find_cell(buffer: &Buffer, text: &str) -> Option<(u16, u16)> {
 }
 
 #[test]
-fn channel_pane_filter_width_uses_filtered_entry_count() {
+fn pane_filters_keep_content_width_when_active() {
     let guild_id = Id::new(1);
     let matching_name = "abcdefghijklmnopqrstuvwxzy";
     let channels = (0..12)
@@ -1959,6 +1959,64 @@ fn channel_pane_filter_width_uses_filtered_entry_count() {
         "{}",
         channel_rows.join("\n")
     );
+
+    let guild_id = Id::new(1);
+    let mut state = DashboardState::new();
+    state.push_event(AppEvent::GuildCreate {
+        guild_id,
+        name: "This is Server 1".to_owned(),
+        member_count: None,
+        channels: Vec::new(),
+        members: Vec::new(),
+        presences: Vec::new(),
+        roles: Vec::new(),
+        emojis: Vec::new(),
+        owner_id: None,
+    });
+    state.focus_pane(FocusPane::Guilds);
+    state.set_guild_view_height(4);
+
+    let normal_rows = rendered_guild_rows(&state, 20, 6);
+    let normal_server_row = normal_rows
+        .iter()
+        .find(|row| row.contains("This"))
+        .expect("server row should render")
+        .clone();
+
+    state.open_guild_pane_filter();
+    state.set_guild_view_height(3);
+
+    let filtered_rows = rendered_guild_rows(&state, 20, 6);
+    let filtered_server_row = filtered_rows
+        .iter()
+        .find(|row| row.contains("This"))
+        .expect("server row should render while filtering")
+        .clone();
+
+    assert_eq!(
+        normal_server_row.replace('▸', " "),
+        filtered_server_row.replace('▸', " "),
+        "normal:\n{}\nfiltered:\n{}",
+        normal_rows.join("\n"),
+        filtered_rows.join("\n")
+    );
+}
+
+fn rendered_guild_rows(state: &DashboardState, width: u16, height: u16) -> Vec<String> {
+    let backend = TestBackend::new(width, height);
+    let mut terminal = Terminal::new(backend).expect("test terminal should build");
+    terminal
+        .draw(|frame| render_guilds(frame, frame.area(), state))
+        .expect("draw should succeed");
+
+    let buffer = terminal.backend().buffer();
+    (0..buffer.area.height)
+        .map(|row| {
+            (0..buffer.area.width)
+                .map(|col| buffer[(col, row)].symbol().to_owned())
+                .collect::<String>()
+        })
+        .collect()
 }
 
 #[test]

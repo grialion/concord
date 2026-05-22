@@ -280,7 +280,16 @@ fn move_action_menu_up(state: &mut DashboardState) {
 }
 
 fn activate_focused_target(state: &mut DashboardState) -> Option<AppCommand> {
-    match state.focus() {
+    let focus = state.focus();
+    if state.is_pane_filter_active(focus) {
+        if state.is_pane_filter_editing(focus) {
+            state.commit_pane_filter(focus);
+            return None;
+        }
+        return state.activate_pane_filter_selection(focus);
+    }
+
+    match focus {
         FocusPane::Guilds => {
             if state.confirm_selected_guild() {
                 state.focus_pane(FocusPane::Channels);

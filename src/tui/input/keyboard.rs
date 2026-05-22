@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crossterm::event::{KeyEvent, KeyEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 
 use crate::discord::MessageAttachmentUpload;
 use crate::tui::keybindings::{
@@ -83,12 +83,15 @@ pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppComman
 
     let focus = state.focus();
 
+    if key.code == KeyCode::Esc && state.has_active_pane_filter() {
+        state.close_active_pane_filters();
+        return None;
+    }
+
     // Only intercept filter input when the pane that owns the filter is still
     // focused. Moving the mouse to another pane should let normal shortcuts
     // work (e.g. pressing `i` after clicking Messages).
-    if (state.is_guild_pane_filter_active() && focus == FocusPane::Guilds)
-        || (state.is_channel_pane_filter_active() && focus == FocusPane::Channels)
-    {
+    if state.is_pane_filter_active(focus) {
         if let Some(command) = handle_pane_filter_key(state, key, focus) {
             return command;
         }
@@ -146,11 +149,7 @@ fn handle_dashboard_action(
             None
         }
         DashboardAction::OpenFocusedPaneFilter => {
-            match focus {
-                FocusPane::Guilds => state.open_guild_pane_filter(),
-                FocusPane::Channels => state.open_channel_pane_filter(),
-                _ => {}
-            }
+            state.open_pane_filter(focus);
             None
         }
         DashboardAction::ResizePaneLeft => {
@@ -587,7 +586,17 @@ fn handle_pane_filter_key(
     key: KeyEvent,
     focus: FocusPane,
 ) -> Option<Option<AppCommand>> {
-    let guild_focused = focus == FocusPane::Guilds;
+    if !state.is_pane_filter_editing(focus) {
+        return match key.code {
+            KeyCode::Esc => {
+                state.close_pane_filter(focus);
+                Some(None)
+            }
+            KeyCode::Enter => Some(state.activate_pane_filter_selection(focus)),
+            _ => None,
+        };
+    }
+
     match state.key_bindings().pane_filter_action(key) {
         Some(PaneFilterAction::Select(SelectionAction::Next)) => {
             state.move_down();
@@ -598,52 +607,28 @@ fn handle_pane_filter_key(
             Some(None)
         }
         Some(PaneFilterAction::Close) => {
-            if guild_focused {
-                state.close_guild_pane_filter();
-            } else {
-                state.close_channel_pane_filter();
-            }
+            state.close_pane_filter(focus);
             Some(None)
         }
         Some(PaneFilterAction::Confirm) => {
-            if guild_focused {
-                state.confirm_guild_pane_filter();
-                Some(None)
-            } else {
-                Some(state.confirm_channel_pane_filter())
-            }
+            state.commit_pane_filter(focus);
+            Some(None)
         }
         Some(PaneFilterAction::DeleteChar) => {
-            if guild_focused {
-                state.pop_guild_pane_filter_char();
-            } else {
-                state.pop_channel_pane_filter_char();
-            }
+            state.pop_pane_filter_char(focus);
             Some(None)
         }
         Some(PaneFilterAction::MoveCursorLeft) => {
-            if guild_focused {
-                state.move_guild_pane_filter_cursor_left();
-            } else {
-                state.move_channel_pane_filter_cursor_left();
-            }
+            state.move_pane_filter_cursor_left(focus);
             Some(None)
         }
         Some(PaneFilterAction::MoveCursorRight) => {
-            if guild_focused {
-                state.move_guild_pane_filter_cursor_right();
-            } else {
-                state.move_channel_pane_filter_cursor_right();
-            }
+            state.move_pane_filter_cursor_right(focus);
             Some(None)
         }
         Some(PaneFilterAction::Ignore) => Some(None),
         Some(PaneFilterAction::InsertChar(value)) => {
-            if guild_focused {
-                state.push_guild_pane_filter_char(value);
-            } else {
-                state.push_channel_pane_filter_char(value);
-            }
+            state.push_pane_filter_char(focus, value);
             Some(None)
         }
         None => None, // fall through to normal navigation (arrows, j/k etc.)

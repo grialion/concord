@@ -6,7 +6,7 @@ use crate::{
         Id,
         marker::{ChannelMarker, GuildMarker},
     },
-    tui::fuzzy::FuzzyScore,
+    tui::fuzzy::{FuzzyMatchQuality, FuzzyScore, fuzzy_name_match_score},
 };
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -415,18 +415,10 @@ fn push_channel_switcher_item(
     });
 }
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-enum ChannelSwitcherMatchQuality {
-    ChannelExact,
-    ChannelPrefix,
-    ChannelFuzzy,
-    Context,
-}
-
 fn channel_switcher_match_score(
     item: &ChannelSwitcherItem,
     query: &str,
-) -> Option<(ChannelSwitcherMatchQuality, FuzzyScore)> {
+) -> Option<(FuzzyMatchQuality, FuzzyScore)> {
     let query = query.trim();
     if let Some(prefix) = channel_switcher_query_label_prefix(query)
         && !item.channel_label.starts_with(prefix)
@@ -435,28 +427,18 @@ fn channel_switcher_match_score(
     }
     let channel_query = channel_switcher_search_channel_name(query);
     let channel_name = channel_switcher_search_channel_name(&item.channel_label);
-    if let Some(score) = fuzzy_text_score(channel_name, channel_query) {
-        let channel_name = channel_name.to_lowercase();
-        let channel_query = channel_query.to_lowercase();
-        let quality = if channel_name == channel_query {
-            ChannelSwitcherMatchQuality::ChannelExact
-        } else if channel_name.starts_with(&channel_query) {
-            ChannelSwitcherMatchQuality::ChannelPrefix
-        } else {
-            ChannelSwitcherMatchQuality::ChannelFuzzy
-        };
-        return Some((quality, score));
+    if let Some(score) = fuzzy_name_match_score(channel_name, channel_query) {
+        return Some(score);
     }
 
-    fuzzy_text_score(&item.search_name, query)
-        .map(|score| (ChannelSwitcherMatchQuality::Context, score))
+    fuzzy_text_score(&item.search_name, query).map(|score| (FuzzyMatchQuality::Context, score))
 }
 
 fn filter_channel_switcher_items(
     items: &[ChannelSwitcherItem],
     query: &str,
 ) -> Vec<ChannelSwitcherItem> {
-    let mut scored: Vec<(ChannelSwitcherMatchQuality, FuzzyScore, ChannelSwitcherItem)> = items
+    let mut scored: Vec<(FuzzyMatchQuality, FuzzyScore, ChannelSwitcherItem)> = items
         .iter()
         .filter_map(|item| {
             channel_switcher_match_score(item, query)

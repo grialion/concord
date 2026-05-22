@@ -31,8 +31,7 @@ use super::{
         composer_inner_width, panel_scrollbar_area, prefixed_composer_input,
         vertical_scrollbar_visible,
     },
-    panel_block, panel_block_line, panel_content_height, render_vertical_scrollbar,
-    selection_marker, styled_list_item,
+    panel_block, panel_block_line, render_vertical_scrollbar, selection_marker, styled_list_item,
     types::{ACCENT, DIM, EmojiImage, MessageAreas},
 };
 
@@ -40,28 +39,13 @@ pub(super) fn render_guilds(frame: &mut Frame, area: Rect, state: &DashboardStat
     let dashboard = state;
     let focused = state.focus() == FocusPane::Guilds;
     let filter_query = state.guild_pane_filter_query();
+    let block = panel_block("Servers", focused);
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
 
-    // When the filter is active split off one row at the bottom for the search
-    // bar, rendering the border block separately so we can carve up the inner.
-    let (list_area, filter_area) = if filter_query.is_some() && area.height >= 4 {
-        let block = panel_block("Servers", focused);
-        let inner = block.inner(area);
-        frame.render_widget(block, area);
-        let list_h = inner.height.saturating_sub(1);
-        let list_rect = Rect {
-            height: list_h,
-            ..inner
-        };
-        let filter_rect = Rect {
-            y: inner.y + list_h,
-            height: 1,
-            ..inner
-        };
-        (list_rect, Some(filter_rect))
-    } else {
-        (area, None)
-    };
+    let (list_area, filter_area) = split_pane_filter_area(inner, filter_query.is_some());
 
+    let entry_count = state.guild_pane_filtered_entries().len();
     let entries = state.visible_guild_pane_entries();
     let max_width = list_area.width.saturating_sub(6) as usize;
     let horizontal_scroll = state.guild_horizontal_scroll();
@@ -172,31 +156,22 @@ pub(super) fn render_guilds(frame: &mut Frame, area: Rect, state: &DashboardStat
         .collect();
 
     let list = List::new(items).highlight_style(highlight_style());
-    let list = if filter_area.is_none() {
-        list.block(panel_block("Servers", focused))
-    } else {
-        list
-    };
     frame.render_widget(list, list_area);
 
-    if let Some(filter_rect) = filter_area {
-        let query = filter_query.unwrap_or_default();
-        let cursor = state.guild_pane_filter_cursor().unwrap_or(0);
-        let cursor_x = render_pane_filter_bar(frame, filter_rect, query, cursor, focused);
-        if focused {
-            frame.set_cursor_position(Position {
-                x: filter_rect.x.saturating_add(cursor_x as u16),
-                y: filter_rect.y,
-            });
-        }
-    }
+    render_pane_filter_bar_with_cursor(
+        frame,
+        filter_area,
+        filter_query,
+        state.guild_pane_filter_cursor(),
+        focused,
+    );
 
     render_vertical_scrollbar(
         frame,
-        panel_scrollbar_area(area),
+        list_area,
         state.guild_scroll(),
-        panel_content_height(area, "Servers"),
-        state.guild_pane_entries().len(),
+        list_area.height as usize,
+        entry_count,
     );
 }
 
@@ -205,13 +180,50 @@ fn notification_count_badge(unread: ChannelUnreadState) -> Span<'static> {
     badge.expect("numeric unread state always renders a badge")
 }
 
+fn split_pane_filter_area(area: Rect, active: bool) -> (Rect, Option<Rect>) {
+    if active && area.height >= 2 {
+        let list_h = area.height.saturating_sub(1);
+        let list_rect = Rect {
+            height: list_h,
+            ..area
+        };
+        let filter_rect = Rect {
+            y: area.y + list_h,
+            height: 1,
+            ..area
+        };
+        (list_rect, Some(filter_rect))
+    } else {
+        (area, None)
+    }
+}
+
+fn render_pane_filter_bar_with_cursor(
+    frame: &mut Frame,
+    area: Option<Rect>,
+    query: Option<&str>,
+    cursor: Option<usize>,
+    focused: bool,
+) {
+    let Some(area) = area else {
+        return;
+    };
+    let cursor_x = render_pane_filter_bar(frame, area, query.unwrap_or_default(), cursor, focused);
+    if focused && cursor.is_some() {
+        frame.set_cursor_position(Position {
+            x: area.x.saturating_add(cursor_x as u16),
+            y: area.y,
+        });
+    }
+}
+
 /// Renders a one-line search bar at `area` and returns the visual column offset
 /// of the cursor within that area (column 0 = leftmost cell of `area`).
 fn render_pane_filter_bar(
     frame: &mut Frame,
     area: Rect,
     query: &str,
-    cursor_byte: usize,
+    cursor_byte: Option<usize>,
     focused: bool,
 ) -> usize {
     let prompt = "/ ";
@@ -219,7 +231,7 @@ fn render_pane_filter_bar(
     let available = (area.width as usize).saturating_sub(prompt_width).max(1);
 
     // Scroll the visible window so the cursor is always in view.
-    let cursor_byte = cursor_byte.min(query.len());
+    let cursor_byte = cursor_byte.unwrap_or(query.len()).min(query.len());
     let mut start = 0usize;
     while query[start..cursor_byte].width() > available {
         // Advance start by one char boundary
@@ -288,21 +300,7 @@ pub(super) fn render_channels(frame: &mut Frame, area: Rect, state: &DashboardSt
         ..inner
     };
 
-    let (list_area, filter_area) = if filter_query.is_some() && channels_area.height >= 2 {
-        let list_h = channels_area.height.saturating_sub(1);
-        let list_rect = Rect {
-            height: list_h,
-            ..channels_area
-        };
-        let filter_rect = Rect {
-            y: channels_area.y + list_h,
-            height: 1,
-            ..channels_area
-        };
-        (list_rect, Some(filter_rect))
-    } else {
-        (channels_area, None)
-    };
+    let (list_area, filter_area) = split_pane_filter_area(channels_area, filter_query.is_some());
 
     let channel_entries = state.channel_pane_filtered_entries();
     let channel_entry_count = channel_entries.len();
@@ -487,17 +485,13 @@ pub(super) fn render_channels(frame: &mut Frame, area: Rect, state: &DashboardSt
     let list = List::new(items).highlight_style(highlight_style());
     frame.render_widget(list, list_area);
 
-    if let Some(filter_rect) = filter_area {
-        let query = filter_query.unwrap_or_default();
-        let cursor = state.channel_pane_filter_cursor().unwrap_or(0);
-        let cursor_x = render_pane_filter_bar(frame, filter_rect, query, cursor, focused);
-        if focused {
-            frame.set_cursor_position(Position {
-                x: filter_rect.x.saturating_add(cursor_x as u16),
-                y: filter_rect.y,
-            });
-        }
-    }
+    render_pane_filter_bar_with_cursor(
+        frame,
+        filter_area,
+        filter_query,
+        state.channel_pane_filter_cursor(),
+        focused,
+    );
 
     render_vertical_scrollbar(
         frame,
