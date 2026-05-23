@@ -4,6 +4,10 @@ use crate::discord::ids::{
     marker::{ChannelMarker, MessageMarker},
 };
 use crate::tui::format;
+use crate::tui::format::{
+    MentionTarget, RenderedText, TextHighlightKind, render_user_mentions,
+    render_user_mentions_with_highlights, replace_custom_emoji_markup,
+};
 
 use super::scroll::{
     SCROLL_OFF, clamp_list_scroll, move_index_down, move_index_up, normalize_message_line_scroll,

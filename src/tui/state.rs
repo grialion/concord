@@ -1,28 +1,12 @@
-#[allow(unused_imports)]
 use std::{collections::HashSet, time::Instant};
 
-#[allow(unused_imports)]
-use crate::discord::ids::{
-    Id,
-    marker::{ChannelMarker, GuildMarker, MessageMarker, UserMarker},
-};
+use crate::discord::ids::marker::{GuildMarker, UserMarker};
 
-#[allow(unused_imports)]
 use crate::discord::{
-    AppCommand, AppEvent, ChannelUnreadState, DiscordSnapshot, DiscordState,
-    DownloadAttachmentSource, ForumPostArchiveState, MentionInfo, MessageSnapshotInfo,
-    MessageState, MuteDuration, PresenceStatus, SnapshotAreas, SnapshotRevision,
-    VoiceConnectionStatus,
+    AppCommand, AppEvent, DownloadAttachmentSource, ForumPostArchiveState, MentionInfo,
+    MessageSnapshotInfo, VoiceConnectionStatus,
 };
-#[allow(unused_imports)]
-use unicode_width::UnicodeWidthStr;
 
-#[allow(unused_imports)]
-use super::format::{
-    MentionTarget, RenderedText, TextHighlightKind, render_user_mentions,
-    render_user_mentions_with_highlights, replace_custom_emoji_markup,
-};
-use super::keybindings::OptionsCategoryShortcut;
 mod channel_switcher;
 mod channels;
 mod composer;
@@ -56,40 +40,31 @@ mod voice_actions;
 
 use composer::ComposerUiState;
 use discord_ui::DiscordUiState;
-#[allow(unused_imports)]
 use layout_cache::{LayoutCacheState, MessageRowContentMetrics, MessageRowContentMetricsCacheKey};
 use message_render::{add_literal_mention_highlights, normalize_text_highlights};
-#[allow(unused_imports)]
-use message_viewport::{MessageViewportState, PinnedMessageViewReturnTarget, ThreadReturnTarget};
+use message_viewport::{MessageViewportState, ThreadReturnTarget};
 use navigation::{ActiveGuildScope, FolderKey, NavigationState};
 use options::OptionsUiState;
 use pane_filter::PaneFilterState;
-#[allow(unused_imports)]
-use popups::{ChannelLeaderActionState, GuildLeaderActionState, LeaderMode, PopupUiState};
+use popups::{LeaderMode, PopupUiState};
 use request_tracking::RequestTrackingState;
 use runtime_state::{RuntimeUiState, ToastMessage, VoiceConnectionUiState};
-#[allow(unused_imports)]
-use scroll::{
-    clamp_list_viewport, clamp_selected_index, last_index, move_index_down, move_index_down_by,
-    move_index_up, move_index_up_by, pane_content_height, scroll_list_down, scroll_list_up,
-};
+use scroll::clamp_selected_index;
 
 pub use composer::{
     CommandPickerEntry, EmojiPickerEntry, MAX_MENTION_PICKER_VISIBLE, MentionPickerEntry,
 };
 pub use dashboard::DashboardState;
 pub use member_grouping::{MemberEntry, MemberGroup};
-#[allow(unused_imports)]
 pub use model::{
     ChannelActionItem, ChannelPaneEntry, ChannelSwitcherItem, ChannelThreadItem, EmojiReactionItem,
     FORUM_POST_CARD_HEIGHT, FocusPane, GuildActionItem, GuildPaneEntry, ImageViewerItem,
     MemberActionItem, MessageActionItem, MessageActionKind, MuteActionDurationItem,
     PollVotePickerItem, ThreadMessagePreview, ThreadSummary, VoiceActionItem,
 };
-#[allow(unused_imports)]
 pub use model::{
-    ChannelActionKind, ChannelBranch, GuildActionKind, GuildBranch, MemberActionKind,
-    MessageActionMenuPhase, MessageUrlItem, VoiceActionKind,
+    ChannelActionKind, GuildActionKind, MemberActionKind, MessageActionMenuPhase, MessageUrlItem,
+    VoiceActionKind,
 };
 pub use options::DisplayOptionItem;
 pub use popups::{

@@ -3,10 +3,10 @@ use crate::config::{
     VoiceOptions,
 };
 use crate::discord::AppCommand;
-use crate::tui::keybindings::KeyBindings;
+use crate::tui::keybindings::{KeyBindings, OptionsCategoryShortcut};
 
 use super::{
-    DashboardState, FocusPane, FolderKey, OptionsCategoryShortcut,
+    DashboardState, FocusPane, FolderKey,
     popups::{OptionsCategory, OptionsPopupState},
 };
 

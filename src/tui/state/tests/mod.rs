@@ -10,10 +10,10 @@ use crate::{
 };
 use unicode_width::UnicodeWidthStr;
 
+use super::model::{ChannelBranch, GuildBranch};
 use super::{
-    ActiveGuildScope, ChannelActionKind, ChannelBranch, ChannelPaneEntry, DashboardState,
-    FocusPane, GuildActionKind, GuildBranch, GuildPaneEntry, ImageViewerItem, MessageActionKind,
-    MessageState,
+    ActiveGuildScope, ChannelActionKind, ChannelPaneEntry, DashboardState, FocusPane,
+    GuildActionKind, GuildPaneEntry, ImageViewerItem, MessageActionKind,
 };
 use crate::discord::{
     ActivityInfo, ActivityKind, AppCommand, AppEvent, AttachmentInfo, AttachmentUpdate,
@@ -21,9 +21,10 @@ use crate::discord::{
     ChannelVisibilityStats, CustomEmojiInfo, DiscordState, DownloadAttachmentSource,
     EmbedFieldInfo, EmbedInfo, ForumPostArchiveState, FriendStatus, GuildNotificationSettingsInfo,
     MessageAttachmentUpload, MessageInfo, MessageKind, MessageReferenceInfo, MessageSnapshotInfo,
-    MutualGuildInfo, NotificationLevel, PermissionOverwriteInfo, PermissionOverwriteKind,
-    PresenceStatus, ReactionEmoji, ReactionInfo, ReactionUserInfo, ReactionUsersInfo, ReplyInfo,
-    RoleInfo, SnapshotRevision, UserProfileInfo, VoiceConnectionStatus, VoiceStateInfo,
+    MessageState, MutualGuildInfo, NotificationLevel, PermissionOverwriteInfo,
+    PermissionOverwriteKind, PresenceStatus, ReactionEmoji, ReactionInfo, ReactionUserInfo,
+    ReactionUsersInfo, ReplyInfo, RoleInfo, SnapshotRevision, UserProfileInfo,
+    VoiceConnectionStatus, VoiceStateInfo,
 };
 
 mod channel_switcher;

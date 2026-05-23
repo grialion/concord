@@ -1,3 +1,5 @@
+use super::dave::VoiceDaveOutboundPayload;
+use super::rtp::build_voice_rtp_packet;
 use super::*;
 
 #[cfg(feature = "voice-playback")]

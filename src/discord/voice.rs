@@ -46,10 +46,7 @@ use self::opus::mix_voice_decoded_samples;
 use ::opus::{Channels, Decoder as OpusDecoder};
 #[cfg(all(test, feature = "voice-playback"))]
 use audio_buffer::VoiceAudioBuffer;
-#[allow(unused_imports)]
-use dave::{
-    VoiceDaveOutboundPayload, VoiceDaveState, VoiceMediaPayload, voice_speaking_microphone_active,
-};
+use dave::{VoiceDaveState, VoiceMediaPayload, voice_speaking_microphone_active};
 #[cfg(test)]
 use dave::{VoiceSpeakingState, looks_like_dave_media_frame};
 #[cfg(feature = "voice-playback")]
@@ -63,10 +60,9 @@ use playback::{VoicePlaybackPostProcess, VoicePlayoutFrame};
 use playback::{
     voice_sample_to_i16, voice_sample_to_u8, voice_sample_to_u16, write_voice_output_frame,
 };
-#[allow(unused_imports)]
 use rtp::{
-    RtpHeader, VoiceOutboundRtpState, VoiceRtpDecryptor, VoiceRtpEncryptor, build_voice_rtp_packet,
-    looks_like_rtcp_packet, parse_rtp_header, rtcp_sender_ssrc,
+    RtpHeader, VoiceOutboundRtpState, VoiceRtpDecryptor, VoiceRtpEncryptor, looks_like_rtcp_packet,
+    parse_rtp_header, rtcp_sender_ssrc,
 };
 
 #[cfg(test)]
