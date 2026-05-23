@@ -27,10 +27,12 @@ use gateway::*;
 #[cfg(not(test))]
 use gateway::{run_voice_gateway_session, send_voice_binary, send_voice_text};
 pub use info::{VoiceConnectionStatus, VoiceServerInfo, VoiceSoundKind, VoiceStateInfo};
+#[cfg(all(feature = "voice-playback", target_os = "linux", not(test)))]
+use microphone::log_captured_alsa_errors;
+#[cfg(all(feature = "voice-playback", not(test)))]
+use microphone::run_voice_udp_transmit;
 #[cfg(test)]
 use microphone::*;
-#[cfg(all(feature = "voice-playback", not(test)))]
-use microphone::{log_captured_alsa_errors, run_voice_udp_transmit};
 #[cfg(test)]
 use runtime::{VoiceRuntimeAction, VoiceRuntimeState};
 pub(crate) use runtime::{forward_app_event, run_voice_runtime};

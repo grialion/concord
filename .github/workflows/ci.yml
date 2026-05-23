@@ -50,7 +50,8 @@ jobs:
 
   release-cache-plan:
     name: plan release cache warm
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check]
+    if: ${{ needs.check.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     continue-on-error: true
     runs-on: ubuntu-22.04
     outputs:
