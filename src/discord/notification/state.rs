@@ -47,6 +47,14 @@ pub(in crate::discord) struct GuildNotificationSettingsState {
 
 impl DiscordState {
     pub fn channel_sidebar_unread(&self, channel_id: Id<ChannelMarker>) -> ChannelUnreadState {
+        if self
+            .navigation
+            .channels
+            .get(&channel_id)
+            .is_some_and(|channel| channel.is_thread() && !channel.current_user_joined_thread)
+        {
+            return ChannelUnreadState::Seen;
+        }
         if self.channel_notification_muted(channel_id) {
             ChannelUnreadState::Seen
         } else if self
@@ -63,6 +71,7 @@ impl DiscordState {
                         .filter(|channel| {
                             channel.is_thread()
                                 && channel.parent_id == Some(channel_id)
+                                && channel.current_user_joined_thread
                                 && self.can_view_channel(channel)
                         })
                         .map(|channel| self.channel_sidebar_unread(channel.id)),

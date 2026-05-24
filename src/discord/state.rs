@@ -535,6 +535,7 @@ impl DiscordState {
             | AppEvent::GuildUpdate { .. }
             | AppEvent::GuildDelete { .. }
             | AppEvent::ChannelUpsert(_)
+            | AppEvent::ThreadMembersUpdate { .. }
             | AppEvent::ChannelDelete { .. }
             | AppEvent::ForumPostsLoaded { .. }
             | AppEvent::Ready { .. } => SnapshotAreas::all(),
@@ -747,6 +748,20 @@ impl DiscordState {
                 }
             }
             AppEvent::ChannelUpsert(channel) => self.upsert_channel(channel),
+            AppEvent::ThreadMembersUpdate {
+                channel_id,
+                added_user_ids,
+                removed_user_ids,
+            } => {
+                let Some(current_user_id) = self.session.current_user_id else {
+                    return;
+                };
+                if added_user_ids.contains(&current_user_id) {
+                    self.set_current_user_thread_membership(*channel_id, true);
+                } else if removed_user_ids.contains(&current_user_id) {
+                    self.set_current_user_thread_membership(*channel_id, false);
+                }
+            }
             AppEvent::ForumPostsLoaded {
                 threads,
                 first_messages,

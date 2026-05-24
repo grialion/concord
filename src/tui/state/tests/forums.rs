@@ -643,21 +643,20 @@ fn forum_sidebar_unread_aggregates_unread_child_posts() {
     let forum_id = Id::new(20);
     let thread_id = Id::new(31);
     let mut state = DashboardState::new();
+    let mut thread = forum_thread_info(
+        guild_id,
+        forum_id,
+        thread_id.get(),
+        "new post",
+        Some(300),
+        false,
+    );
+    thread.current_user_joined_thread = Some(true);
 
     state.push_event(guild_create_event(
         guild_id,
         "guild",
-        vec![
-            forum_channel_info(guild_id, forum_id),
-            forum_thread_info(
-                guild_id,
-                forum_id,
-                thread_id.get(),
-                "new post",
-                Some(300),
-                false,
-            ),
-        ],
+        vec![forum_channel_info(guild_id, forum_id), thread],
     ));
     state.push_event(AppEvent::ReadStateInit {
         entries: vec![read_state_info(thread_id, Some(Id::new(299)), 0)],
@@ -670,26 +669,60 @@ fn forum_sidebar_unread_aggregates_unread_child_posts() {
 }
 
 #[test]
-fn forum_sidebar_unread_aggregates_child_notification_count() {
+fn forum_sidebar_unread_ignores_left_child_posts() {
     let guild_id = Id::new(1);
     let forum_id = Id::new(20);
     let thread_id = Id::new(31);
+    let mut left_thread = forum_thread_info(
+        guild_id,
+        forum_id,
+        thread_id.get(),
+        "left post",
+        Some(300),
+        false,
+    );
+    left_thread.current_user_joined_thread = Some(false);
     let mut state = DashboardState::new();
 
     state.push_event(guild_create_event(
         guild_id,
         "guild",
-        vec![
-            forum_channel_info(guild_id, forum_id),
-            forum_thread_info(
-                guild_id,
-                forum_id,
-                thread_id.get(),
-                "new post",
-                Some(299),
-                false,
-            ),
-        ],
+        vec![forum_channel_info(guild_id, forum_id), left_thread],
+    ));
+    state.push_event(AppEvent::ReadStateInit {
+        entries: vec![read_state_info(thread_id, Some(Id::new(299)), 0)],
+    });
+
+    assert_eq!(
+        state.sidebar_channel_unread(forum_id),
+        ChannelUnreadState::Seen
+    );
+    assert_eq!(
+        state.sidebar_guild_unread(guild_id),
+        ChannelUnreadState::Seen
+    );
+}
+
+#[test]
+fn forum_sidebar_unread_aggregates_child_notification_count() {
+    let guild_id = Id::new(1);
+    let forum_id = Id::new(20);
+    let thread_id = Id::new(31);
+    let mut state = DashboardState::new();
+    let mut thread = forum_thread_info(
+        guild_id,
+        forum_id,
+        thread_id.get(),
+        "new post",
+        Some(299),
+        false,
+    );
+    thread.current_user_joined_thread = Some(true);
+
+    state.push_event(guild_create_event(
+        guild_id,
+        "guild",
+        vec![forum_channel_info(guild_id, forum_id), thread],
     ));
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
@@ -725,34 +758,37 @@ fn forum_sidebar_unread_aggregates_child_notification_count() {
 }
 
 #[test]
-fn opening_forum_channel_marks_unread_child_posts_as_read() {
+fn opening_forum_channel_keeps_child_posts_unread_until_post_opens() {
     let guild_id = Id::new(1);
     let forum_id = Id::new(20);
     let thread_id = Id::new(31);
     let mut state = DashboardState::new();
-    let mut forum = forum_channel_info(guild_id, forum_id);
-    forum.last_message_id = Some(Id::new(200));
+    let mut thread = forum_thread_info(
+        guild_id,
+        forum_id,
+        thread_id.get(),
+        "new post",
+        Some(300),
+        false,
+    );
+    thread.current_user_joined_thread = Some(true);
 
     state.push_event(guild_create_event(
         guild_id,
         "guild",
-        vec![
-            forum,
-            forum_thread_info(
-                guild_id,
-                forum_id,
-                thread_id.get(),
-                "new post",
-                Some(300),
-                false,
-            ),
-        ],
+        vec![forum_channel_info(guild_id, forum_id), thread.clone()],
     ));
+    state.push_event(AppEvent::ForumPostsLoaded {
+        channel_id: forum_id,
+        archive_state: ForumPostArchiveState::Active,
+        offset: 0,
+        next_offset: 1,
+        threads: vec![thread],
+        first_messages: Vec::new(),
+        has_more: false,
+    });
     state.push_event(AppEvent::ReadStateInit {
-        entries: vec![
-            read_state_info(forum_id, Some(Id::new(199)), 0),
-            read_state_info(thread_id, Some(Id::new(299)), 0),
-        ],
+        entries: vec![read_state_info(thread_id, Some(Id::new(299)), 0)],
     });
     state.confirm_selected_guild();
 
@@ -762,22 +798,92 @@ fn opening_forum_channel_marks_unread_child_posts_as_read() {
     );
     state.confirm_selected_channel();
     let commands = state.drain_pending_commands();
+
+    assert!(commands.is_empty());
+    assert_eq!(
+        state.sidebar_channel_unread(forum_id),
+        ChannelUnreadState::Unread
+    );
+
+    state.focus_pane(FocusPane::Messages);
+    let subscribe = state.activate_selected_message_pane_item();
+    let commands = state.drain_pending_commands();
     apply_optimistic_ack_commands(&mut state, &commands);
 
+    assert_eq!(
+        subscribe,
+        Some(AppCommand::SubscribeGuildChannel {
+            guild_id,
+            channel_id: thread_id,
+        })
+    );
+    assert_eq!(
+        commands,
+        vec![AppCommand::AckChannel {
+            channel_id: thread_id,
+            message_id: Id::new(300),
+        }]
+    );
     assert_eq!(
         state.sidebar_channel_unread(forum_id),
         ChannelUnreadState::Seen
     );
-    assert_eq!(
-        commands,
-        vec![AppCommand::AckChannels {
-            targets: vec![(forum_id, Id::new(200)), (thread_id, Id::new(300))]
-        }]
-    );
 }
 
 #[test]
-fn hidden_forum_child_posts_are_not_listed_or_acked() {
+fn forum_post_items_show_loaded_new_message_count() {
+    let guild_id = Id::new(1);
+    let forum_id = Id::new(20);
+    let thread_id = Id::new(31);
+    let mut state = DashboardState::new();
+    let mut thread = forum_thread_info(
+        guild_id,
+        forum_id,
+        thread_id.get(),
+        "new post",
+        Some(301),
+        false,
+    );
+    thread.current_user_joined_thread = Some(true);
+
+    state.push_event(guild_create_event(
+        guild_id,
+        "guild",
+        vec![forum_channel_info(guild_id, forum_id)],
+    ));
+    state.confirm_selected_guild();
+    state.confirm_selected_channel();
+    state.push_event(AppEvent::ForumPostsLoaded {
+        channel_id: forum_id,
+        archive_state: ForumPostArchiveState::Active,
+        offset: 0,
+        next_offset: 1,
+        threads: vec![thread],
+        first_messages: Vec::new(),
+        has_more: false,
+    });
+    state.push_event(AppEvent::ReadStateInit {
+        entries: vec![read_state_info(thread_id, Some(Id::new(299)), 0)],
+    });
+    state.push_event(AppEvent::MessageHistoryLoaded {
+        channel_id: thread_id,
+        before: None,
+        messages: vec![
+            forum_preview_message(guild_id, thread_id, 300, "neo", "first new comment"),
+            forum_preview_message(guild_id, thread_id, 301, "neo", "second new comment"),
+        ],
+    });
+
+    let post = state
+        .selected_forum_post_items()
+        .into_iter()
+        .next()
+        .expect("forum post should be visible");
+    assert_eq!(post.new_message_count, 2);
+}
+
+#[test]
+fn hidden_forum_child_posts_are_not_listed_when_forum_opens() {
     let guild_id = Id::new(1);
     let forum_id = Id::new(20);
     let public_thread_id = Id::new(31);
@@ -845,12 +951,7 @@ fn hidden_forum_child_posts_are_not_listed_or_acked() {
             .collect::<Vec<_>>(),
         vec![public_thread_id]
     );
-    assert_eq!(
-        state.drain_pending_commands(),
-        vec![AppCommand::AckChannels {
-            targets: vec![(public_thread_id, Id::new(300))]
-        }]
-    );
+    assert!(state.drain_pending_commands().is_empty());
 }
 
 #[test]

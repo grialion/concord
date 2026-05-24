@@ -995,6 +995,66 @@ fn thread_channel_parser_keeps_counts_and_status() {
 }
 
 #[test]
+fn thread_channel_parser_marks_current_user_joined_when_member_is_present() {
+    let channel = parse_channel_info(
+        &json!({
+            "id": "10",
+            "guild_id": "1",
+            "parent_id": "2",
+            "type": 11,
+            "name": "release notes",
+            "member": { "id": "10", "user_id": "99" },
+            "thread_metadata": { "archived": false, "locked": false }
+        }),
+        None,
+    )
+    .expect("thread channel should parse");
+
+    assert_eq!(channel.current_user_joined_thread, Some(true));
+}
+
+#[test]
+fn raw_thread_members_update_carries_member_delta_ids() {
+    let joined = parse_user_account_event(
+        &json!({
+            "t": "THREAD_MEMBERS_UPDATE",
+            "d": {
+                "id": "10",
+                "guild_id": "1",
+                "added_members": [{ "user_id": "99" }]
+            }
+        })
+        .to_string(),
+    );
+    let left = parse_user_account_event(
+        &json!({
+            "t": "THREAD_MEMBERS_UPDATE",
+            "d": {
+                "id": "10",
+                "guild_id": "1",
+                "removed_member_ids": ["99"]
+            }
+        })
+        .to_string(),
+    );
+
+    assert!(matches!(
+        joined.as_slice(),
+        [AppEvent::ThreadMembersUpdate { channel_id, added_user_ids, removed_user_ids }]
+            if *channel_id == Id::new(10)
+                && added_user_ids == &vec![Id::new(99)]
+                && removed_user_ids.is_empty()
+    ));
+    assert!(matches!(
+        left.as_slice(),
+        [AppEvent::ThreadMembersUpdate { channel_id, added_user_ids, removed_user_ids }]
+            if *channel_id == Id::new(10)
+                && added_user_ids.is_empty()
+                && removed_user_ids == &vec![Id::new(99)]
+    ));
+}
+
+#[test]
 fn raw_thread_create_upserts_thread_channel() {
     let events = parse_user_account_event(
         &json!({

@@ -787,6 +787,7 @@ fn permission_fixture_channel(
         total_message_sent: None,
         thread_metadata: None,
         flags: None,
+        current_user_joined_thread: None,
         recipients: None,
         permission_overwrites: Vec::new(),
     }
@@ -864,6 +865,7 @@ fn channel_upsert_event() -> AppEvent {
         total_message_sent: None,
         thread_metadata: None,
         flags: None,
+        current_user_joined_thread: None,
         recipients: None,
         permission_overwrites: Vec::new(),
     })
@@ -936,6 +938,7 @@ fn thread_channel_upsert_event() -> AppEvent {
         total_message_sent: None,
         thread_metadata: None,
         flags: None,
+        current_user_joined_thread: None,
         recipients: None,
         permission_overwrites: Vec::new(),
     })

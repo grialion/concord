@@ -13,7 +13,9 @@ mod shared;
 mod voice;
 
 pub(crate) use channels::parse_channel_info;
-use channels::{parse_channel_delete, parse_channel_upsert, parse_thread_list_sync};
+use channels::{
+    parse_channel_delete, parse_channel_upsert, parse_thread_list_sync, parse_thread_members_update,
+};
 use guilds::{
     parse_guild_create, parse_guild_delete, parse_guild_emojis_update, parse_guild_update,
     parse_user_guild_settings_update,
@@ -64,6 +66,7 @@ pub(super) fn parse_user_account_event(raw: &str) -> Vec<AppEvent> {
         }
         "CHANNEL_DELETE" | "THREAD_DELETE" => parse_channel_delete(data).into_iter().collect(),
         "THREAD_LIST_SYNC" => parse_thread_list_sync(data),
+        "THREAD_MEMBERS_UPDATE" => parse_thread_members_update(data),
         "MESSAGE_CREATE" => parse_message_create(data).into_iter().collect(),
         "MESSAGE_UPDATE" => parse_message_update(data).into_iter().collect(),
         "MESSAGE_DELETE" => parse_message_delete(data).into_iter().collect(),

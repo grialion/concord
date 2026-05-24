@@ -336,6 +336,7 @@ fn muted_server_name_is_dimmed() {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
@@ -652,6 +653,7 @@ fn member_pane_keeps_normal_style_for_speaking_voice_members() {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
@@ -736,6 +738,7 @@ fn pane_filters_keep_content_width_when_active() {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         })
@@ -942,6 +945,7 @@ fn forum_post_lines_render_title_author_and_preview() {
             me: true,
         }],
         comment_count: Some(4),
+        new_message_count: 3,
         last_activity_message_id: Some(Id::new(30)),
     };
 
@@ -957,6 +961,7 @@ fn forum_post_lines_render_title_author_and_preview() {
     assert!(texts[2].contains("PINNED"));
     assert!(texts[3].contains("neo: This crate solves"));
     assert!(texts[4].contains("4 comments"));
+    assert!(texts[4].contains("3 new messages"));
     assert!(texts[4].contains("[👍 2]"));
     assert!(!texts[4].contains("pinned"));
     assert!(texts[4].contains("locked"));
@@ -970,7 +975,8 @@ fn forum_post_lines_render_title_author_and_preview() {
     assert_eq!(lines[3].spans[4].style.fg, Some(Color::White));
     assert_eq!(lines[4].spans[2].style.fg, Some(Color::White));
     assert_eq!(lines[4].spans[4].style.fg, Some(Color::Yellow));
-    assert_eq!(lines[4].spans[6].style.fg, Some(Color::White));
+    assert_eq!(lines[4].spans[6].style.fg, Some(Color::Yellow));
+    assert_eq!(lines[4].spans[8].style.fg, Some(Color::White));
     assert_eq!(lines[1].spans[1].style.fg, Some(SELECTED_FORUM_POST_BORDER));
     assert_eq!(lines[2].spans[1].style.fg, Some(SELECTED_FORUM_POST_BORDER));
     assert!(
@@ -1002,6 +1008,7 @@ fn forum_post_lines_can_reserve_scrollbar_column() {
         preview_content: Some("short preview".to_owned()),
         preview_reactions: Vec::new(),
         comment_count: Some(1),
+        new_message_count: 0,
         last_activity_message_id: Some(Id::new(30)),
     };
 

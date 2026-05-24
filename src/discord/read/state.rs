@@ -46,6 +46,7 @@ impl DiscordState {
             .filter(|channel| {
                 channel.is_thread()
                     && channel.parent_id == Some(forum_id)
+                    && channel.current_user_joined_thread
                     && self.can_view_channel(channel)
             })
             .filter_map(|channel| {

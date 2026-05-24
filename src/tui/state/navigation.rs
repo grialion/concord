@@ -453,7 +453,8 @@ impl DashboardState {
             .into_iter()
             .map(|entry| match entry {
                 ChannelPaneEntry::CategoryHeader { state, .. }
-                | ChannelPaneEntry::Channel { state, .. } => state.name.width().saturating_sub(1),
+                | ChannelPaneEntry::Channel { state, .. }
+                | ChannelPaneEntry::Thread { state, .. } => state.name.width().saturating_sub(1),
                 ChannelPaneEntry::VoiceParticipant { participant, .. } => {
                     participant.display_name.width().saturating_sub(1)
                 }

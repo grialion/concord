@@ -240,6 +240,69 @@ fn channel_tree_groups_category_children() {
 }
 
 #[test]
+fn channel_tree_shows_joined_threads_under_parent_channel() {
+    let guild_id = Id::new(1);
+    let parent_id = Id::new(11);
+    let joined_thread_id = Id::new(30);
+    let hidden_thread_id = Id::new(31);
+    let mut state = state_with_channel_tree();
+
+    state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
+        current_user_joined_thread: Some(true),
+        ..thread_channel_info(guild_id, parent_id, joined_thread_id, "joined thread")
+    }));
+    state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
+        current_user_joined_thread: Some(false),
+        ..thread_channel_info(guild_id, parent_id, hidden_thread_id, "hidden thread")
+    }));
+
+    let entries = state.channel_pane_entries();
+
+    assert!(matches!(
+        &entries[2],
+        ChannelPaneEntry::Thread {
+            state,
+            parent_branch: ChannelBranch::Middle,
+            branch: ChannelBranch::Last,
+        } if state.id == joined_thread_id
+    ));
+    assert_eq!(
+        channel_entry_names(&state),
+        vec!["general", "joined thread", "random"]
+    );
+}
+
+#[test]
+fn channel_tree_removes_thread_after_current_user_leaves() {
+    let guild_id = Id::new(1);
+    let parent_id = Id::new(11);
+    let thread_id = Id::new(30);
+    let current_user_id = Id::new(99);
+    let mut state = state_with_channel_tree();
+
+    state.push_event(AppEvent::Ready {
+        user: "me".to_owned(),
+        user_id: Some(current_user_id),
+    });
+    state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
+        current_user_joined_thread: Some(true),
+        ..thread_channel_info(guild_id, parent_id, thread_id, "joined thread")
+    }));
+    assert_eq!(
+        channel_entry_names(&state),
+        vec!["general", "joined thread", "random"]
+    );
+
+    state.push_event(AppEvent::ThreadMembersUpdate {
+        channel_id: thread_id,
+        added_user_ids: Vec::new(),
+        removed_user_ids: vec![current_user_id],
+    });
+
+    assert_eq!(channel_entry_names(&state), vec!["general", "random"]);
+}
+
+#[test]
 fn selected_channel_category_toggles_open_and_closed() {
     let mut state = state_with_channel_tree();
 

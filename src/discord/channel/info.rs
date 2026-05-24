@@ -33,6 +33,9 @@ pub struct ChannelInfo {
     /// Discord's raw `flags` channel bitfield. For thread channels in forum or
     /// media parents, `PINNED = 1 << 1` means this one thread is pinned.
     pub flags: Option<u64>,
+    /// Whether Discord included a current-user thread membership object for
+    /// this thread. `None` means the payload did not say either way.
+    pub current_user_joined_thread: Option<bool>,
     pub recipients: Option<Vec<ChannelRecipientInfo>>,
     /// Channel-level permission overrides. The empty default means a
     /// gateway/REST payload that omitted the field is treated as "no
@@ -94,6 +97,7 @@ impl ChannelInfo {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }

@@ -316,6 +316,7 @@ fn state_with_many_forum_channel_posts(count: u64) -> DashboardState {
             total_message_sent: Some(index + 1),
             thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         })
@@ -337,7 +338,9 @@ fn channel_entry_names(state: &DashboardState) -> Vec<&str> {
         .channel_pane_entries()
         .into_iter()
         .filter_map(|entry| match entry {
-            ChannelPaneEntry::Channel { state, .. } => Some(state.name.as_str()),
+            ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. } => {
+                Some(state.name.as_str())
+            }
             ChannelPaneEntry::CategoryHeader { .. } | ChannelPaneEntry::VoiceParticipant { .. } => {
                 None
             }

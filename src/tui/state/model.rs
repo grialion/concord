@@ -153,6 +153,7 @@ pub struct ChannelThreadItem {
     pub preview_content: Option<String>,
     pub preview_reactions: Vec<ReactionInfo>,
     pub comment_count: Option<u64>,
+    pub new_message_count: usize,
     pub last_activity_message_id: Option<Id<MessageMarker>>,
 }
 
@@ -209,6 +210,11 @@ pub enum ChannelPaneEntry<'a> {
         state: &'a ChannelState,
         branch: ChannelBranch,
     },
+    Thread {
+        state: &'a ChannelState,
+        parent_branch: ChannelBranch,
+        branch: ChannelBranch,
+    },
     VoiceParticipant {
         participant: VoiceParticipantState,
         parent_branch: ChannelBranch,
@@ -217,7 +223,10 @@ pub enum ChannelPaneEntry<'a> {
 
 impl ChannelPaneEntry<'_> {
     pub(super) fn is_selectable(&self) -> bool {
-        matches!(self, Self::CategoryHeader { .. } | Self::Channel { .. })
+        matches!(
+            self,
+            Self::CategoryHeader { .. } | Self::Channel { .. } | Self::Thread { .. }
+        )
     }
 }
 

@@ -71,6 +71,11 @@ pub enum AppEvent {
         guild_id: Option<Id<GuildMarker>>,
         channel_id: Id<ChannelMarker>,
     },
+    ThreadMembersUpdate {
+        channel_id: Id<ChannelMarker>,
+        added_user_ids: Vec<Id<UserMarker>>,
+        removed_user_ids: Vec<Id<UserMarker>>,
+    },
     MessageCreate {
         guild_id: Option<Id<GuildMarker>>,
         channel_id: Id<ChannelMarker>,

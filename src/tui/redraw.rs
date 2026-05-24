@@ -443,7 +443,8 @@ pub(super) fn visible_dashboard_signature(state: &DashboardState) -> VisibleDash
                 .visible_channel_pane_entries()
                 .into_iter()
                 .map(|entry| match entry {
-                    state::ChannelPaneEntry::Channel { state: channel, .. } => {
+                    state::ChannelPaneEntry::Channel { state: channel, .. }
+                    | state::ChannelPaneEntry::Thread { state: channel, .. } => {
                         ChannelEntrySignature {
                             row: debug_signature(&entry),
                             unread: Some(state.channel_unread(channel.id)),

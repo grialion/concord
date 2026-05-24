@@ -21,6 +21,7 @@ pub struct ChannelState {
     pub total_message_sent: Option<u64>,
     pub thread_metadata: Option<crate::discord::ThreadMetadataInfo>,
     pub flags: Option<u64>,
+    pub current_user_joined_thread: bool,
     pub recipients: Vec<ChannelRecipientState>,
     /// Channel-level permission overrides used by `can_view_channel`. Threads
     /// inherit from their parent channel, so this stays empty for threads
@@ -262,6 +263,10 @@ impl DiscordState {
         } else {
             channel.permission_overwrites.clone()
         };
+        let current_user_joined_thread = channel
+            .current_user_joined_thread
+            .or_else(|| existing.map(|existing| existing.current_user_joined_thread))
+            .unwrap_or(false);
 
         self.navigation.channels.insert(
             channel.channel_id,
@@ -279,10 +284,26 @@ impl DiscordState {
                 total_message_sent: channel.total_message_sent,
                 thread_metadata: channel.thread_metadata.clone(),
                 flags: channel.flags,
+                current_user_joined_thread,
                 recipients,
                 permission_overwrites,
             },
         );
+    }
+
+    pub(in crate::discord) fn set_current_user_thread_membership(
+        &mut self,
+        channel_id: Id<ChannelMarker>,
+        joined: bool,
+    ) {
+        if let Some(channel) = self
+            .navigation
+            .channels
+            .get_mut(&channel_id)
+            .filter(|channel| channel.is_thread())
+        {
+            channel.current_user_joined_thread = joined;
+        }
     }
 
     pub(in crate::discord) fn refresh_dm_channel_info_from_profile(

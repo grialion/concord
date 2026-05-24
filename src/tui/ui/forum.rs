@@ -178,6 +178,20 @@ fn forum_post_metadata_spans(
             primary_style,
         );
     }
+    if post.new_message_count > 0 {
+        let label = if post.new_message_count == 1 {
+            "new message"
+        } else {
+            "new messages"
+        };
+        push_forum_metadata_part(
+            &mut spans,
+            &mut used_width,
+            width,
+            format!("{} {label}", post.new_message_count),
+            Style::default().fg(Color::Yellow).bold(),
+        );
+    }
     if let Some(layout) =
         forum_post_reaction_layout_for_width(&post.preview_reactions, width, show_custom_emoji)
     {

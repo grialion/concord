@@ -5,15 +5,16 @@ use crate::discord::GuildFolder;
 fn channel_pane_excludes_threads() {
     let state = state_with_thread_created_message();
     let entries = state.channel_pane_entries();
-    let channel_ids: Vec<Id<ChannelMarker>> = entries
-        .iter()
-        .filter_map(|entry| match entry {
-            ChannelPaneEntry::Channel { state, .. } => Some(state.id),
-            ChannelPaneEntry::CategoryHeader { .. } | ChannelPaneEntry::VoiceParticipant { .. } => {
-                None
-            }
-        })
-        .collect();
+    let channel_ids: Vec<Id<ChannelMarker>> =
+        entries
+            .iter()
+            .filter_map(|entry| match entry {
+                ChannelPaneEntry::Channel { state, .. }
+                | ChannelPaneEntry::Thread { state, .. } => Some(state.id),
+                ChannelPaneEntry::CategoryHeader { .. }
+                | ChannelPaneEntry::VoiceParticipant { .. } => None,
+            })
+            .collect();
     assert!(channel_ids.contains(&Id::new(2)));
     assert!(!channel_ids.contains(&Id::new(10)));
 }

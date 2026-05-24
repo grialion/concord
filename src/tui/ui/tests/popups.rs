@@ -1061,6 +1061,7 @@ fn leader_action_popup_renders_modified_action_shortcut_labels() {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],

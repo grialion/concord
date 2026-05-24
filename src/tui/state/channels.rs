@@ -476,9 +476,39 @@ impl DashboardState {
                 .map(|message| message.reactions.clone())
                 .unwrap_or_default(),
             comment_count: channel.message_count.or(channel.total_message_sent),
+            new_message_count: self.forum_thread_new_message_count(channel.id),
             last_activity_message_id: channel
                 .last_message_id
                 .or_else(|| preview.map(|message| message.id)),
+        }
+    }
+
+    fn forum_thread_new_message_count(&self, channel_id: Id<ChannelMarker>) -> usize {
+        if self
+            .discord
+            .cache
+            .channel(channel_id)
+            .is_some_and(|channel| channel.is_thread() && !channel.current_user_joined_thread)
+        {
+            return 0;
+        }
+        let last_acked = self.discord.cache.channel_last_acked_message_id(channel_id);
+        let loaded_count = self
+            .discord
+            .messages_for_channel(channel_id)
+            .into_iter()
+            .filter(|message| last_acked.is_none_or(|acked| message.id > acked))
+            .count();
+        if loaded_count > 0 {
+            return loaded_count;
+        }
+
+        match self.discord.cache.channel_unread(channel_id) {
+            ChannelUnreadState::Mentioned(count) | ChannelUnreadState::Notified(count) => {
+                usize::try_from(count).unwrap_or(usize::MAX)
+            }
+            ChannelUnreadState::Unread => 1,
+            ChannelUnreadState::Seen => 0,
         }
     }
 
@@ -728,15 +758,11 @@ impl DashboardState {
 
     pub fn channel_pane_entries(&self) -> Vec<ChannelPaneEntry<'_>> {
         let mut channels = self.channels();
-        // Threads are reached through channel Leader Actions instead of
-        // appearing as top-level entries. Without this filter their parent
-        // channel would not be in `category_ids`, so the roots filter below
-        // would let them through and render them under the channel list.
-        channels.retain(|channel| !channel.is_thread());
         if self.navigation.active_guild == ActiveGuildScope::DirectMessages {
             sort_direct_message_channels(&mut channels);
             return channels
                 .into_iter()
+                .filter(|state| !state.is_thread())
                 .map(|state| ChannelPaneEntry::Channel {
                     state,
                     branch: ChannelBranch::None,
@@ -765,6 +791,7 @@ impl DashboardState {
                     || channel
                         .parent_id
                         .is_none_or(|parent_id| !category_ids.contains(&parent_id))
+                        && !channel.is_thread()
             })
             .collect();
         sort_channels(&mut roots);
@@ -793,7 +820,11 @@ impl DashboardState {
             let mut children: Vec<&ChannelState> = channels
                 .iter()
                 .copied()
-                .filter(|channel| !channel.is_category() && channel.parent_id == Some(root.id))
+                .filter(|channel| {
+                    !channel.is_category()
+                        && !channel.is_thread()
+                        && channel.parent_id == Some(root.id)
+                })
                 .collect();
             sort_channels(&mut children);
             if collapsed {
@@ -831,6 +862,7 @@ impl DashboardState {
         voice_participants_by_channel: &BTreeMap<Id<ChannelMarker>, Vec<VoiceParticipantState>>,
     ) {
         entries.push(ChannelPaneEntry::Channel { state, branch });
+        self.push_joined_thread_entries(entries, state.id, branch);
         if !state.is_voice() {
             return;
         }
@@ -841,6 +873,37 @@ impl DashboardState {
             ChannelPaneEntry::VoiceParticipant {
                 participant,
                 parent_branch: branch,
+            }
+        }));
+    }
+
+    fn push_joined_thread_entries<'a>(
+        &'a self,
+        entries: &mut Vec<ChannelPaneEntry<'a>>,
+        parent_id: Id<ChannelMarker>,
+        parent_branch: ChannelBranch,
+    ) {
+        let mut threads: Vec<&ChannelState> = self
+            .channels()
+            .into_iter()
+            .filter(|channel| {
+                channel.is_thread()
+                    && channel.parent_id == Some(parent_id)
+                    && channel.current_user_joined_thread
+            })
+            .collect();
+        sort_thread_channels(&mut threads);
+        let last_child_index = threads.len().saturating_sub(1);
+        entries.extend(threads.into_iter().enumerate().map(|(index, state)| {
+            let branch = if index == last_child_index {
+                ChannelBranch::Last
+            } else {
+                ChannelBranch::Middle
+            };
+            ChannelPaneEntry::Thread {
+                state,
+                parent_branch,
+                branch,
             }
         }));
     }
@@ -865,7 +928,9 @@ impl DashboardState {
             .into_iter()
             .enumerate()
             .filter_map(|(index, channel)| {
-                if channel.is_thread() || channel.is_category() {
+                if channel.is_category()
+                    || (channel.is_thread() && !channel.current_user_joined_thread)
+                {
                     return None;
                 }
                 fuzzy_name_match_score(&channel.name, &query)
@@ -885,8 +950,8 @@ impl DashboardState {
 
     fn channel_pane_search_channels(&self) -> Vec<&ChannelState> {
         let mut channels = self.channels();
-        channels.retain(|channel| !channel.is_thread());
         if self.navigation.active_guild == ActiveGuildScope::DirectMessages {
+            channels.retain(|channel| !channel.is_thread());
             sort_direct_message_channels(&mut channels);
             return channels;
         }
@@ -904,6 +969,7 @@ impl DashboardState {
                     || channel
                         .parent_id
                         .is_none_or(|parent_id| !category_ids.contains(&parent_id))
+                        && !channel.is_thread()
             })
             .collect();
         sort_channels(&mut roots);
@@ -918,7 +984,11 @@ impl DashboardState {
             let mut children: Vec<&ChannelState> = channels
                 .iter()
                 .copied()
-                .filter(|channel| !channel.is_category() && channel.parent_id == Some(root.id))
+                .filter(|channel| {
+                    !channel.is_category()
+                        && !channel.is_thread()
+                        && channel.parent_id == Some(root.id)
+                })
                 .collect();
             sort_channels(&mut children);
             search_channels.extend(children);
@@ -931,7 +1001,10 @@ impl DashboardState {
         let channel_id = {
             let entries = self.channel_pane_filtered_entries();
             match entries.get(selected) {
-                Some(ChannelPaneEntry::Channel { state, .. }) => Some(state.id),
+                Some(
+                    ChannelPaneEntry::Channel { state, .. }
+                    | ChannelPaneEntry::Thread { state, .. },
+                ) => Some(state.id),
                 _ => None,
             }
         };
@@ -1007,7 +1080,9 @@ impl DashboardState {
 
     pub(super) fn selected_channel_cursor_id(&self) -> Option<Id<ChannelMarker>> {
         match self.channel_pane_entries().get(self.selected_channel()) {
-            Some(ChannelPaneEntry::Channel { state, .. }) => Some(state.id),
+            Some(
+                ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. },
+            ) => Some(state.id),
             Some(
                 ChannelPaneEntry::CategoryHeader { .. } | ChannelPaneEntry::VoiceParticipant { .. },
             )
@@ -1045,7 +1120,11 @@ impl DashboardState {
             return;
         };
         if let Some(index) = self.channel_pane_entries().iter().position(|entry| {
-            matches!(entry, ChannelPaneEntry::Channel { state, .. } if state.id == channel_id)
+            matches!(
+                entry,
+                ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. }
+                    if state.id == channel_id
+            )
         }) {
             self.navigation.selected_channel = index;
         }
@@ -1196,7 +1275,8 @@ impl DashboardState {
     pub fn is_active_channel_entry(&self, entry: &ChannelPaneEntry<'_>) -> bool {
         matches!(
             entry,
-            ChannelPaneEntry::Channel { state, .. } if Some(state.id) == self.navigation.active_channel_id
+            ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. }
+                if Some(state.id) == self.navigation.active_channel_id
         )
     }
 
@@ -1222,9 +1302,9 @@ impl DashboardState {
                 self.toggle_selected_channel_category();
                 None
             }
-            Some(ChannelPaneEntry::Channel { state, .. }) => {
-                self.activate_channel_command(state.id)
-            }
+            Some(
+                ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. },
+            ) => self.activate_channel_command(state.id),
             Some(ChannelPaneEntry::VoiceParticipant { .. }) => None,
             None => None,
         }
@@ -1371,9 +1451,7 @@ impl DashboardState {
         self.try_apply_unread_anchor_scroll();
 
         self.clamp_message_viewport();
-        if is_forum {
-            self.queue_forum_acks(channel_id);
-        } else {
+        if !is_forum {
             self.queue_channel_ack(channel_id);
         }
 
@@ -1461,6 +1539,18 @@ impl DashboardState {
                     ChannelPaneEntry::CategoryHeader { state, .. } => Some(state.id),
                     _ => None,
                 }),
+            Some(ChannelPaneEntry::Thread { parent_branch, .. })
+                if parent_branch.is_category_child() =>
+            {
+                entries
+                    .get(..selected)?
+                    .iter()
+                    .rev()
+                    .find_map(|entry| match entry {
+                        ChannelPaneEntry::CategoryHeader { state, .. } => Some(state.id),
+                        _ => None,
+                    })
+            }
             Some(ChannelPaneEntry::VoiceParticipant { parent_branch, .. })
                 if parent_branch.is_category_child() =>
             {
@@ -1480,7 +1570,9 @@ impl DashboardState {
     fn selected_channel_action_target_id(&self) -> Option<Id<ChannelMarker>> {
         match self.channel_pane_entries().get(self.selected_channel()) {
             Some(ChannelPaneEntry::CategoryHeader { state, .. }) => Some(state.id),
-            Some(ChannelPaneEntry::Channel { state, .. }) => Some(state.id),
+            Some(
+                ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. },
+            ) => Some(state.id),
             Some(ChannelPaneEntry::VoiceParticipant { .. }) => None,
             None => None,
         }

@@ -269,6 +269,7 @@ fn state_with_message_id(message_id: Id<MessageMarker>, content: &str) -> Dashbo
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
@@ -328,6 +329,7 @@ fn state_with_forum_posts(post_count: usize) -> DashboardState {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
@@ -650,6 +652,7 @@ fn channel_with_recipients(kind: &str, statuses: &[PresenceStatus]) -> ChannelSt
         total_message_sent: None,
         thread_metadata: None,
         flags: None,
+        current_user_joined_thread: false,
         recipients: statuses
             .iter()
             .enumerate()

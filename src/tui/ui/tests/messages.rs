@@ -23,6 +23,7 @@ fn server_pane_shows_guild_mention_badge() {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
@@ -84,6 +85,7 @@ fn active_server_mention_badge_keeps_active_name_style() {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
@@ -166,6 +168,7 @@ fn message_viewport_author_uses_resolved_role_color() {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
@@ -294,6 +297,7 @@ fn history_message_author_uses_channel_guild_for_role_color() {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
@@ -1240,6 +1244,7 @@ fn thread_created_message_uses_cached_thread_details() {
         total_message_sent: Some(14),
         thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
         flags: None,
+        current_user_joined_thread: None,
         recipients: None,
         permission_overwrites: Vec::new(),
     }));
@@ -1280,6 +1285,7 @@ fn thread_created_message_uses_cached_thread_message_when_last_id_missing() {
         total_message_sent: Some(14),
         thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
         flags: None,
+        current_user_joined_thread: None,
         recipients: None,
         permission_overwrites: Vec::new(),
     }));
@@ -1333,6 +1339,7 @@ fn thread_created_message_falls_back_to_system_message_time() {
         total_message_sent: Some(14),
         thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
         flags: None,
+        current_user_joined_thread: None,
         recipients: None,
         permission_overwrites: Vec::new(),
     }));
@@ -1365,6 +1372,7 @@ fn thread_created_message_keeps_archived_and_locked_metadata() {
         total_message_sent: Some(14),
         thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(true, true)),
         flags: None,
+        current_user_joined_thread: None,
         recipients: None,
         permission_overwrites: Vec::new(),
     }));
@@ -1523,6 +1531,7 @@ fn forwarded_snapshot_content_uses_source_channel_guild_for_mentions() {
         total_message_sent: None,
         thread_metadata: None,
         flags: None,
+        current_user_joined_thread: None,
         recipients: None,
         permission_overwrites: Vec::new(),
     }));

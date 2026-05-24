@@ -1371,6 +1371,7 @@ mod tests {
             total_message_sent: None,
             thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }

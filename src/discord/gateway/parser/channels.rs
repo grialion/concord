@@ -89,6 +89,7 @@ pub(crate) fn parse_channel_info(
                 .collect()
         })
         .unwrap_or_default();
+    let current_user_joined_thread = parse_current_user_thread_membership(value, &kind);
 
     Some(ChannelInfo {
         guild_id,
@@ -104,9 +105,24 @@ pub(crate) fn parse_channel_info(
         total_message_sent: value.get("total_message_sent").and_then(Value::as_u64),
         thread_metadata: value.get("thread_metadata").and_then(parse_thread_metadata),
         flags: value.get("flags").and_then(Value::as_u64),
+        current_user_joined_thread,
         recipients,
         permission_overwrites,
     })
+}
+
+fn parse_current_user_thread_membership(value: &Value, kind: &str) -> Option<bool> {
+    if !matches!(
+        kind,
+        "GuildNewsThread" | "GuildPublicThread" | "GuildPrivateThread"
+    ) {
+        return None;
+    }
+    if value.get("member").is_some() || value.get("thread_member").is_some() {
+        Some(true)
+    } else {
+        None
+    }
 }
 
 fn parse_thread_metadata(value: &Value) -> Option<ThreadMetadataInfo> {
@@ -230,4 +246,35 @@ pub(super) fn parse_thread_list_sync(data: &Value) -> Vec<AppEvent> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+pub(super) fn parse_thread_members_update(data: &Value) -> Vec<AppEvent> {
+    let Some(channel_id) = data.get("id").and_then(parse_id::<ChannelMarker>) else {
+        return Vec::new();
+    };
+
+    let added_user_ids: Vec<_> = data
+        .get("added_members")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|member| member.get("user_id").and_then(parse_id::<UserMarker>))
+        .collect();
+    let removed_user_ids: Vec<_> = data
+        .get("removed_member_ids")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(parse_id::<UserMarker>)
+        .collect();
+
+    if added_user_ids.is_empty() && removed_user_ids.is_empty() {
+        Vec::new()
+    } else {
+        vec![AppEvent::ThreadMembersUpdate {
+            channel_id,
+            added_user_ids,
+            removed_user_ids,
+        }]
+    }
 }

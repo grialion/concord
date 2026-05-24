@@ -474,6 +474,7 @@ mod tests {
                 total_message_sent: None,
                 thread_metadata: None,
                 flags: None,
+                current_user_joined_thread: None,
                 recipients: None,
                 permission_overwrites: Vec::new(),
             }],
@@ -514,6 +515,7 @@ mod tests {
                 total_message_sent: None,
                 thread_metadata: None,
                 flags: None,
+                current_user_joined_thread: None,
                 recipients: None,
                 permission_overwrites: Vec::new(),
             }],
@@ -537,6 +539,7 @@ mod tests {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }));

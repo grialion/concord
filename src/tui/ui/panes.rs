@@ -315,7 +315,8 @@ pub(super) fn render_channels(frame: &mut Frame, area: Rect, state: &DashboardSt
         .windows(2)
         .filter_map(|window| match (&window[0], &window[1]) {
             (
-                ChannelPaneEntry::Channel { state: channel, .. },
+                ChannelPaneEntry::Channel { state: channel, .. }
+                | ChannelPaneEntry::Thread { state: channel, .. },
                 ChannelPaneEntry::VoiceParticipant { .. },
             ) => Some(channel.id),
             _ => None,
@@ -431,6 +432,48 @@ pub(super) fn render_channels(frame: &mut Frame, area: Rect, state: &DashboardSt
                         } else {
                             spans.push(Span::styled(channel_prefix, Style::default().fg(DIM)));
                         }
+                        spans.push(Span::styled(
+                            truncate_display_width_from(
+                                &state.name,
+                                horizontal_scroll,
+                                label_width,
+                            ),
+                            name_style,
+                        ));
+                        ListItem::new(Line::from(spans))
+                    }
+                    ChannelPaneEntry::Thread {
+                        state,
+                        parent_branch,
+                        branch,
+                    } => {
+                        let parent_prefix = parent_branch.participant_prefix();
+                        let branch_prefix = branch.prefix();
+                        let thread_prefix = "↳ ";
+                        let base_style = active_text_style(is_active, Style::default());
+                        let is_muted = dashboard.channel_notification_muted(state.id);
+                        let unread = dashboard.sidebar_channel_unread(state.id);
+                        let (badge, mut name_style) =
+                            channel_unread_decoration(unread, base_style, is_active);
+                        if is_muted {
+                            name_style = name_style.add_modifier(Modifier::DIM);
+                        }
+                        let badge_width =
+                            badge.as_ref().map(|span| span.content.width()).unwrap_or(0);
+                        let label_width = max_width
+                            .saturating_sub(parent_prefix.width())
+                            .saturating_sub(branch_prefix.width())
+                            .saturating_sub(thread_prefix.width())
+                            .saturating_sub(badge_width);
+                        let mut spans = vec![
+                            selection_marker(is_selected),
+                            Span::styled(parent_prefix, Style::default().fg(DIM)),
+                            Span::styled(branch_prefix, Style::default().fg(DIM)),
+                        ];
+                        if let Some(badge) = badge {
+                            spans.push(badge);
+                        }
+                        spans.push(Span::styled(thread_prefix, Style::default().fg(DIM)));
                         spans.push(Span::styled(
                             truncate_display_width_from(
                                 &state.name,

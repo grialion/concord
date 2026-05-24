@@ -22,6 +22,7 @@ fn forum_blank_bottom_rows_do_not_select_hidden_posts() {
             total_message_sent: Some(1),
             thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
             flags: None,
+            current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),
         }],
