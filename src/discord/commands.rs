@@ -133,6 +133,29 @@ impl ReactionEmoji {
             extension
         ))
     }
+
+    pub(crate) fn route_component(&self) -> String {
+        match self {
+            Self::Unicode(name) => percent_encode_path_segment(name),
+            Self::Custom { id, name, .. } => percent_encode_path_segment(&format!(
+                "{}:{id}",
+                name.as_deref().unwrap_or_default()
+            )),
+        }
+    }
+}
+
+fn percent_encode_path_segment(value: &str) -> String {
+    let mut encoded = String::new();
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                encoded.push(char::from(byte));
+            }
+            _ => encoded.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    encoded
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

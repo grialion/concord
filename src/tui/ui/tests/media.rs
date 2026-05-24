@@ -62,9 +62,9 @@ fn image_preview_rows_are_part_of_the_message_item() {
 fn message_viewport_lines_put_reactions_below_image_preview_rows() {
     let mut message = message_with_attachment(Some("look".to_owned()), image_attachment());
     message.reactions = vec![ReactionInfo {
-        emoji: ReactionEmoji::Unicode("👍".to_owned()),
         count: 3,
         me: true,
+        ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
     }];
     let messages = [&message];
 
@@ -197,9 +197,9 @@ fn later_image_preview_slot_accounts_for_prior_preview_rows() {
 fn inline_image_preview_row_ignores_reaction_footer_for_current_message() {
     let mut message = message_with_attachment(Some("one".to_owned()), image_attachment());
     message.reactions = vec![ReactionInfo {
-        emoji: ReactionEmoji::Unicode("👍".to_owned()),
         count: 3,
         me: true,
+        ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
     }];
     let messages = [&message];
     let state = DashboardState::new();

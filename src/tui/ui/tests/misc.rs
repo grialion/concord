@@ -80,27 +80,15 @@ fn later_history_does_not_clear_loaded_pin_state() {
 #[test]
 fn primary_activity_summary_prefers_game_over_custom_status() {
     let activities = vec![
+        ActivityInfo::test(ActivityKind::Playing, "Concord"),
         ActivityInfo {
-            kind: ActivityKind::Playing,
-            name: "Concord".to_owned(),
-            details: None,
-            state: None,
-            url: None,
-            application_id: None,
-            emoji: None,
-        },
-        ActivityInfo {
-            kind: ActivityKind::Custom,
-            name: "Custom Status".to_owned(),
-            details: None,
             state: Some("Coding hard".to_owned()),
-            url: None,
-            application_id: None,
             emoji: Some(ActivityEmoji {
                 name: "🦀".to_owned(),
                 id: None,
                 animated: false,
             }),
+            ..ActivityInfo::test(ActivityKind::Custom, "Custom Status")
         },
     ];
 
@@ -113,13 +101,9 @@ fn primary_activity_summary_prefers_game_over_custom_status() {
 #[test]
 fn primary_activity_summary_listening_includes_track_and_artist() {
     let activities = vec![ActivityInfo {
-        kind: ActivityKind::Listening,
-        name: "Spotify".to_owned(),
         details: Some("Bohemian Rhapsody".to_owned()),
         state: Some("Queen".to_owned()),
-        url: None,
-        application_id: None,
-        emoji: None,
+        ..ActivityInfo::test(ActivityKind::Listening, "Spotify")
     }];
     assert_eq!(
         primary_activity_summary(&activities, &[]).map(|r| r.to_display_string()),
@@ -130,17 +114,13 @@ fn primary_activity_summary_listening_includes_track_and_artist() {
 #[test]
 fn primary_activity_summary_sanitizes_custom_status_emoji() {
     let activities = vec![ActivityInfo {
-        kind: ActivityKind::Custom,
-        name: "Custom Status".to_owned(),
-        details: None,
         state: Some("curse of rah".to_owned()),
-        url: None,
-        application_id: None,
         emoji: Some(ActivityEmoji {
             name: "⚜".to_owned(),
             id: None,
             animated: false,
         }),
+        ..ActivityInfo::test(ActivityKind::Custom, "Custom Status")
     }];
 
     assert_eq!(
@@ -225,38 +205,19 @@ fn chat_input_command_message_keeps_embed_text() {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: vec![MemberInfo {
-            user_id,
-            display_name: "casey".to_owned(),
             username: Some("casey".to_owned()),
-            is_bot: false,
-            avatar_url: None,
             role_ids: vec![role_id],
+            ..MemberInfo::test(user_id, "casey")
         }],
         presences: Vec::new(),
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Blue".to_owned(),
             color: Some(0x3366CC),
             position: 10,
-            hoist: false,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Blue")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -265,8 +226,8 @@ fn chat_input_command_message_keeps_embed_text() {
     message.message_kind = MessageKind::new(20);
     message.interaction = Some(MessageInteractionInfo {
         user_id: Some(user_id),
-        user: "casey".to_owned(),
         command_name: Some("anime search".to_owned()),
+        ..MessageInteractionInfo::test("casey")
     });
     message.embeds = vec![youtube_embed()];
 
@@ -330,16 +291,13 @@ fn poll_result_message_uses_result_card() {
     let mut message = message_with_content(Some(String::new()));
     message.message_kind = MessageKind::new(46);
     message.poll = Some(PollInfo {
-        question: "What should we eat?".to_owned(),
         answers: vec![PollAnswerInfo {
-            answer_id: 1,
-            text: "Soup".to_owned(),
             vote_count: Some(5),
-            me_voted: false,
+            ..PollAnswerInfo::test(1, "Soup")
         }],
-        allow_multiselect: false,
         results_finalized: Some(true),
         total_votes: Some(7),
+        ..PollInfo::test("What should we eat?")
     });
 
     let lines = format_message_content_lines(&message, &DashboardState::new(), 200);
@@ -360,11 +318,8 @@ fn reply_message_uses_preview_instead_of_type_label() {
     let mut message = message_with_attachment(Some("message body".to_owned()), image_attachment());
     message.message_kind = MessageKind::new(19);
     message.reply = Some(ReplyInfo {
-        author_id: None,
-        author: "casey".to_owned(),
         content: Some("looks good".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
+        ..ReplyInfo::test("casey")
     });
 
     let lines = format_message_content_lines(&message, &DashboardState::new(), 200);
@@ -442,15 +397,11 @@ fn poll_message_places_body_inside_box() {
 fn lay_out_reaction_chips_unicode_only_emits_no_image_slots() {
     let reactions = vec![
         ReactionInfo {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
             count: 3,
             me: true,
+            ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
         },
-        ReactionInfo {
-            emoji: ReactionEmoji::Unicode("❤".to_owned()),
-            count: 1,
-            me: false,
-        },
+        ReactionInfo::test(ReactionEmoji::Unicode("❤".to_owned())),
     ];
 
     let layout = lay_out_reaction_chips(&reactions, 200);
@@ -468,18 +419,16 @@ fn lay_out_reaction_chips_unicode_only_emits_no_image_slots() {
 fn lay_out_reaction_chips_custom_emoji_reserves_image_slot() {
     let reactions = vec![
         ReactionInfo {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
             count: 2,
-            me: false,
+            ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
         },
         ReactionInfo {
-            emoji: ReactionEmoji::Custom {
+            me: true,
+            ..ReactionInfo::test(ReactionEmoji::Custom {
                 id: Id::new(42),
                 name: Some("party".to_owned()),
                 animated: false,
-            },
-            count: 1,
-            me: true,
+            })
         },
     ];
 
@@ -502,13 +451,12 @@ fn lay_out_reaction_chips_custom_emoji_reserves_image_slot() {
 fn lay_out_reaction_chips_wraps_at_chip_boundary() {
     let reactions = (0..3)
         .map(|i| ReactionInfo {
-            emoji: ReactionEmoji::Custom {
+            count: i + 1,
+            ..ReactionInfo::test(ReactionEmoji::Custom {
                 id: Id::new(100 + i),
                 name: Some(format!("e{i}")),
                 animated: false,
-            },
-            count: i + 1,
-            me: false,
+            })
         })
         .collect::<Vec<_>>();
 
@@ -569,21 +517,8 @@ fn forwarded_snapshot_lines_include_channel_and_time() {
     state.push_event(crate::discord::AppEvent::ChannelUpsert(
         crate::discord::ChannelInfo {
             guild_id: Some(Id::new(1)),
-            channel_id: Id::new(9),
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..crate::discord::ChannelInfo::test(Id::new(9), "GuildText")
         },
     ));
     let mut snapshot = forwarded_snapshot(Some("hello"), Vec::new());
@@ -690,13 +625,8 @@ fn shared_truncation_uses_display_width_for_wide_characters() {
 #[test]
 fn member_label_truncates_by_display_width() {
     let member = GuildMemberState {
-        user_id: Id::new(10),
-        display_name: "漢字仮名交じり文章".to_owned(),
-        username: None,
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
         status: PresenceStatus::Online,
+        ..GuildMemberState::test(Id::new(10), "漢字仮名交じり文章")
     };
 
     let label = member_display_label(MemberEntry::Guild(&member), &member.display_name, 0, 12);
@@ -708,13 +638,8 @@ fn member_label_truncates_by_display_width() {
 #[test]
 fn member_label_sanitizes_ambiguous_width_emoji_before_truncating() {
     let member = GuildMemberState {
-        user_id: Id::new(10),
-        display_name: "user ⚜ status".to_owned(),
-        username: None,
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
         status: PresenceStatus::Online,
+        ..GuildMemberState::test(Id::new(10), "user ⚜ status")
     };
 
     let label = member_display_label(MemberEntry::Guild(&member), &member.display_name, 0, 12);
@@ -741,13 +666,8 @@ fn horizontal_truncation_respects_wide_character_boundaries() {
 #[test]
 fn member_label_uses_horizontal_scroll_offset() {
     let member = GuildMemberState {
-        user_id: Id::new(10),
-        display_name: "long-member-name".to_owned(),
-        username: None,
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
         status: PresenceStatus::Online,
+        ..GuildMemberState::test(Id::new(10), "long-member-name")
     };
 
     let label = member_display_label(MemberEntry::Guild(&member), &member.display_name, 5, 8);
@@ -771,15 +691,7 @@ fn channel_label_truncates_by_display_width_after_prefixes() {
 
 #[test]
 fn offline_member_name_keeps_role_color_and_dims() {
-    let member = GuildMemberState {
-        user_id: Id::new(10),
-        display_name: "neo".to_owned(),
-        username: None,
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
-        status: PresenceStatus::Offline,
-    };
+    let member = GuildMemberState::test(Id::new(10), "neo");
 
     let style = member_name_style(MemberEntry::Guild(&member), Some(0x3366CC), false);
 
@@ -795,13 +707,8 @@ fn no_role_member_name_stays_white_for_online_like_statuses() {
         PresenceStatus::DoNotDisturb,
     ] {
         let member = GuildMemberState {
-            user_id: Id::new(10),
-            display_name: "neo".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
-            role_ids: Vec::new(),
             status,
+            ..GuildMemberState::test(Id::new(10), "neo")
         };
 
         let style = member_name_style(MemberEntry::Guild(&member), None, false);
@@ -813,15 +720,7 @@ fn no_role_member_name_stays_white_for_online_like_statuses() {
 
 #[test]
 fn no_role_offline_member_name_is_white_and_dimmed() {
-    let member = GuildMemberState {
-        user_id: Id::new(10),
-        display_name: "neo".to_owned(),
-        username: None,
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
-        status: PresenceStatus::Offline,
-    };
+    let member = GuildMemberState::test(Id::new(10), "neo");
 
     let style = member_name_style(MemberEntry::Guild(&member), None, false);
 
@@ -832,13 +731,9 @@ fn no_role_offline_member_name_is_white_and_dimmed() {
 #[test]
 fn selected_bot_member_name_preserves_role_color_and_selection_style() {
     let member = GuildMemberState {
-        user_id: Id::new(10),
-        display_name: "bot".to_owned(),
-        username: None,
         is_bot: true,
-        avatar_url: None,
-        role_ids: Vec::new(),
         status: PresenceStatus::Online,
+        ..GuildMemberState::test(Id::new(10), "bot")
     };
 
     let style = member_name_style(MemberEntry::Guild(&member), Some(0x3366CC), true);

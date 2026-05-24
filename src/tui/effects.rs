@@ -383,8 +383,7 @@ mod tests {
 
     use crate::discord::ids::Id;
     use crate::discord::{
-        AppCommand, AppEvent, ChannelInfo, ForumPostArchiveState, MemberInfo, MessageInfo,
-        MessageKind, RoleInfo,
+        AppCommand, AppEvent, ChannelInfo, ForumPostArchiveState, MemberInfo, MessageInfo, RoleInfo,
     };
 
     use super::*;
@@ -517,14 +516,7 @@ mod tests {
             channels: vec![channel],
             members: Vec::<MemberInfo>::new(),
             presences: Vec::new(),
-            roles: vec![RoleInfo {
-                id: Id::new(guild_id.get()),
-                name: "@everyone".to_owned(),
-                color: None,
-                position: 0,
-                hoist: false,
-                permissions: 0,
-            }],
+            roles: vec![RoleInfo::test(Id::new(guild_id.get()), "@everyone")],
             emojis: Vec::new(),
         });
     }
@@ -538,21 +530,10 @@ mod tests {
     ) -> ChannelInfo {
         ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
             parent_id,
-            owner_id: None,
             position: Some(0),
-            last_message_id: None,
             name: name.to_owned(),
-            kind: kind.to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, kind)
         }
     }
 
@@ -564,27 +545,10 @@ mod tests {
     ) -> MessageInfo {
         MessageInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            message_id,
             author_id,
             author: "neo".to_owned(),
-            author_avatar_url: None,
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
-            pinned: false,
-            reactions: Vec::new(),
             content: Some("hello".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments: Vec::new(),
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-            edited_timestamp: None,
+            ..MessageInfo::test(channel_id, message_id)
         }
     }
 

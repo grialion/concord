@@ -30,6 +30,22 @@ pub struct GuildMemberState {
     pub status: PresenceStatus,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl GuildMemberState {
+    pub(crate) fn test(user_id: Id<UserMarker>, display_name: impl Into<String>) -> Self {
+        Self {
+            user_id,
+            display_name: display_name.into(),
+            username: None,
+            is_bot: false,
+            avatar_url: None,
+            role_ids: Vec::new(),
+            status: PresenceStatus::Offline,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RoleState {
     pub id: Id<RoleMarker>,

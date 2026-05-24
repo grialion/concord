@@ -4,12 +4,14 @@ use crate::discord::ids::{
 };
 
 use super::super::{ActiveGuildScope, DashboardState};
+pub(super) use crate::discord::test_builders::{
+    MessageCreateFixture, guild_message_create_fixture, message_create_event,
+};
 use crate::discord::{
     AppEvent, AttachmentInfo, ChannelInfo, CustomEmojiInfo, EmbedInfo, GuildFolder, MemberInfo,
-    MentionInfo, MessageInfo, MessageInteractionInfo, MessageKind, MessageReferenceInfo,
-    MessageSnapshotInfo, MessageState, PermissionOverwriteInfo, PermissionOverwriteKind,
-    PollAnswerInfo, PollInfo, PresenceStatus, ReactionEmoji, ReactionInfo, ReadStateInfo,
-    ReplyInfo, RoleInfo, ThreadMetadataInfo, VoiceStateInfo,
+    MessageInfo, MessageKind, MessageReferenceInfo, MessageSnapshotInfo, MessageState,
+    PermissionOverwriteInfo, PermissionOverwriteKind, PollAnswerInfo, PollInfo, PresenceStatus,
+    ReactionEmoji, ReactionInfo, ReadStateInfo, RoleInfo, ThreadMetadataInfo, VoiceStateInfo,
 };
 
 pub(super) const PERM_ADD_REACTIONS: u64 = 0x0000_0000_0000_0040;
@@ -17,78 +19,6 @@ pub(super) const PERM_VIEW_CHANNEL: u64 = 0x0000_0000_0000_0400;
 pub(super) const PERM_MANAGE_MESSAGES: u64 = 0x0000_0000_0000_2000;
 pub(super) const PERM_READ_MESSAGE_HISTORY: u64 = 0x0000_0000_0001_0000;
 pub(super) const PERM_PIN_MESSAGES: u64 = 0x0008_0000_0000_0000;
-
-pub(super) struct MessageCreateFixture {
-    pub(super) guild_id: Option<Id<GuildMarker>>,
-    pub(super) channel_id: Id<ChannelMarker>,
-    pub(super) message_id: Id<MessageMarker>,
-    pub(super) author_id: Id<UserMarker>,
-    pub(super) author: String,
-    pub(super) author_avatar_url: Option<String>,
-    pub(super) author_is_bot: bool,
-    pub(super) author_role_ids: Vec<Id<RoleMarker>>,
-    pub(super) message_kind: MessageKind,
-    pub(super) interaction: Option<MessageInteractionInfo>,
-    pub(super) reference: Option<MessageReferenceInfo>,
-    pub(super) reply: Option<ReplyInfo>,
-    pub(super) poll: Option<PollInfo>,
-    pub(super) content: Option<String>,
-    pub(super) sticker_names: Vec<String>,
-    pub(super) mentions: Vec<MentionInfo>,
-    pub(super) attachments: Vec<AttachmentInfo>,
-    pub(super) embeds: Vec<EmbedInfo>,
-    pub(super) forwarded_snapshots: Vec<MessageSnapshotInfo>,
-}
-
-impl Default for MessageCreateFixture {
-    fn default() -> Self {
-        Self {
-            guild_id: Some(Id::new(1)),
-            channel_id: Id::new(2),
-            message_id: Id::new(1),
-            author_id: Id::new(99),
-            author: "neo".to_owned(),
-            author_avatar_url: None,
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
-            content: Some("hello".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments: Vec::new(),
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-        }
-    }
-}
-
-pub(super) fn message_create_event(event: MessageCreateFixture) -> AppEvent {
-    AppEvent::MessageCreate {
-        guild_id: event.guild_id,
-        channel_id: event.channel_id,
-        message_id: event.message_id,
-        author_id: event.author_id,
-        author: event.author,
-        author_avatar_url: event.author_avatar_url,
-        author_is_bot: event.author_is_bot,
-        author_role_ids: event.author_role_ids,
-        message_kind: event.message_kind,
-        interaction: event.interaction,
-        reference: event.reference,
-        reply: event.reply,
-        poll: event.poll,
-        content: event.content,
-        sticker_names: event.sticker_names,
-        mentions: event.mentions,
-        attachments: event.attachments,
-        embeds: event.embeds,
-        forwarded_snapshots: event.forwarded_snapshots,
-    }
-}
 
 pub(super) fn channel_info(
     channel_id: Id<ChannelMarker>,
@@ -193,14 +123,7 @@ pub(super) fn voice_channel_info(
 }
 
 pub(super) fn member_info(user_id: Id<UserMarker>, display_name: impl Into<String>) -> MemberInfo {
-    MemberInfo {
-        user_id,
-        display_name: display_name.into(),
-        username: None,
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
-    }
+    MemberInfo::test(user_id, display_name)
 }
 
 pub(super) fn member_with_username(
@@ -231,12 +154,8 @@ pub(super) fn role_info(
     permissions: u64,
 ) -> RoleInfo {
     RoleInfo {
-        id: role_id,
-        name: name.into(),
-        color: None,
-        position: 0,
-        hoist: false,
         permissions,
+        ..RoleInfo::test(role_id, name)
     }
 }
 
@@ -245,18 +164,7 @@ pub(super) fn voice_state(
     channel_id: Option<Id<ChannelMarker>>,
     user_id: Id<UserMarker>,
 ) -> VoiceStateInfo {
-    VoiceStateInfo {
-        guild_id,
-        channel_id,
-        user_id,
-        session_id: None,
-        member: None,
-        deaf: false,
-        mute: false,
-        self_deaf: false,
-        self_mute: false,
-        self_stream: false,
-    }
+    VoiceStateInfo::test(guild_id, channel_id, user_id)
 }
 
 pub(super) fn read_state_info(
@@ -265,9 +173,9 @@ pub(super) fn read_state_info(
     mention_count: u32,
 ) -> ReadStateInfo {
     ReadStateInfo {
-        channel_id,
         last_acked_message_id,
         mention_count,
+        ..ReadStateInfo::test(channel_id)
     }
 }
 
@@ -305,20 +213,16 @@ pub(super) fn latest_history_loaded(
 /// read-only channel that the user can read but not post in.
 pub(super) fn state_with_read_only_channel() -> DashboardState {
     guild_state_with_overwrites(vec![PermissionOverwriteInfo {
-        id: 1,
-        kind: PermissionOverwriteKind::Role,
-        allow: 0,
         deny: 0x800,
+        ..PermissionOverwriteInfo::test(1, PermissionOverwriteKind::Role)
     }])
 }
 
 /// Build a guild with a single hidden channel to verify visibility stats.
 pub(super) fn state_with_view_denied_channel() -> DashboardState {
     guild_state_with_overwrites(vec![PermissionOverwriteInfo {
-        id: 1,
-        kind: PermissionOverwriteKind::Role,
-        allow: 0,
         deny: 0x400,
+        ..PermissionOverwriteInfo::test(1, PermissionOverwriteKind::Role)
     }])
 }
 
@@ -402,10 +306,8 @@ pub(super) fn state_with_hidden_and_visible_channels() -> DashboardState {
         channels: vec![
             ChannelInfo {
                 permission_overwrites: vec![PermissionOverwriteInfo {
-                    id: guild.get(),
-                    kind: PermissionOverwriteKind::Role,
-                    allow: 0,
                     deny: 0x400,
+                    ..PermissionOverwriteInfo::test(guild.get(), PermissionOverwriteKind::Role)
                 }],
                 ..positioned_text_channel_info(guild, hidden, "secret", 0)
             },
@@ -447,14 +349,7 @@ pub(super) fn guild_state_with_overwrites(
         }],
         members: vec![member_info(me, "me")],
         presences: Vec::new(),
-        roles: vec![RoleInfo {
-            id: Id::new(guild.get()),
-            name: "@everyone".to_owned(),
-            color: None,
-            position: 0,
-            hoist: false,
-            permissions: 0x400 | 0x800, // VIEW + SEND
-        }],
+        roles: vec![role_info(Id::new(guild.get()), "@everyone", 0x400 | 0x800)], // VIEW + SEND
         emojis: Vec::new(),
     });
     state.activate_guild(ActiveGuildScope::Guild(guild));
@@ -599,12 +494,9 @@ pub(super) fn state_with_grouped_members() -> DashboardState {
             (Id::new(4), PresenceStatus::Offline),
         ],
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Role".to_owned(),
-            color: None,
             position: 1,
             hoist: true,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Role")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -665,19 +557,15 @@ pub(super) fn state_with_reaction_message() -> DashboardState {
         vec![MessageInfo {
             reactions: vec![
                 ReactionInfo {
-                    emoji: ReactionEmoji::Unicode("👍".to_owned()),
                     count: 2,
                     me: true,
+                    ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
                 },
-                ReactionInfo {
-                    emoji: ReactionEmoji::Custom {
-                        id: Id::new(50),
-                        name: Some("party".to_owned()),
-                        animated: false,
-                    },
-                    count: 1,
-                    me: false,
-                },
+                ReactionInfo::test(ReactionEmoji::Custom {
+                    id: Id::new(50),
+                    name: Some("party".to_owned()),
+                    animated: false,
+                }),
             ],
             ..message_info(Id::new(2), 1)
         }],
@@ -700,16 +588,12 @@ pub(super) fn state_with_custom_emojis() -> DashboardState {
         roles: Vec::new(),
         emojis: vec![
             CustomEmojiInfo {
-                id: Id::new(50),
-                name: "party_time".to_owned(),
                 animated: true,
-                available: true,
+                ..CustomEmojiInfo::test(Id::new(50), "party_time")
             },
             CustomEmojiInfo {
-                id: Id::new(51),
-                name: "gone".to_owned(),
-                animated: false,
                 available: false,
+                ..CustomEmojiInfo::test(Id::new(51), "gone")
             },
         ],
         owner_id: None,
@@ -722,7 +606,7 @@ pub(super) fn state_with_custom_emojis() -> DashboardState {
         message_id: Id::new(1),
         author_id: Id::new(99),
         content: Some("hello".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state
 }
@@ -745,7 +629,7 @@ pub(super) fn state_with_single_message_content(content: &str) -> DashboardState
         message_id: Id::new(1),
         author_id: Id::new(99),
         content: Some(content.to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state
 }
@@ -783,7 +667,7 @@ pub(super) fn state_with_thread_created_message() -> DashboardState {
             message_id: None,
         }),
         content: Some("release notes".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state
 }
@@ -847,7 +731,7 @@ pub(super) fn state_with_messages_matching(
                 .then(|| image_attachment(id))
                 .into_iter()
                 .collect(),
-            ..MessageCreateFixture::default()
+            ..guild_message_create_fixture()
         }));
     }
     state
@@ -860,35 +744,31 @@ pub(super) fn push_text_message(state: &mut DashboardState, message_id: u64, con
         message_id: Id::new(message_id),
         author_id: Id::new(99),
         content: Some(content.to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 }
 
 pub(super) fn image_attachment(id: u64) -> AttachmentInfo {
     AttachmentInfo {
-        id: Id::new(id),
-        filename: format!("image-{id}.png"),
         url: format!("https://cdn.discordapp.com/image-{id}.png"),
         proxy_url: format!("https://media.discordapp.net/image-{id}.png"),
         content_type: Some("image/png".to_owned()),
         size: 2048,
         width: Some(640),
         height: Some(480),
-        description: None,
+        ..AttachmentInfo::test(Id::new(id), format!("image-{id}.png"))
     }
 }
 
 pub(super) fn video_attachment(id: u64) -> AttachmentInfo {
     AttachmentInfo {
-        id: Id::new(id),
-        filename: format!("clip-{id}.mp4"),
         url: format!("https://cdn.discordapp.com/clip-{id}.mp4"),
         proxy_url: format!("https://media.discordapp.net/clip-{id}.mp4"),
         content_type: Some("video/mp4".to_owned()),
         size: 78_364_758,
         width: Some(1920),
         height: Some(1080),
-        description: None,
+        ..AttachmentInfo::test(Id::new(id), format!("clip-{id}.mp4"))
     }
 }
 
@@ -896,83 +776,51 @@ pub(super) fn youtube_embed() -> EmbedInfo {
     EmbedInfo {
         color: Some(0xff0000),
         provider_name: Some("YouTube".to_owned()),
-        author_name: None,
         title: Some("Example Video".to_owned()),
         description: Some("A video description".to_owned()),
-        timestamp: None,
-        fields: Vec::new(),
-        footer_text: None,
         url: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
         thumbnail_url: Some("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg".to_owned()),
-        thumbnail_proxy_url: None,
         thumbnail_width: Some(480),
         thumbnail_height: Some(360),
-        image_url: None,
-        image_proxy_url: None,
-        image_width: None,
-        image_height: None,
-        video_url: None,
+        ..EmbedInfo::test()
     }
 }
 
 pub(super) fn forwarded_snapshot(id: u64) -> MessageSnapshotInfo {
     MessageSnapshotInfo {
         content: Some(format!("forwarded {id}")),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
         attachments: vec![image_attachment(id)],
-        embeds: Vec::new(),
-        source_channel_id: None,
-        timestamp: None,
+        ..MessageSnapshotInfo::test()
     }
 }
 
 pub(super) fn message_info(channel_id: Id<ChannelMarker>, message_id: u64) -> MessageInfo {
     MessageInfo {
         guild_id: Some(Id::new(1)),
-        channel_id,
-        message_id: Id::new(message_id),
         author_id: Id::new(99),
         author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_role_ids: Vec::new(),
-        message_kind: MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        pinned: false,
-        reactions: Vec::new(),
         content: Some(format!("msg {message_id}")),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-        ..MessageInfo::default()
+        ..MessageInfo::test(channel_id, Id::new(message_id))
     }
 }
 
 pub(super) fn poll_info(allow_multiselect: bool) -> PollInfo {
     PollInfo {
-        question: "What should we eat?".to_owned(),
         answers: vec![
             PollAnswerInfo {
-                answer_id: 1,
-                text: "Soup".to_owned(),
                 vote_count: Some(2),
                 me_voted: true,
+                ..PollAnswerInfo::test(1, "Soup")
             },
             PollAnswerInfo {
-                answer_id: 2,
-                text: "Noodles".to_owned(),
                 vote_count: Some(1),
-                me_voted: false,
+                ..PollAnswerInfo::test(2, "Noodles")
             },
         ],
         allow_multiselect,
         results_finalized: Some(false),
         total_votes: Some(3),
+        ..PollInfo::test("What should we eat?")
     }
 }
 

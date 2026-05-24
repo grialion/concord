@@ -21,6 +21,29 @@ pub struct VoiceStateInfo {
     pub self_stream: bool,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl VoiceStateInfo {
+    pub(crate) fn test(
+        guild_id: Id<GuildMarker>,
+        channel_id: Option<Id<ChannelMarker>>,
+        user_id: Id<UserMarker>,
+    ) -> Self {
+        Self {
+            guild_id,
+            channel_id,
+            user_id,
+            session_id: None,
+            member: None,
+            deaf: false,
+            mute: false,
+            self_deaf: false,
+            self_mute: false,
+            self_stream: false,
+        }
+    }
+}
+
 impl fmt::Debug for VoiceStateInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("VoiceStateInfo")
@@ -46,6 +69,18 @@ pub struct VoiceServerInfo {
     pub guild_id: Id<GuildMarker>,
     pub endpoint: Option<String>,
     pub token: String,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl VoiceServerInfo {
+    pub(crate) fn test(guild_id: Id<GuildMarker>) -> Self {
+        Self {
+            guild_id,
+            endpoint: None,
+            token: String::new(),
+        }
+    }
 }
 
 impl fmt::Debug for VoiceServerInfo {

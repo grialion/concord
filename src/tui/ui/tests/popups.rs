@@ -7,28 +7,22 @@ use std::collections::BTreeMap;
 fn options_popup_lines_show_selected_toggle_state() {
     let items = vec![
         DisplayOptionItem {
-            label: "Disable all image previews",
-            enabled: false,
-            value: None,
-            gauge_percent: None,
-            effective: false,
             description: "Master switch.",
+            ..DisplayOptionItem::test("Disable all image previews")
         },
         DisplayOptionItem {
-            label: "Show avatars",
             enabled: true,
-            value: None,
-            gauge_percent: None,
             effective: true,
             description: "Message and profile avatars.",
+            ..DisplayOptionItem::test("Show avatars")
         },
         DisplayOptionItem {
-            label: "Image preview quality",
             enabled: true,
             value: Some("balanced".to_owned()),
             gauge_percent: Some(55),
             effective: true,
             description: "Attachment and embed previews.",
+            ..DisplayOptionItem::test("Image preview quality")
         },
     ];
 
@@ -100,36 +94,28 @@ fn dashboard_renders_toast_at_bottom_left() {
 fn options_popup_lines_keep_selected_item_visible_when_clipped() {
     let items = vec![
         DisplayOptionItem {
-            label: "Option 1",
             enabled: true,
-            value: None,
-            gauge_percent: None,
             effective: true,
             description: "First.",
+            ..DisplayOptionItem::test("Option 1")
         },
         DisplayOptionItem {
-            label: "Option 2",
             enabled: true,
-            value: None,
-            gauge_percent: None,
             effective: true,
             description: "Second.",
+            ..DisplayOptionItem::test("Option 2")
         },
         DisplayOptionItem {
-            label: "Option 3",
             enabled: true,
-            value: None,
-            gauge_percent: None,
             effective: true,
             description: "Third.",
+            ..DisplayOptionItem::test("Option 3")
         },
         DisplayOptionItem {
-            label: "Option 4",
             enabled: true,
-            value: None,
-            gauge_percent: None,
             effective: true,
             description: "Fourth.",
+            ..DisplayOptionItem::test("Option 4")
         },
     ];
 
@@ -241,36 +227,20 @@ fn user_profile_popup_renders_activity_section() {
     let state = DashboardState::new();
     let activities = vec![
         ActivityInfo {
-            kind: ActivityKind::Custom,
-            name: "Custom Status".to_owned(),
-            details: None,
             state: Some("Coding hard".to_owned()),
-            url: None,
-            application_id: None,
             emoji: Some(ActivityEmoji {
                 name: "🦀".to_owned(),
                 id: None,
                 animated: false,
             }),
+            ..ActivityInfo::test(ActivityKind::Custom, "Custom Status")
         },
         ActivityInfo {
-            kind: ActivityKind::Listening,
-            name: "Spotify".to_owned(),
             details: Some("Bohemian Rhapsody".to_owned()),
             state: Some("Queen".to_owned()),
-            url: None,
-            application_id: None,
-            emoji: None,
+            ..ActivityInfo::test(ActivityKind::Listening, "Spotify")
         },
-        ActivityInfo {
-            kind: ActivityKind::Playing,
-            name: "Concord".to_owned(),
-            details: None,
-            state: None,
-            url: None,
-            application_id: None,
-            emoji: None,
-        },
+        ActivityInfo::test(ActivityKind::Playing, "Concord"),
     ];
 
     let lines = user_profile_popup_lines_with_activities(
@@ -325,19 +295,17 @@ fn user_profile_popup_lists_mutual_servers_without_selection_marker() {
 fn message_action_menu_marks_selected_and_disabled_actions() {
     let actions = vec![
         MessageActionItem {
-            kind: MessageActionKind::OpenThread,
             label: "Open thread".to_owned(),
-            enabled: true,
+            ..MessageActionItem::test(MessageActionKind::OpenThread)
         },
         MessageActionItem {
-            kind: MessageActionKind::ShowReactionUsers,
             label: "Show reacted users".to_owned(),
             enabled: false,
+            ..MessageActionItem::test(MessageActionKind::ShowReactionUsers)
         },
         MessageActionItem {
-            kind: MessageActionKind::OpenPollVotePicker,
             label: "Choose poll votes".to_owned(),
-            enabled: true,
+            ..MessageActionItem::test(MessageActionKind::OpenPollVotePicker)
         },
     ];
 
@@ -357,14 +325,12 @@ fn message_action_menu_marks_selected_and_disabled_actions() {
 fn message_action_menu_uses_numbered_shortcuts_for_duplicate_preferred_keys() {
     let actions = vec![
         MessageActionItem {
-            kind: MessageActionKind::ShowReactionUsers,
             label: "Show cat users".to_owned(),
-            enabled: true,
+            ..MessageActionItem::test(MessageActionKind::ShowReactionUsers)
         },
         MessageActionItem {
-            kind: MessageActionKind::ShowReactionUsers,
             label: "Show dog users".to_owned(),
-            enabled: true,
+            ..MessageActionItem::test(MessageActionKind::ShowReactionUsers)
         },
     ];
 
@@ -395,16 +361,16 @@ fn message_url_picker_truncates_fragment_urls_to_menu_width() {
 fn emoji_reaction_picker_marks_selected_reaction() {
     let reactions = vec![
         EmojiReactionItem {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
             label: "Thumbs up".to_owned(),
+            ..EmojiReactionItem::test(ReactionEmoji::Unicode("👍".to_owned()))
         },
         EmojiReactionItem {
-            emoji: ReactionEmoji::Custom {
+            label: "Party".to_owned(),
+            ..EmojiReactionItem::test(ReactionEmoji::Custom {
                 id: Id::new(42),
                 name: Some("party".to_owned()),
                 animated: false,
-            },
-            label: "Party".to_owned(),
+            })
         },
     ];
 
@@ -420,16 +386,16 @@ fn emoji_reaction_picker_marks_selected_reaction() {
 fn emoji_reaction_picker_uses_qwerty_shortcuts_for_existing_reactions() {
     let reactions = vec![
         EmojiReactionItem {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
             label: "Thumbs up".to_owned(),
+            ..EmojiReactionItem::test(ReactionEmoji::Unicode("👍".to_owned()))
         },
         EmojiReactionItem {
-            emoji: ReactionEmoji::Unicode("❤️".to_owned()),
             label: "Heart".to_owned(),
+            ..EmojiReactionItem::test(ReactionEmoji::Unicode("❤️".to_owned()))
         },
         EmojiReactionItem {
-            emoji: ReactionEmoji::Unicode("😂".to_owned()),
             label: "Joy".to_owned(),
+            ..EmojiReactionItem::test(ReactionEmoji::Unicode("😂".to_owned()))
         },
     ];
     let existing_reactions = vec![
@@ -450,12 +416,12 @@ fn emoji_reaction_picker_uses_qwerty_shortcuts_for_existing_reactions() {
 fn emoji_reaction_picker_marks_own_reactions_yellow() {
     let reactions = vec![
         EmojiReactionItem {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
             label: "Thumbs up".to_owned(),
+            ..EmojiReactionItem::test(ReactionEmoji::Unicode("👍".to_owned()))
         },
         EmojiReactionItem {
-            emoji: ReactionEmoji::Unicode("❤️".to_owned()),
             label: "Heart".to_owned(),
+            ..EmojiReactionItem::test(ReactionEmoji::Unicode("❤️".to_owned()))
         },
     ];
     let existing_reactions = vec![
@@ -482,14 +448,13 @@ fn emoji_reaction_picker_marks_own_reactions_yellow() {
 fn poll_vote_picker_marks_selected_and_checked_answers() {
     let answers = vec![
         PollVotePickerItem {
-            answer_id: 1,
             label: "Soup".to_owned(),
             selected: true,
+            ..PollVotePickerItem::test(1)
         },
         PollVotePickerItem {
-            answer_id: 2,
             label: "Noodles".to_owned(),
-            selected: false,
+            ..PollVotePickerItem::test(2)
         },
     ];
 
@@ -506,26 +471,17 @@ fn reaction_users_popup_groups_users_by_reaction() {
     let lines = reaction_users_popup_lines(
         &[
             ReactionUsersInfo {
-                emoji: ReactionEmoji::Unicode("👍".to_owned()),
                 users: vec![
-                    ReactionUserInfo {
-                        user_id: Id::new(10),
-                        display_name: "neo".to_owned(),
-                    },
-                    ReactionUserInfo {
-                        user_id: Id::new(11),
-                        display_name: "trinity".to_owned(),
-                    },
+                    ReactionUserInfo::test(Id::new(10), "neo"),
+                    ReactionUserInfo::test(Id::new(11), "trinity"),
                 ],
+                ..ReactionUsersInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
             },
-            ReactionUsersInfo {
-                emoji: ReactionEmoji::Custom {
-                    id: Id::new(50),
-                    name: Some("party".to_owned()),
-                    animated: false,
-                },
-                users: Vec::new(),
-            },
+            ReactionUsersInfo::test(ReactionEmoji::Custom {
+                id: Id::new(50),
+                name: Some("party".to_owned()),
+                animated: false,
+            }),
         ],
         0,
         10,
@@ -551,13 +507,10 @@ fn reaction_users_popup_groups_users_by_reaction() {
 #[test]
 fn reaction_users_popup_scrolls_long_lists() {
     let reactions = vec![ReactionUsersInfo {
-        emoji: ReactionEmoji::Unicode("👍".to_owned()),
         users: (1..=6)
-            .map(|id| ReactionUserInfo {
-                user_id: Id::new(id),
-                display_name: format!("user-{id}"),
-            })
+            .map(|id| ReactionUserInfo::test(Id::new(id), format!("user-{id}")))
             .collect(),
+        ..ReactionUsersInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
     }];
 
     let lines = reaction_users_popup_lines(&reactions, 3, 3, 56);
@@ -577,32 +530,17 @@ fn reaction_users_popup_buffer_renders_without_wrap_artifacts() {
         message_id: Id::new(1),
         reactions: vec![
             ReactionUsersInfo {
-                emoji: ReactionEmoji::Unicode("👍".to_owned()),
                 users: vec![
-                    ReactionUserInfo {
-                        user_id: Id::new(1),
-                        display_name: "갱생케가".to_owned(),
-                    },
-                    ReactionUserInfo {
-                        user_id: Id::new(2),
-                        display_name: "하나비".to_owned(),
-                    },
-                    ReactionUserInfo {
-                        user_id: Id::new(3),
-                        display_name: "슬기인뎅".to_owned(),
-                    },
-                    ReactionUserInfo {
-                        user_id: Id::new(4),
-                        display_name: "won".to_owned(),
-                    },
+                    ReactionUserInfo::test(Id::new(1), "갱생케가"),
+                    ReactionUserInfo::test(Id::new(2), "하나비"),
+                    ReactionUserInfo::test(Id::new(3), "슬기인뎅"),
+                    ReactionUserInfo::test(Id::new(4), "won"),
                 ],
+                ..ReactionUsersInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
             },
             ReactionUsersInfo {
-                emoji: ReactionEmoji::Unicode("❤️".to_owned()),
-                users: vec![ReactionUserInfo {
-                    user_id: Id::new(5),
-                    display_name: "파닥파닥( 40%..? )".to_owned(),
-                }],
+                users: vec![ReactionUserInfo::test(Id::new(5), "파닥파닥( 40%..? )")],
+                ..ReactionUsersInfo::test(ReactionEmoji::Unicode("❤️".to_owned()))
             },
         ],
     });
@@ -673,17 +611,11 @@ fn reaction_users_popup_buffer_stays_clean_in_narrow_terminal() {
         channel_id: Id::new(2),
         message_id: Id::new(1),
         reactions: vec![ReactionUsersInfo {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
             users: vec![
-                ReactionUserInfo {
-                    user_id: Id::new(1),
-                    display_name: "won".to_owned(),
-                },
-                ReactionUserInfo {
-                    user_id: Id::new(2),
-                    display_name: "파닥파닥( 40%..? )".to_owned(),
-                },
+                ReactionUserInfo::test(Id::new(1), "won"),
+                ReactionUserInfo::test(Id::new(2), "파닥파닥( 40%..? )"),
             ],
+            ..ReactionUsersInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
         }],
     });
 
@@ -703,17 +635,11 @@ fn reaction_users_popup_buffer_stays_clean_in_narrow_terminal() {
 #[test]
 fn reaction_users_popup_truncates_long_lines_to_fit_width() {
     let reactions = vec![ReactionUsersInfo {
-        emoji: ReactionEmoji::Unicode("❤️".to_owned()),
         users: vec![
-            ReactionUserInfo {
-                user_id: Id::new(1),
-                display_name: "won".to_owned(),
-            },
-            ReactionUserInfo {
-                user_id: Id::new(2),
-                display_name: "파닥파닥( 40%..? )".to_owned(),
-            },
+            ReactionUserInfo::test(Id::new(1), "won"),
+            ReactionUserInfo::test(Id::new(2), "파닥파닥( 40%..? )"),
         ],
+        ..ReactionUsersInfo::test(ReactionEmoji::Unicode("❤️".to_owned()))
     }];
 
     // Inner width that is narrower than the long Korean+ASCII display name
@@ -744,12 +670,12 @@ fn reaction_users_popup_reserves_border_space_in_short_areas() {
 #[test]
 fn emoji_reaction_picker_reserves_space_for_loaded_custom_image() {
     let reactions = vec![EmojiReactionItem {
-        emoji: ReactionEmoji::Custom {
+        label: "Party".to_owned(),
+        ..EmojiReactionItem::test(ReactionEmoji::Custom {
             id: Id::new(42),
             name: Some("party".to_owned()),
             animated: false,
-        },
-        label: "Party".to_owned(),
+        })
     }];
 
     let lines = emoji_reaction_picker_lines(
@@ -765,12 +691,12 @@ fn emoji_reaction_picker_reserves_space_for_loaded_custom_image() {
 #[test]
 fn emoji_reaction_picker_truncates_long_rows_to_inner_width() {
     let reactions = vec![EmojiReactionItem {
-        emoji: ReactionEmoji::Custom {
+        label: "This Is A Very Long Server Emoji Name That Would Wrap".to_owned(),
+        ..EmojiReactionItem::test(ReactionEmoji::Custom {
             id: Id::new(42),
             name: Some("this_is_a_very_long_server_emoji_name_that_would_wrap".to_owned()),
             animated: false,
-        },
-        label: "This Is A Very Long Server Emoji Name That Would Wrap".to_owned(),
+        })
     }];
 
     let lines = emoji_reaction_picker_lines_for_width(&reactions, 0, 10, &[], 24);
@@ -792,12 +718,12 @@ fn emoji_reaction_picker_truncates_long_rows_to_inner_width() {
 fn emoji_reaction_picker_windows_long_lists_around_selection() {
     let reactions = (0..15)
         .map(|index| EmojiReactionItem {
-            emoji: ReactionEmoji::Custom {
+            label: format!("Emoji {index}"),
+            ..EmojiReactionItem::test(ReactionEmoji::Custom {
                 id: Id::new(100 + index),
                 name: Some(format!("emoji_{index}")),
                 animated: false,
-            },
-            label: format!("Emoji {index}"),
+            })
         })
         .collect::<Vec<_>>();
 
@@ -818,12 +744,12 @@ fn emoji_reaction_picker_windows_long_lists_around_selection() {
 #[test]
 fn emoji_reaction_picker_shows_active_filter() {
     let reactions = vec![EmojiReactionItem {
-        emoji: ReactionEmoji::Custom {
+        label: "This goose".to_owned(),
+        ..EmojiReactionItem::test(ReactionEmoji::Custom {
             id: Id::new(42),
             name: Some("this".to_owned()),
             animated: false,
-        },
-        label: "This goose".to_owned(),
+        })
     }];
 
     let lines = filtered_emoji_reaction_picker_lines(&reactions, 0, 10, &[], "thi");
@@ -1030,21 +956,8 @@ fn leader_action_popup_renders_modified_action_shortcut_labels() {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: Vec::new(),
         presences: Vec::new(),

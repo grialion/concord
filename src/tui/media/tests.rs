@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
 use crate::discord::ids::{Id, marker::MessageMarker};
+use crate::discord::test_builders::{
+    MessageCreateFixture, guild_message_create_fixture, message_create_event,
+};
 use image::{DynamicImage, ImageBuffer, Rgba};
 
 use crate::{
@@ -27,6 +30,10 @@ fn layout(list_height: usize) -> ImagePreviewLayout {
         viewer_preview_width: 76,
         viewer_max_preview_height: 13,
     }
+}
+
+fn push_media_message(state: &mut DashboardState, event: MessageCreateFixture) {
+    state.push_event(message_create_event(event));
 }
 
 #[test]
@@ -66,27 +73,15 @@ fn image_preview_targets_include_preview_that_would_be_clipped() {
 #[test]
 fn image_preview_targets_include_multiple_attachments_from_one_message() {
     let mut state = state_with_image_messages(0, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("album".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: vec![image_attachment(1), image_attachment(2)],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(1),
+            content: Some("album".to_owned()),
+            attachments: vec![image_attachment(1), image_attachment(2)],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(12));
 
@@ -124,27 +119,15 @@ fn image_preview_targets_use_resized_discord_media_proxy_url() {
         "?ex=abc&is=def&hm=123&format=png&width=4000&height=3000"
     )
     .to_owned();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("photo".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: vec![attachment],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(1),
+            content: Some("photo".to_owned()),
+            attachments: vec![attachment],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let target = visible_image_preview_targets(&state, layout(12))
         .into_iter()
@@ -256,27 +239,15 @@ fn original_image_preview_quality_applies_to_attachment_viewer_preview() {
         "?ex=abc&is=def&hm=123&format=png&width=4000&height=3000"
     )
     .to_owned();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("photo".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: vec![attachment],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(1),
+            content: Some("photo".to_owned()),
+            attachments: vec![attachment],
+            ..guild_message_create_fixture()
+        },
+    );
     state.focus_pane(FocusPane::Messages);
     assert!(state.open_attachment_viewer_for_selected_message());
 
@@ -299,27 +270,15 @@ fn image_preview_quality_does_not_change_avatar_or_custom_emoji_requests() {
             ..DisplayOptions::default()
         },
     );
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: Some("https://cdn.discordapp.com/avatars/1/hash.png".to_owned()),
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("hello <:party:50>".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(1),
+            author_avatar_url: Some("https://cdn.discordapp.com/avatars/1/hash.png".to_owned()),
+            content: Some("hello <:party:50>".to_owned()),
+            ..guild_message_create_fixture()
+        },
+    );
 
     assert_eq!(
         state.image_preview_quality(),
@@ -353,27 +312,15 @@ fn image_preview_targets_use_resized_embed_media_proxy_url() {
         .to_owned(),
     );
     let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("https://example.com/post".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: vec![embed],
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(2),
+            content: Some("https://example.com/post".to_owned()),
+            embeds: vec![embed],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(8));
 
@@ -397,27 +344,15 @@ fn image_preview_targets_use_resized_ephemeral_media_proxy_url() {
         "?ex=abc&is=def&hm=123&width=4000&height=3000"
     )
     .to_owned();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("photo".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: vec![attachment],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(1),
+            content: Some("photo".to_owned()),
+            attachments: vec![attachment],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let target = visible_image_preview_targets(&state, layout(12))
         .into_iter()
@@ -439,27 +374,15 @@ fn image_preview_targets_ignore_unsupported_embed_proxy_url() {
     embed.thumbnail_url = Some("https://example.com/photo.png".to_owned());
     embed.thumbnail_proxy_url = Some("https://media.discordapp.net/avatars/1/hash.png".to_owned());
     let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("https://example.com/post".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: vec![embed],
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(2),
+            content: Some("https://example.com/post".to_owned()),
+            embeds: vec![embed],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(8));
 
@@ -480,27 +403,15 @@ fn image_preview_targets_use_resized_images_ext_embed_proxy_url() {
         .to_owned(),
     );
     let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("https://example.com/post".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: vec![embed],
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(2),
+            content: Some("https://example.com/post".to_owned()),
+            embeds: vec![embed],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(8));
 
@@ -898,27 +809,15 @@ fn image_preview_targets_account_for_date_separator_rows() {
 #[test]
 fn video_attachment_does_not_request_original_as_image_preview() {
     let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("clip".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: vec![video_attachment(2)],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(2),
+            content: Some("clip".to_owned()),
+            attachments: vec![video_attachment(2)],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(6));
 
@@ -928,27 +827,15 @@ fn video_attachment_does_not_request_original_as_image_preview() {
 #[test]
 fn image_preview_targets_include_embed_thumbnail() {
     let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: vec![youtube_embed()],
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(2),
+            content: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
+            embeds: vec![youtube_embed()],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(8));
 
@@ -971,27 +858,15 @@ fn image_preview_targets_downscale_youtube_embed_image_url() {
     embed.image_width = Some(1280);
     embed.image_height = Some(720);
     let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: vec![embed],
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(2),
+            content: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
+            embeds: vec![embed],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(8));
 
@@ -1010,27 +885,15 @@ fn image_preview_targets_keep_small_youtube_thumbnail_url() {
     embed.thumbnail_width = Some(120);
     embed.thumbnail_height = Some(90);
     let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: vec![embed],
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(2),
+            content: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
+            embeds: vec![embed],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(8));
 
@@ -1045,27 +908,15 @@ fn image_preview_targets_keep_small_youtube_thumbnail_url() {
 #[test]
 fn image_preview_targets_include_forwarded_image_attachments() {
     let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some(String::new()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: vec![forwarded_snapshot(2)],
-    });
+    push_media_message(
+        &mut state,
+        MessageCreateFixture {
+            message_id: Id::new(2),
+            content: Some(String::new()),
+            forwarded_snapshots: vec![forwarded_snapshot(2)],
+            ..guild_message_create_fixture()
+        },
+    );
 
     let targets = visible_image_preview_targets(&state, layout(6));
 
@@ -1556,12 +1407,7 @@ fn emoji_image_targets_include_visible_custom_reactions() {
     let mut state = state_with_image_messages(1, &[]);
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(50), "party")],
     });
     state.focus_pane(FocusPane::Messages);
     state.open_emoji_reaction_picker();
@@ -1579,21 +1425,11 @@ fn emoji_image_targets_include_visible_custom_reactions() {
 #[test]
 fn emoji_image_targets_include_visible_composer_custom_emoji_picker_candidates() {
     for (emoji, query) in [
+        (CustomEmojiInfo::test(Id::new(50), "party"), ":pa"),
         (
             CustomEmojiInfo {
-                id: Id::new(50),
-                name: "party".to_owned(),
-                animated: false,
-                available: true,
-            },
-            ":pa",
-        ),
-        (
-            CustomEmojiInfo {
-                id: Id::new(51),
-                name: "gone".to_owned(),
-                animated: false,
                 available: false,
+                ..CustomEmojiInfo::test(Id::new(51), "gone")
             },
             ":go",
         ),
@@ -1620,12 +1456,7 @@ fn emoji_image_targets_include_confirmed_composer_custom_emoji() {
     let mut state = state_with_image_messages(1, &[]);
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(60),
-            name: "wave".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(60), "wave")],
     });
     state.start_composer();
     for ch in ":wa".chars() {
@@ -1648,12 +1479,7 @@ fn disabled_custom_emoji_images_create_no_targets_or_requests() {
     let mut state = state_with_image_messages(1, &[]);
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(50), "party")],
     });
     state.focus_pane(FocusPane::Messages);
     state.open_emoji_reaction_picker();
@@ -1723,15 +1549,11 @@ fn emoji_image_targets_include_visible_forum_preview_custom_reactions() {
             reply: None,
             poll: None,
             pinned: false,
-            reactions: vec![ReactionInfo {
-                emoji: ReactionEmoji::Custom {
-                    id: Id::new(50),
-                    name: Some("party".to_owned()),
-                    animated: false,
-                },
-                count: 1,
-                me: false,
-            }],
+            reactions: vec![ReactionInfo::test(ReactionEmoji::Custom {
+                id: Id::new(50),
+                name: Some("party".to_owned()),
+                animated: false,
+            })],
             content: Some("first post".to_owned()),
             mentions: Vec::new(),
             attachments: Vec::new(),
@@ -1884,31 +1706,20 @@ fn state_with_image_messages_and_display_options(
     state.confirm_selected_channel();
 
     for id in 1..=count {
-        state.push_event(AppEvent::MessageCreate {
-            guild_id: Some(guild_id),
-            channel_id,
-            message_id: Id::new(id),
-            author_id: Id::new(99),
-            author: "neo".to_owned(),
-            author_avatar_url: None,
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: crate::discord::MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
-            content: Some(format!("msg {id}")),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments: image_message_ids
-                .contains(&id)
-                .then(|| image_attachment(id))
-                .into_iter()
-                .collect(),
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-        });
+        push_media_message(
+            &mut state,
+            MessageCreateFixture {
+                channel_id,
+                message_id: Id::new(id),
+                content: Some(format!("msg {id}")),
+                attachments: image_message_ids
+                    .contains(&id)
+                    .then(|| image_attachment(id))
+                    .into_iter()
+                    .collect(),
+                ..guild_message_create_fixture()
+            },
+        );
     }
 
     state
@@ -1938,27 +1749,16 @@ fn state_with_avatar_messages(count: u64) -> DashboardState {
     state.confirm_selected_channel();
 
     for id in 1..=count {
-        state.push_event(AppEvent::MessageCreate {
-            guild_id: Some(guild_id),
-            channel_id,
-            message_id: Id::new(id),
-            author_id: Id::new(99),
-            author: "neo".to_owned(),
-            author_avatar_url: Some(format!("https://cdn.discordapp.com/avatar-{id}.png")),
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: crate::discord::MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
-            content: Some(format!("msg {id}")),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments: Vec::new(),
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-        });
+        push_media_message(
+            &mut state,
+            MessageCreateFixture {
+                channel_id,
+                message_id: Id::new(id),
+                author_avatar_url: Some(format!("https://cdn.discordapp.com/avatar-{id}.png")),
+                content: Some(format!("msg {id}")),
+                ..guild_message_create_fixture()
+            },
+        );
     }
 
     state
@@ -1990,27 +1790,16 @@ fn state_with_cross_day_image_message() -> DashboardState {
     let day_one = test_message_id_for_unix_millis(1_743_465_600_000);
     let day_two = test_message_id_for_unix_millis(1_743_465_600_000 + 24 * 60 * 60 * 1000);
     for (message_id, attachments) in [(day_one, Vec::new()), (day_two, vec![image_attachment(2)])] {
-        state.push_event(AppEvent::MessageCreate {
-            guild_id: Some(guild_id),
-            channel_id,
-            message_id,
-            author_id: Id::new(99),
-            author: "neo".to_owned(),
-            author_avatar_url: None,
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: crate::discord::MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
-            content: Some("msg".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments,
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-        });
+        push_media_message(
+            &mut state,
+            MessageCreateFixture {
+                channel_id,
+                message_id,
+                content: Some("msg".to_owned()),
+                attachments,
+                ..guild_message_create_fixture()
+            },
+        );
     }
 
     state
@@ -2021,51 +1810,27 @@ fn target_message_ids(targets: &[ImagePreviewTarget]) -> Vec<Id<MessageMarker>> 
 }
 
 fn push_album_message(state: &mut DashboardState, message_id: u64, attachment_count: u64) {
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(message_id),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("album".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: (1..=attachment_count).map(image_attachment).collect(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        state,
+        MessageCreateFixture {
+            message_id: Id::new(message_id),
+            content: Some("album".to_owned()),
+            attachments: (1..=attachment_count).map(image_attachment).collect(),
+            ..guild_message_create_fixture()
+        },
+    );
 }
 
 fn push_attachment_message(state: &mut DashboardState, attachment: AttachmentInfo) {
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("photo".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: vec![attachment],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+    push_media_message(
+        state,
+        MessageCreateFixture {
+            message_id: Id::new(1),
+            content: Some("photo".to_owned()),
+            attachments: vec![attachment],
+            ..guild_message_create_fixture()
+        },
+    );
 }
 
 fn image_preview_target(id: u64) -> ImagePreviewTarget {
@@ -2089,29 +1854,25 @@ fn image_preview_target(id: u64) -> ImagePreviewTarget {
 
 fn image_attachment(id: u64) -> AttachmentInfo {
     AttachmentInfo {
-        id: Id::new(id),
-        filename: format!("image-{id}.png"),
         url: format!("https://cdn.discordapp.com/image-{id}.png"),
         proxy_url: format!("https://media.discordapp.net/image-{id}.png"),
         content_type: Some("image/png".to_owned()),
         size: 2048,
         width: Some(640),
         height: Some(480),
-        description: None,
+        ..AttachmentInfo::test(Id::new(id), format!("image-{id}.png"))
     }
 }
 
 fn video_attachment(id: u64) -> AttachmentInfo {
     AttachmentInfo {
-        id: Id::new(id),
-        filename: format!("clip-{id}.mp4"),
         url: format!("https://cdn.discordapp.com/clip-{id}.mp4"),
         proxy_url: format!("https://media.discordapp.net/clip-{id}.mp4"),
         content_type: Some("video/mp4".to_owned()),
         size: 78_364_758,
         width: Some(1920),
         height: Some(1080),
-        description: None,
+        ..AttachmentInfo::test(Id::new(id), format!("clip-{id}.mp4"))
     }
 }
 
@@ -2119,33 +1880,21 @@ fn youtube_embed() -> EmbedInfo {
     EmbedInfo {
         color: Some(0xff0000),
         provider_name: Some("YouTube".to_owned()),
-        author_name: None,
         title: Some("Example Video".to_owned()),
         description: Some("A video description".to_owned()),
-        timestamp: None,
-        fields: Vec::new(),
-        footer_text: None,
         url: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
         thumbnail_url: Some("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg".to_owned()),
-        thumbnail_proxy_url: None,
         thumbnail_width: Some(480),
         thumbnail_height: Some(360),
-        image_url: None,
-        image_proxy_url: None,
-        image_width: None,
-        image_height: None,
         video_url: Some("https://www.youtube.com/embed/dQw4w9WgXcQ".to_owned()),
+        ..EmbedInfo::test()
     }
 }
 
 fn forwarded_snapshot(id: u64) -> MessageSnapshotInfo {
     MessageSnapshotInfo {
         content: Some(format!("forwarded {id}")),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
         attachments: vec![image_attachment(id)],
-        embeds: Vec::new(),
-        source_channel_id: None,
-        timestamp: None,
+        ..MessageSnapshotInfo::test()
     }
 }

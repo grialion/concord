@@ -24,6 +24,27 @@ pub struct ChannelSwitcherItem {
     pub original_index: usize,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl ChannelSwitcherItem {
+    pub(crate) fn test(channel_id: Id<ChannelMarker>) -> Self {
+        Self {
+            channel_id,
+            guild_id: None,
+            guild_name: None,
+            group_label: String::new(),
+            parent_label: None,
+            channel_label: String::new(),
+            unread: ChannelUnreadState::Seen,
+            unread_message_count: 0,
+            search_name: String::new(),
+            depth: 0,
+            group_order: 0,
+            original_index: 0,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FocusPane {
     Guilds,
@@ -47,6 +68,18 @@ pub struct MessageActionItem {
     pub enabled: bool,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl MessageActionItem {
+    pub(crate) fn test(kind: MessageActionKind) -> Self {
+        Self {
+            kind,
+            label: String::new(),
+            enabled: true,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MessageUrlItem {
     pub url: String,
@@ -60,6 +93,21 @@ pub struct AttachmentViewerItem {
     pub url: Option<String>,
     pub size_bytes: u64,
     pub is_image: bool,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl AttachmentViewerItem {
+    pub(crate) fn test() -> Self {
+        Self {
+            index: 0,
+            total: 0,
+            filename: String::new(),
+            url: None,
+            size_bytes: 0,
+            is_image: false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -164,6 +212,29 @@ impl ChannelThreadItem {
     }
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl ChannelThreadItem {
+    pub(crate) fn test(channel_id: Id<ChannelMarker>) -> Self {
+        Self {
+            channel_id,
+            section_label: None,
+            label: String::new(),
+            archived: false,
+            locked: false,
+            pinned: false,
+            preview_author_id: None,
+            preview_author: None,
+            preview_author_color: None,
+            preview_content: None,
+            preview_reactions: Vec::new(),
+            comment_count: None,
+            new_message_count: 0,
+            last_activity_message_id: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EmojiReactionItem {
     pub emoji: ReactionEmoji,
@@ -176,11 +247,34 @@ impl EmojiReactionItem {
     }
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl EmojiReactionItem {
+    pub(crate) fn test(emoji: ReactionEmoji) -> Self {
+        Self {
+            emoji,
+            label: String::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PollVotePickerItem {
     pub answer_id: u8,
     pub label: String,
     pub selected: bool,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl PollVotePickerItem {
+    pub(crate) fn test(answer_id: u8) -> Self {
+        Self {
+            answer_id,
+            label: String::new(),
+            selected: false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -223,6 +317,26 @@ pub enum ChannelPaneEntry<'a> {
 }
 
 impl ChannelPaneEntry<'_> {
+    pub fn channel_state(&self) -> Option<&ChannelState> {
+        match self {
+            Self::Channel { state, .. } | Self::Thread { state, .. } => Some(state),
+            Self::CategoryHeader { .. } | Self::VoiceParticipant { .. } => None,
+        }
+    }
+
+    pub fn channel_id(&self) -> Option<Id<ChannelMarker>> {
+        self.channel_state().map(|state| state.id)
+    }
+
+    pub fn display_name(&self) -> &str {
+        match self {
+            Self::CategoryHeader { state, .. }
+            | Self::Channel { state, .. }
+            | Self::Thread { state, .. } => state.name.as_str(),
+            Self::VoiceParticipant { participant, .. } => participant.display_name.as_str(),
+        }
+    }
+
     pub(super) fn is_selectable(&self) -> bool {
         matches!(
             self,
@@ -295,6 +409,17 @@ impl GuildBranch {
 }
 
 impl GuildPaneEntry<'_> {
+    pub fn guild_state(&self) -> Option<&GuildState> {
+        match self {
+            Self::Guild { state, .. } => Some(state),
+            Self::DirectMessages | Self::FolderHeader { .. } => None,
+        }
+    }
+
+    pub fn guild_id(&self) -> Option<Id<GuildMarker>> {
+        self.guild_state().map(|state| state.id)
+    }
+
     pub fn label(&self) -> &str {
         match self {
             Self::DirectMessages => "Direct Messages",

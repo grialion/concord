@@ -351,7 +351,7 @@ fn own_attachment_only_message_can_be_deleted_but_not_edited() {
         author_id: Id::new(99),
         content: None,
         attachments: vec![image_attachment(1)],
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.focus_pane(FocusPane::Messages);
 
@@ -561,12 +561,8 @@ fn message_action_detects_urls_in_reply_quote_and_forwarded_snapshot() {
             }),
             forwarded_snapshots: vec![MessageSnapshotInfo {
                 content: Some("forwarded https://forward.example/doc".to_owned()),
-                sticker_names: Vec::new(),
-                mentions: Vec::new(),
-                attachments: Vec::new(),
                 embeds: vec![youtube_embed()],
-                source_channel_id: None,
-                timestamp: None,
+                ..MessageSnapshotInfo::test()
             }],
             ..message_info(Id::new(2), 1)
         }],
@@ -597,7 +593,7 @@ fn non_regular_message_actions_only_show_supported_actions() {
         message_kind: MessageKind::new(7),
         content: None,
         attachments: vec![video_attachment(1)],
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.focus_pane(FocusPane::Messages);
 
@@ -619,7 +615,7 @@ fn message_action_items_keep_poll_actions_for_attachment_messages() {
         poll: Some(poll_info(false)),
         content: Some(String::new()),
         attachments: vec![image_attachment(1)],
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     let actions = state.selected_message_action_items();
@@ -648,7 +644,7 @@ fn single_select_poll_action_opens_picker_and_submits_one_answer() {
         author_id: Id::new(99),
         poll: Some(poll_info(false)),
         content: Some(String::new()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.open_selected_message_actions();
 
@@ -683,7 +679,7 @@ fn single_select_poll_picker_normalizes_multiple_initial_votes() {
         author_id: Id::new(99),
         poll: Some(poll),
         content: Some(String::new()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.open_selected_message_actions();
     assert!(state.select_message_action_row(2));
@@ -719,7 +715,7 @@ fn multi_select_poll_action_opens_picker_and_submits_selected_answers() {
         author_id: Id::new(99),
         poll: Some(poll_info(true)),
         content: Some(String::new()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     let actions = state.selected_message_action_items();

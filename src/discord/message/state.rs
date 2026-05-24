@@ -1031,9 +1031,8 @@ fn update_message_in(
         if let Some(edited_timestamp) = &update.edited_timestamp {
             existing.edited_timestamp = Some(edited_timestamp.clone());
         }
-        match &update.attachments {
-            AttachmentUpdate::Replace(attachments) => existing.attachments = attachments.clone(),
-            AttachmentUpdate::Unchanged => {}
+        if let Some(attachments) = update.attachments.replacement() {
+            existing.attachments = attachments.to_vec();
         }
     }
 }

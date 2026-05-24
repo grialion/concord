@@ -4,29 +4,15 @@ use super::*;
 
 fn requested_voice() -> CurrentVoiceConnectionState {
     CurrentVoiceConnectionState {
-        guild_id: Id::new(1),
-        channel_id: Id::new(10),
         self_mute: true,
-        self_deaf: false,
-        allow_microphone_transmit: false,
-        microphone_sensitivity: MicrophoneSensitivityDb::default(),
-        microphone_volume: VoiceVolumePercent::default(),
-        voice_output_volume: VoiceVolumePercent::default(),
+        ..CurrentVoiceConnectionState::test(Id::new(1), Id::new(10))
     }
 }
 
 fn voice_state(user_id: u64, channel_id: Option<Id<ChannelMarker>>) -> VoiceStateInfo {
     VoiceStateInfo {
-        guild_id: Id::new(1),
-        channel_id,
-        user_id: Id::new(user_id),
         session_id: Some("voice-session".to_owned()),
-        member: None,
-        deaf: false,
-        mute: false,
-        self_deaf: false,
-        self_mute: false,
-        self_stream: false,
+        ..VoiceStateInfo::test(Id::new(1), channel_id, Id::new(user_id))
     }
 }
 

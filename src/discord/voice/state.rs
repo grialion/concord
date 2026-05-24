@@ -33,6 +33,23 @@ pub struct CurrentVoiceConnectionState {
     pub voice_output_volume: VoiceVolumePercent,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl CurrentVoiceConnectionState {
+    pub(crate) fn test(guild_id: Id<GuildMarker>, channel_id: Id<ChannelMarker>) -> Self {
+        Self {
+            guild_id,
+            channel_id,
+            self_mute: false,
+            self_deaf: false,
+            allow_microphone_transmit: false,
+            microphone_sensitivity: MicrophoneSensitivityDb::default(),
+            microphone_volume: VoiceVolumePercent::default(),
+            voice_output_volume: VoiceVolumePercent::default(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(in crate::discord) struct VoiceState {
     channel_id: Id<ChannelMarker>,

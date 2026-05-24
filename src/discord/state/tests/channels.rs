@@ -64,12 +64,9 @@ fn channel_upsert_stores_and_preserves_recipients() {
         "project chat",
         "group-dm",
         vec![ChannelRecipientInfo {
-            user_id: Id::new(20),
-            display_name: "alice".to_owned(),
-            username: None,
-            is_bot: false,
             avatar_url: Some("https://cdn.discordapp.com/avatar.png".to_owned()),
             status: Some(PresenceStatus::Online),
+            ..ChannelRecipientInfo::test(Id::new(20), "alice")
         }],
     )));
 
@@ -110,12 +107,8 @@ fn dm_channel_upsert_prefers_friend_nickname() {
         "Alice Global",
         "dm",
         vec![ChannelRecipientInfo {
-            user_id: Id::new(20),
-            display_name: "Alice Global".to_owned(),
             username: Some("alice".to_owned()),
-            is_bot: false,
-            avatar_url: None,
-            status: None,
+            ..ChannelRecipientInfo::test(Id::new(20), "Alice Global")
         }],
     )));
 
@@ -135,12 +128,8 @@ fn relationships_without_user_fields_preserve_existing_dm_names() {
         "Alice Global",
         "dm",
         vec![ChannelRecipientInfo {
-            user_id,
-            display_name: "Alice Global".to_owned(),
             username: Some("alice".to_owned()),
-            is_bot: false,
-            avatar_url: None,
-            status: None,
+            ..ChannelRecipientInfo::test(user_id, "Alice Global")
         }],
     )));
     state.apply_event(&message_create_event(MessageCreateFixture {
@@ -181,12 +170,8 @@ fn relationship_nickname_refresh_preserves_explicit_group_dm_name() {
         "project chat",
         "group-dm",
         vec![ChannelRecipientInfo {
-            user_id: Id::new(20),
-            display_name: "Alice Global".to_owned(),
             username: Some("alice".to_owned()),
-            is_bot: false,
-            avatar_url: None,
-            status: None,
+            ..ChannelRecipientInfo::test(Id::new(20), "Alice Global")
         }],
     )));
     state.apply_event(&AppEvent::RelationshipsLoaded {
@@ -214,12 +199,8 @@ fn channel_upsert_preserves_recipient_status_when_omitted() {
         "project chat",
         "group-dm",
         vec![ChannelRecipientInfo {
-            user_id: Id::new(20),
-            display_name: "alice".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
             status: Some(PresenceStatus::Online),
+            ..ChannelRecipientInfo::test(Id::new(20), "alice")
         }],
     )));
 
@@ -229,14 +210,7 @@ fn channel_upsert_preserves_recipient_status_when_omitted() {
             channel_id,
             "renamed project chat",
             "group-dm",
-            vec![ChannelRecipientInfo {
-                user_id: Id::new(20),
-                display_name: "alice renamed".to_owned(),
-                username: None,
-                is_bot: false,
-                avatar_url: None,
-                status: None,
-            }],
+            vec![ChannelRecipientInfo::test(Id::new(20), "alice renamed")],
         )
     }));
 
@@ -254,14 +228,7 @@ fn channel_upsert_defaults_missing_recipient_status_to_unknown() {
         channel_id,
         "alice",
         "dm",
-        vec![ChannelRecipientInfo {
-            user_id: Id::new(20),
-            display_name: "alice".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
-            status: None,
-        }],
+        vec![ChannelRecipientInfo::test(Id::new(20), "alice")],
     )));
 
     let channel = state.channel(channel_id).expect("channel should be stored");
@@ -283,14 +250,7 @@ fn channel_upsert_uses_cached_user_presence_when_status_is_omitted() {
         channel_id,
         "test-user",
         "dm",
-        vec![ChannelRecipientInfo {
-            user_id,
-            display_name: "test-user".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
-            status: None,
-        }],
+        vec![ChannelRecipientInfo::test(user_id, "test-user")],
     )));
 
     let channel = state.channel(channel_id).expect("channel should be stored");
@@ -307,14 +267,7 @@ fn user_presence_update_updates_channel_recipients() {
         channel_id,
         "project chat",
         "group-dm",
-        vec![ChannelRecipientInfo {
-            user_id: Id::new(20),
-            display_name: "alice".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
-            status: None,
-        }],
+        vec![ChannelRecipientInfo::test(Id::new(20), "alice")],
     )));
 
     state.apply_event(&AppEvent::UserPresenceUpdate {
@@ -331,15 +284,7 @@ fn user_presence_update_updates_channel_recipients() {
 fn presence_update_caches_user_activities() {
     let mut state = DiscordState::default();
     let user_id: Id<UserMarker> = Id::new(20);
-    let activity = ActivityInfo {
-        kind: ActivityKind::Playing,
-        name: "Concord".to_owned(),
-        details: None,
-        state: None,
-        url: None,
-        application_id: None,
-        emoji: None,
-    };
+    let activity = ActivityInfo::test(ActivityKind::Playing, "Concord");
 
     state.apply_event(&AppEvent::PresenceUpdate {
         guild_id: Id::new(1),
@@ -369,24 +314,8 @@ fn guild_presence_activities_are_scoped_by_guild() {
     let user_id: Id<UserMarker> = Id::new(20);
     let guild_a: Id<GuildMarker> = Id::new(1);
     let guild_b: Id<GuildMarker> = Id::new(2);
-    let activity_a = ActivityInfo {
-        kind: ActivityKind::Playing,
-        name: "Guild A".to_owned(),
-        details: None,
-        state: None,
-        url: None,
-        application_id: None,
-        emoji: None,
-    };
-    let activity_b = ActivityInfo {
-        kind: ActivityKind::Listening,
-        name: "Guild B".to_owned(),
-        details: None,
-        state: None,
-        url: None,
-        application_id: None,
-        emoji: None,
-    };
+    let activity_a = ActivityInfo::test(ActivityKind::Playing, "Guild A");
+    let activity_b = ActivityInfo::test(ActivityKind::Listening, "Guild B");
 
     state.apply_event(&AppEvent::PresenceUpdate {
         guild_id: guild_a,
@@ -444,14 +373,7 @@ fn guild_presence_update_updates_matching_channel_recipients() {
         channel_id,
         "alice",
         "dm",
-        vec![ChannelRecipientInfo {
-            user_id: Id::new(20),
-            display_name: "alice".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
-            status: None,
-        }],
+        vec![ChannelRecipientInfo::test(Id::new(20), "alice")],
     )));
 
     state.apply_event(&AppEvent::PresenceUpdate {

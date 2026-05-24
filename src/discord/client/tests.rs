@@ -1,12 +1,16 @@
 use crate::{
     AppError,
     discord::{
-        AppEvent, ChannelInfo, FriendStatus, MemberInfo, MentionInfo, MessageAttachmentUpload,
-        MessageKind, RoleInfo, UserProfileInfo, VoiceSoundKind, VoiceStateInfo,
+        AppEvent, ChannelInfo, MemberInfo, MentionInfo, MessageAttachmentUpload, RoleInfo,
+        UserProfileInfo, VoiceSoundKind, VoiceStateInfo,
         gateway::GatewayCommand,
         ids::{
             Id,
             marker::{ChannelMarker, GuildMarker, RoleMarker, UserMarker},
+        },
+        test_builders::{
+            MessageCreateFixture, guild_message_create_fixture,
+            message_create_event as build_message_create_event,
         },
     },
 };
@@ -127,11 +131,7 @@ async fn mentioned_message_create_advances_detail_revision() {
     } = &mut event
     {
         *content = Some("hello <@42>".to_owned());
-        mentions.push(MentionInfo {
-            user_id: Id::new(42),
-            guild_nick: None,
-            display_name: "neo".to_owned(),
-        });
+        mentions.push(MentionInfo::test(Id::new(42), "neo".to_owned()));
     }
     client.publish_event(event).await;
 
@@ -410,16 +410,8 @@ async fn voice_state_update_allows_current_channel_mute_change_without_connect_p
     client
         .publish_event(AppEvent::VoiceStateUpdate {
             state: VoiceStateInfo {
-                guild_id: Id::new(1),
-                channel_id: Some(Id::new(2)),
-                user_id: Id::new(10),
                 session_id: Some("current-voice-session".to_owned()),
-                member: None,
-                deaf: false,
-                mute: false,
-                self_deaf: false,
-                self_mute: false,
-                self_stream: false,
+                ..VoiceStateInfo::test(Id::new(1), Some(Id::new(2)), Id::new(10))
             },
         })
         .await;
@@ -641,16 +633,8 @@ async fn requested_voice_state_ignores_observed_other_client_voice() {
     client
         .publish_event(AppEvent::VoiceStateUpdate {
             state: VoiceStateInfo {
-                guild_id: Id::new(1),
-                channel_id: Some(Id::new(10)),
-                user_id: Id::new(10),
                 session_id: Some("other-client-voice-session".to_owned()),
-                member: None,
-                deaf: false,
-                mute: false,
-                self_deaf: false,
-                self_mute: false,
-                self_stream: false,
+                ..VoiceStateInfo::test(Id::new(1), Some(Id::new(10)), Id::new(10))
             },
         })
         .await;
@@ -708,27 +692,11 @@ fn validates_token_header_values() {
 }
 
 fn message_create_event(message_id: u64) -> AppEvent {
-    AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
+    build_message_create_event(MessageCreateFixture {
         message_id: Id::new(message_id),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some(format!("msg {message_id}")),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    }
+        ..guild_message_create_fixture()
+    })
 }
 
 const VIEW_CHANNEL: u64 = 0x0000_0000_0000_0400;
@@ -775,115 +743,57 @@ fn permission_fixture_channel(
 ) -> ChannelInfo {
     ChannelInfo {
         guild_id: Some(guild_id),
-        channel_id,
-        parent_id: None,
-        owner_id: None,
         position: Some(0),
-        last_message_id: None,
         name: "guarded".to_owned(),
-        kind: kind.to_owned(),
-        message_count: None,
-        member_count: None,
-        total_message_sent: None,
-        thread_metadata: None,
-        flags: None,
-        current_user_joined_thread: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(channel_id, kind)
     }
 }
 
 fn permission_fixture_member(user_id: Id<UserMarker>) -> MemberInfo {
     MemberInfo {
-        user_id,
-        display_name: "me".to_owned(),
         username: Some("me".to_owned()),
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
+        ..MemberInfo::test(user_id, "me")
     }
 }
 
 fn permission_fixture_role(id: Id<RoleMarker>, name: &str, permissions: u64) -> RoleInfo {
     RoleInfo {
-        id,
-        name: name.to_owned(),
-        color: None,
-        position: 0,
-        hoist: false,
         permissions,
+        ..RoleInfo::test(id, name)
     }
 }
 
 fn user_profile(user_id: Id<UserMarker>) -> UserProfileInfo {
-    UserProfileInfo {
-        user_id,
-        username: "neo".to_owned(),
-        global_name: None,
-        guild_nick: None,
-        role_ids: Vec::new(),
-        avatar_url: None,
-        bio: None,
-        pronouns: None,
-        mutual_guilds: Vec::new(),
-        mutual_friends_count: 0,
-        friend_status: FriendStatus::None,
-        note: None,
-    }
+    UserProfileInfo::test(user_id, "neo")
 }
 
 fn application_command(name: &str) -> crate::discord::ApplicationCommandInfo {
     crate::discord::ApplicationCommandInfo {
-        id: Id::new(100),
         application_id: Id::new(200),
         version: "1".to_owned(),
-        name: name.to_owned(),
         application_name: Some("TestBot".to_owned()),
         description: format!("{name} command"),
-        options: Vec::new(),
         raw: json!({
             "id": "100",
             "application_id": "200",
             "version": "1",
             "name": name,
         }),
+        ..crate::discord::ApplicationCommandInfo::test(Id::new(100), name)
     }
 }
 
 fn channel_upsert_event() -> AppEvent {
     AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
         parent_id: Some(Id::new(10)),
-        owner_id: None,
-        position: None,
-        last_message_id: None,
         name: "general".to_owned(),
-        kind: "GuildText".to_owned(),
-        message_count: None,
-        member_count: None,
-        total_message_sent: None,
-        thread_metadata: None,
-        flags: None,
-        current_user_joined_thread: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(Id::new(2), "GuildText")
     })
 }
 
 fn voice_state(user_id: u64, channel_id: Option<u64>) -> VoiceStateInfo {
-    VoiceStateInfo {
-        guild_id: Id::new(1),
-        channel_id: channel_id.map(Id::new),
-        user_id: Id::new(user_id),
-        session_id: None,
-        member: None,
-        deaf: false,
-        mute: false,
-        self_deaf: false,
-        self_mute: false,
-        self_stream: false,
-    }
+    VoiceStateInfo::test(Id::new(1), channel_id.map(Id::new), Id::new(user_id))
 }
 
 async fn assert_voice_sound(
@@ -926,20 +836,8 @@ fn assert_voice_update(
 fn thread_channel_upsert_event() -> AppEvent {
     AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(Id::new(1)),
-        channel_id: Id::new(3),
         parent_id: Some(Id::new(2)),
-        owner_id: None,
-        position: None,
-        last_message_id: None,
         name: "new-thread".to_owned(),
-        kind: "GuildPublicThread".to_owned(),
-        message_count: None,
-        member_count: None,
-        total_message_sent: None,
-        thread_metadata: None,
-        flags: None,
-        current_user_joined_thread: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(Id::new(3), "GuildPublicThread")
     })
 }

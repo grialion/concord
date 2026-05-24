@@ -61,9 +61,12 @@ mod tests {
         Id,
         marker::{AttachmentMarker, ChannelMarker, GuildMarker, MessageMarker},
     };
+    use crate::discord::test_builders::{
+        MessageCreateFixture, guild_message_create_fixture, message_create_event,
+    };
     use crate::discord::{
         AppEvent, AttachmentInfo, AttachmentUpdate, ChannelInfo, DiscordClient,
-        DownloadAttachmentSource, MemberInfo, MessageKind, ReadStateInfo, SequencedAppEvent,
+        DownloadAttachmentSource, MemberInfo, ReadStateInfo, SequencedAppEvent,
     };
 
     use super::{
@@ -176,12 +179,8 @@ mod tests {
         state.push_event(AppEvent::GuildMemberUpsert {
             guild_id: Id::new(1),
             member: MemberInfo {
-                user_id: Id::new(10),
-                display_name: "Alice".to_owned(),
                 username: Some("alice".to_owned()),
-                is_bot: false,
-                avatar_url: None,
-                role_ids: Vec::new(),
+                ..MemberInfo::test(Id::new(10), "Alice")
             },
         });
         let after = visible_dashboard_signature(&state);
@@ -462,21 +461,8 @@ mod tests {
             member_count: None,
             channels: vec![ChannelInfo {
                 guild_id: Some(guild_id),
-                channel_id,
-                parent_id: None,
-                owner_id: None,
-                position: None,
-                last_message_id: None,
                 name: "general".to_owned(),
-                kind: "GuildText".to_owned(),
-                message_count: None,
-                member_count: None,
-                total_message_sent: None,
-                thread_metadata: None,
-                flags: None,
-                current_user_joined_thread: None,
-                recipients: None,
-                permission_overwrites: Vec::new(),
+                ..ChannelInfo::test(channel_id, "GuildText")
             }],
             members: Vec::new(),
             presences: Vec::new(),
@@ -503,21 +489,8 @@ mod tests {
             member_count: None,
             channels: vec![ChannelInfo {
                 guild_id: Some(guild_id),
-                channel_id: guild_channel_id,
-                parent_id: None,
-                owner_id: None,
-                position: None,
-                last_message_id: None,
                 name: "general".to_owned(),
-                kind: "GuildText".to_owned(),
-                message_count: None,
-                member_count: None,
-                total_message_sent: None,
-                thread_metadata: None,
-                flags: None,
-                current_user_joined_thread: None,
-                recipients: None,
-                permission_overwrites: Vec::new(),
+                ..ChannelInfo::test(guild_channel_id, "GuildText")
             }],
             members: Vec::new(),
             presences: Vec::new(),
@@ -526,22 +499,8 @@ mod tests {
             owner_id: None,
         });
         state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
-            guild_id: None,
-            channel_id: dm_channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "dm".to_owned(),
-            kind: "DM".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(dm_channel_id, "DM")
         }));
         state.push_event(AppEvent::ActivateChannel {
             channel_id: dm_channel_id,
@@ -550,47 +509,17 @@ mod tests {
     }
 
     fn push_message(state: &mut DashboardState, message_id: u64) {
-        state.push_event(AppEvent::MessageCreate {
-            guild_id: Some(Id::new(1)),
-            channel_id: Id::new(2),
+        state.push_event(message_create_event(MessageCreateFixture {
             message_id: Id::new(message_id),
-            author_id: Id::new(99),
-            author: "neo".to_owned(),
-            author_avatar_url: None,
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
             content: Some(format!("msg {message_id}")),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments: Vec::new(),
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-        });
+            ..guild_message_create_fixture()
+        }));
     }
 
     fn push_image_message(state: &mut DashboardState, message_id: u64) {
-        state.push_event(AppEvent::MessageCreate {
-            guild_id: Some(Id::new(1)),
-            channel_id: Id::new(2),
+        state.push_event(message_create_event(MessageCreateFixture {
             message_id: Id::new(message_id),
-            author_id: Id::new(99),
-            author: "neo".to_owned(),
-            author_avatar_url: None,
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
             content: Some(format!("image {message_id}")),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
             attachments: vec![AttachmentInfo {
                 id: Id::<AttachmentMarker>::new(message_id),
                 filename: "cat.png".to_owned(),
@@ -602,9 +531,8 @@ mod tests {
                 height: Some(32),
                 description: None,
             }],
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-        });
+            ..guild_message_create_fixture()
+        }));
     }
 
     fn read_state(
@@ -613,9 +541,9 @@ mod tests {
         mention_count: u32,
     ) -> ReadStateInfo {
         ReadStateInfo {
-            channel_id: Id::new(channel_id),
             last_acked_message_id: last_acked_message_id.map(Id::<MessageMarker>::new),
             mention_count,
+            ..ReadStateInfo::test(Id::new(channel_id))
         }
     }
 }

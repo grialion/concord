@@ -603,20 +603,13 @@ fn enter_submits_complete_slash_command_when_optional_options_are_suggested() {
     state.push_event(AppEvent::ApplicationCommandsLoaded {
         guild_id: Some(Id::new(1)),
         commands: vec![ApplicationCommandInfo {
-            id: Id::new(100),
             application_id: Id::new(200),
             version: "1".to_owned(),
-            name: "achievements".to_owned(),
             application_name: Some("TestBot".to_owned()),
             description: "achievements command".to_owned(),
             options: vec![ApplicationCommandOptionInfo {
-                kind: 6,
-                name: "member".to_owned(),
                 description: "member option".to_owned(),
-                required: false,
-                autocomplete: false,
-                choices: Vec::new(),
-                options: Vec::new(),
+                ..ApplicationCommandOptionInfo::test(6, "member")
             }],
             raw: serde_json::json!({
                 "id": "100",
@@ -624,6 +617,7 @@ fn enter_submits_complete_slash_command_when_optional_options_are_suggested() {
                 "version": "1",
                 "name": "achievements",
             }),
+            ..ApplicationCommandInfo::test(Id::new(100), "achievements")
         }],
     });
     handle_key(&mut state, char_key('i'));

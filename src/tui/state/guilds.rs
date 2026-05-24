@@ -200,9 +200,7 @@ impl DashboardState {
             let entries = self.guild_pane_filtered_entries();
             match entries.get(selected) {
                 Some(GuildPaneEntry::DirectMessages) => Some(ActiveGuildScope::DirectMessages),
-                Some(GuildPaneEntry::Guild { state, .. }) => {
-                    Some(ActiveGuildScope::Guild(state.id))
-                }
+                Some(entry) => entry.guild_id().map(ActiveGuildScope::Guild),
                 _ => None,
             }
         };
@@ -272,12 +270,9 @@ impl DashboardState {
     }
 
     pub fn selected_guild_cursor_id(&self) -> Option<Id<GuildMarker>> {
-        match self.guild_pane_entries().get(self.selected_guild()) {
-            Some(GuildPaneEntry::Guild { state, .. }) => Some(state.id),
-            Some(GuildPaneEntry::DirectMessages | GuildPaneEntry::FolderHeader { .. }) | None => {
-                None
-            }
-        }
+        self.guild_pane_entries()
+            .get(self.selected_guild())
+            .and_then(GuildPaneEntry::guild_id)
     }
 
     pub fn is_active_guild_entry(&self, entry: &GuildPaneEntry<'_>) -> bool {

@@ -1000,13 +1000,7 @@ impl DashboardState {
         let selected = self.selected_channel();
         let channel_id = {
             let entries = self.channel_pane_filtered_entries();
-            match entries.get(selected) {
-                Some(
-                    ChannelPaneEntry::Channel { state, .. }
-                    | ChannelPaneEntry::Thread { state, .. },
-                ) => Some(state.id),
-                _ => None,
-            }
+            entries.get(selected).and_then(ChannelPaneEntry::channel_id)
         };
         if let Some(channel_id) = channel_id {
             let command = self.activate_channel_command(channel_id);
@@ -1079,15 +1073,9 @@ impl DashboardState {
     }
 
     pub(super) fn selected_channel_cursor_id(&self) -> Option<Id<ChannelMarker>> {
-        match self.channel_pane_entries().get(self.selected_channel()) {
-            Some(
-                ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. },
-            ) => Some(state.id),
-            Some(
-                ChannelPaneEntry::CategoryHeader { .. } | ChannelPaneEntry::VoiceParticipant { .. },
-            )
-            | None => None,
-        }
+        self.channel_pane_entries()
+            .get(self.selected_channel())
+            .and_then(ChannelPaneEntry::channel_id)
     }
 
     pub fn channel_scroll(&self) -> usize {
@@ -1119,13 +1107,11 @@ impl DashboardState {
         let Some(channel_id) = channel_id else {
             return;
         };
-        if let Some(index) = self.channel_pane_entries().iter().position(|entry| {
-            matches!(
-                entry,
-                ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. }
-                    if state.id == channel_id
-            )
-        }) {
+        if let Some(index) = self
+            .channel_pane_entries()
+            .iter()
+            .position(|entry| entry.channel_id() == Some(channel_id))
+        {
             self.navigation.selected_channel = index;
         }
     }

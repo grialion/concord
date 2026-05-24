@@ -21,7 +21,7 @@ fn message_creation_keeps_viewport_on_latest() {
             message_id: Id::new(id),
             author_id: Id::new(99),
             content: Some(format!("msg {id}")),
-            ..MessageCreateFixture::default()
+            ..guild_message_create_fixture()
         }));
     }
 
@@ -47,7 +47,7 @@ fn message_scroll_preserves_position_when_not_following() {
         message_id: Id::new(6),
         author_id: Id::new(99),
         content: Some("msg 6".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     assert_eq!(state.selected_message(), 3);
@@ -136,7 +136,7 @@ fn user_sent_message_from_history_position_does_not_force_follow() {
         author_id: me,
         author: "me".to_owned(),
         content: Some("hello".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     let messages = state.messages();
@@ -475,7 +475,7 @@ fn viewport_scroll_moves_to_next_message_after_current_message() {
         message_id: Id::new(2),
         author_id: Id::new(99),
         content: Some("next".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.focus_pane(FocusPane::Messages);
     state.set_message_view_height(3);
@@ -509,7 +509,7 @@ fn focused_message_selection_returns_none_when_viewport_scrolled_past_selection(
         message_id: Id::new(2),
         author_id: Id::new(99),
         content: Some("next".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.focus_pane(FocusPane::Messages);
     state.set_message_view_height(3);
@@ -535,7 +535,7 @@ fn moving_cursor_to_first_message_resets_top_line_scroll() {
         message_id: Id::new(2),
         author_id: Id::new(99),
         content: Some("next".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.focus_pane(FocusPane::Messages);
     state.set_message_view_height(3);
@@ -585,7 +585,7 @@ fn viewport_scrolls_by_rendered_line_when_selected_message_is_below_top() {
         message_id: Id::new(2),
         author_id: Id::new(99),
         content: Some("next".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.focus_pane(FocusPane::Messages);
     state.set_message_view_height(3);
@@ -625,7 +625,7 @@ fn tall_message_clamp_keeps_next_selected_message_visible() {
         message_id: Id::new(2),
         author_id: Id::new(99),
         content: Some("next".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.focus_pane(FocusPane::Messages);
     state.set_message_view_height(3);
@@ -654,7 +654,7 @@ fn viewport_scroll_up_enters_previous_long_message_at_last_line() {
         message_id: Id::new(2),
         author_id: Id::new(99),
         content: Some("next".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.focus_pane(FocusPane::Messages);
     state.set_message_view_height(3);

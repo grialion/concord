@@ -4,32 +4,22 @@ use super::*;
 fn channel_switcher_lines_show_search_and_grouped_selection() {
     let items = vec![
         ChannelSwitcherItem {
-            channel_id: Id::new(1),
-            guild_id: None,
-            guild_name: None,
             group_label: "Direct Messages".to_owned(),
-            parent_label: None,
             channel_label: "@alice".to_owned(),
-            unread: ChannelUnreadState::Seen,
-            unread_message_count: 0,
             search_name: "alice".to_owned(),
-            depth: 0,
-            group_order: 0,
-            original_index: 0,
+            ..ChannelSwitcherItem::test(Id::new(1))
         },
         ChannelSwitcherItem {
-            channel_id: Id::new(2),
             guild_id: Some(Id::new(1)),
             guild_name: Some("guild".to_owned()),
             group_label: "guild".to_owned(),
             parent_label: Some("Text".to_owned()),
             channel_label: "#general".to_owned(),
-            unread: ChannelUnreadState::Seen,
-            unread_message_count: 0,
             search_name: "general".to_owned(),
             depth: 1,
             group_order: 1,
             original_index: 1,
+            ..ChannelSwitcherItem::test(Id::new(2))
         },
     ];
 
@@ -59,18 +49,12 @@ fn channel_switcher_lines_show_search_and_grouped_selection() {
 #[test]
 fn channel_switcher_lines_show_unread_badges_like_channel_pane() {
     let items = vec![ChannelSwitcherItem {
-        channel_id: Id::new(1),
-        guild_id: None,
-        guild_name: None,
         group_label: "Direct Messages".to_owned(),
-        parent_label: None,
         channel_label: "@new".to_owned(),
         unread: ChannelUnreadState::Unread,
         unread_message_count: 5,
         search_name: "new".to_owned(),
-        depth: 0,
-        group_order: 0,
-        original_index: 0,
+        ..ChannelSwitcherItem::test(Id::new(1))
     }];
 
     let lines = channel_switcher_lines(&items, 0, "", 0, 10, 40);
@@ -85,18 +69,13 @@ fn channel_switcher_lines_show_unread_badges_like_channel_pane() {
 #[test]
 fn selected_channel_switcher_unread_row_keeps_highlight() {
     let items = vec![ChannelSwitcherItem {
-        channel_id: Id::new(1),
         guild_id: Some(Id::new(1)),
         guild_name: Some("guild".to_owned()),
         group_label: "guild".to_owned(),
-        parent_label: None,
         channel_label: "#alerts".to_owned(),
         unread: ChannelUnreadState::Mentioned(2),
-        unread_message_count: 0,
         search_name: "alerts".to_owned(),
-        depth: 0,
-        group_order: 0,
-        original_index: 0,
+        ..ChannelSwitcherItem::test(Id::new(1))
     }];
 
     let lines = channel_switcher_lines(&items, 0, "", 0, 10, 40);

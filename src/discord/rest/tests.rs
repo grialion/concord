@@ -57,14 +57,12 @@ fn application_command_interaction_body_nests_subcommand_options_for_guild_comma
         guild_id: Some(Id::new(1)),
         channel_id: Id::new(2),
         command: ApplicationCommandInfo {
-            id: Id::<ApplicationMarker>::new(100),
             application_id: Id::<ApplicationMarker>::new(200),
             version: "1".to_owned(),
-            name: "mod".to_owned(),
             application_name: Some("ModBot".to_owned()),
             description: "moderation".to_owned(),
-            options: Vec::new(),
             raw: serde_json::json!({ "name": "mod", "guild_id": "1" }),
+            ..ApplicationCommandInfo::test(Id::<ApplicationMarker>::new(100), "mod")
         },
         options: vec![ApplicationCommandInteractionOption {
             kind: 2,
@@ -119,13 +117,10 @@ fn application_command_interaction_body_omits_data_guild_id_for_global_command()
         guild_id: Some(Id::new(1)),
         channel_id: Id::new(2),
         command: ApplicationCommandInfo {
-            id: Id::<ApplicationMarker>::new(100),
             application_id: Id::<ApplicationMarker>::new(200),
             version: "1".to_owned(),
-            name: "search".to_owned(),
             application_name: Some("MusicBot".to_owned()),
             description: "search music".to_owned(),
-            options: Vec::new(),
             raw: serde_json::json!({
                 "id": "100",
                 "application_id": "200",
@@ -133,6 +128,7 @@ fn application_command_interaction_body_omits_data_guild_id_for_global_command()
                 "version": "1",
                 "integration_types": [0],
             }),
+            ..ApplicationCommandInfo::test(Id::<ApplicationMarker>::new(100), "search")
         },
         options: Vec::new(),
     };

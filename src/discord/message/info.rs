@@ -16,6 +16,18 @@ pub struct MentionInfo {
     pub display_name: String,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl MentionInfo {
+    pub(crate) fn test(user_id: Id<UserMarker>, display_name: impl Into<String>) -> Self {
+        Self {
+            user_id,
+            guild_nick: None,
+            display_name: display_name.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AttachmentInfo {
     pub id: Id<AttachmentMarker>,
@@ -27,6 +39,24 @@ pub struct AttachmentInfo {
     pub width: Option<u64>,
     pub height: Option<u64>,
     pub description: Option<String>,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl AttachmentInfo {
+    pub(crate) fn test(id: Id<AttachmentMarker>, filename: impl Into<String>) -> Self {
+        Self {
+            id,
+            filename: filename.into(),
+            url: String::new(),
+            proxy_url: String::new(),
+            content_type: None,
+            size: 0,
+            width: None,
+            height: None,
+            description: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -55,6 +85,33 @@ pub struct EmbedInfo {
     pub image_width: Option<u64>,
     pub image_height: Option<u64>,
     pub video_url: Option<String>,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl EmbedInfo {
+    pub(crate) fn test() -> Self {
+        Self {
+            color: None,
+            provider_name: None,
+            author_name: None,
+            title: None,
+            description: None,
+            timestamp: None,
+            fields: Vec::new(),
+            footer_text: None,
+            url: None,
+            thumbnail_url: None,
+            thumbnail_proxy_url: None,
+            thumbnail_width: None,
+            thumbnail_height: None,
+            image_url: None,
+            image_proxy_url: None,
+            image_width: None,
+            image_height: None,
+            video_url: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -162,6 +219,22 @@ pub struct MessageSnapshotInfo {
     pub timestamp: Option<String>,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl MessageSnapshotInfo {
+    pub(crate) fn test() -> Self {
+        Self {
+            content: None,
+            sticker_names: Vec::new(),
+            mentions: Vec::new(),
+            attachments: Vec::new(),
+            embeds: Vec::new(),
+            source_channel_id: None,
+            timestamp: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReplyInfo {
     pub author_id: Option<Id<UserMarker>>,
@@ -171,6 +244,20 @@ pub struct ReplyInfo {
     pub mentions: Vec<MentionInfo>,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl ReplyInfo {
+    pub(crate) fn test(author: impl Into<String>) -> Self {
+        Self {
+            author_id: None,
+            author: author.into(),
+            content: None,
+            sticker_names: Vec::new(),
+            mentions: Vec::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MessageInteractionInfo {
     pub user_id: Option<Id<UserMarker>>,
@@ -178,11 +265,35 @@ pub struct MessageInteractionInfo {
     pub command_name: Option<String>,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl MessageInteractionInfo {
+    pub(crate) fn test(user: impl Into<String>) -> Self {
+        Self {
+            user_id: None,
+            user: user.into(),
+            command_name: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MessageReferenceInfo {
     pub guild_id: Option<Id<GuildMarker>>,
     pub channel_id: Option<Id<ChannelMarker>>,
     pub message_id: Option<Id<MessageMarker>>,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl MessageReferenceInfo {
+    pub(crate) fn test(message_id: Id<MessageMarker>) -> Self {
+        Self {
+            guild_id: None,
+            channel_id: None,
+            message_id: Some(message_id),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -194,12 +305,39 @@ pub struct PollInfo {
     pub total_votes: Option<u64>,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl PollInfo {
+    pub(crate) fn test(question: impl Into<String>) -> Self {
+        Self {
+            question: question.into(),
+            answers: Vec::new(),
+            allow_multiselect: false,
+            results_finalized: None,
+            total_votes: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PollAnswerInfo {
     pub answer_id: u8,
     pub text: String,
     pub vote_count: Option<u64>,
     pub me_voted: bool,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl PollAnswerInfo {
+    pub(crate) fn test(answer_id: u8, text: impl Into<String>) -> Self {
+        Self {
+            answer_id,
+            text: text.into(),
+            vote_count: None,
+            me_voted: false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -209,16 +347,50 @@ pub struct ReactionInfo {
     pub me: bool,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl ReactionInfo {
+    pub(crate) fn test(emoji: ReactionEmoji) -> Self {
+        Self {
+            emoji,
+            count: 1,
+            me: false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReactionUserInfo {
     pub user_id: Id<UserMarker>,
     pub display_name: String,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl ReactionUserInfo {
+    pub(crate) fn test(user_id: Id<UserMarker>, display_name: impl Into<String>) -> Self {
+        Self {
+            user_id,
+            display_name: display_name.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReactionUsersInfo {
     pub emoji: ReactionEmoji,
     pub users: Vec<ReactionUserInfo>,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl ReactionUsersInfo {
+    pub(crate) fn test(emoji: ReactionEmoji) -> Self {
+        Self {
+            emoji,
+            users: Vec::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -276,10 +448,31 @@ impl Default for MessageInfo {
     }
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl MessageInfo {
+    pub(crate) fn test(channel_id: Id<ChannelMarker>, message_id: Id<MessageMarker>) -> Self {
+        Self {
+            channel_id,
+            message_id,
+            ..Self::default()
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AttachmentUpdate {
     Unchanged,
     Replace(Vec<AttachmentInfo>),
+}
+
+impl AttachmentUpdate {
+    pub fn replacement(&self) -> Option<&[AttachmentInfo]> {
+        match self {
+            Self::Unchanged => None,
+            Self::Replace(attachments) => Some(attachments),
+        }
+    }
 }
 
 impl AttachmentInfo {

@@ -276,27 +276,11 @@ fn direct_message_shortcuts_work_from_message_pane() {
 #[test]
 fn open_url_shortcut_opens_url_or_url_picker() {
     let mut state = state_with_messages(0);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
+    state.push_event(message_create_event(MessageCreateFixture {
         message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some("first https://one.example second https://two.example".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
     state.focus_pane(FocusPane::Messages);
 
     let command = handle_key(&mut state, char_key('o'));
@@ -528,11 +512,8 @@ fn reaction_users_popup_is_modal_and_escape_closes_it() {
         channel_id: Id::new(2),
         message_id: Id::new(1),
         reactions: vec![ReactionUsersInfo {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
-            users: vec![ReactionUserInfo {
-                user_id: Id::new(10),
-                display_name: "neo".to_owned(),
-            }],
+            users: vec![ReactionUserInfo::test(Id::new(10), "neo")],
+            ..ReactionUsersInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
         }],
     });
 

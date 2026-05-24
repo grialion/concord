@@ -3004,14 +3004,12 @@ mod tests {
 
         let message_actions = [
             MessageActionItem {
-                kind: MessageActionKind::OpenThread,
                 label: "Open thread".to_owned(),
-                enabled: true,
+                ..MessageActionItem::test(MessageActionKind::OpenThread)
             },
             MessageActionItem {
-                kind: MessageActionKind::ShowReactionUsers,
                 label: "Show reacted users".to_owned(),
-                enabled: true,
+                ..MessageActionItem::test(MessageActionKind::ShowReactionUsers)
             },
         ];
         assert_eq!(

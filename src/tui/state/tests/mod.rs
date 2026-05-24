@@ -19,12 +19,11 @@ use crate::discord::{
     ActivityInfo, ActivityKind, AppCommand, AppEvent, AttachmentInfo, AttachmentUpdate,
     ChannelInfo, ChannelNotificationOverrideInfo, ChannelRecipientInfo, ChannelUnreadState,
     ChannelVisibilityStats, CustomEmojiInfo, DiscordState, DownloadAttachmentSource,
-    EmbedFieldInfo, EmbedInfo, ForumPostArchiveState, FriendStatus, GuildNotificationSettingsInfo,
+    EmbedFieldInfo, EmbedInfo, ForumPostArchiveState, GuildNotificationSettingsInfo,
     MessageAttachmentUpload, MessageInfo, MessageKind, MessageReferenceInfo, MessageSnapshotInfo,
-    MessageState, MutualGuildInfo, NotificationLevel, PermissionOverwriteInfo,
-    PermissionOverwriteKind, PresenceStatus, ReactionEmoji, ReactionInfo, ReactionUserInfo,
-    ReactionUsersInfo, ReplyInfo, RoleInfo, SnapshotRevision, UserProfileInfo,
-    VoiceConnectionStatus, VoiceStateInfo,
+    MessageState, NotificationLevel, PermissionOverwriteInfo, PermissionOverwriteKind,
+    PresenceStatus, ReactionEmoji, ReactionInfo, ReactionUserInfo, ReactionUsersInfo, ReplyInfo,
+    RoleInfo, SnapshotRevision, UserProfileInfo, VoiceConnectionStatus, VoiceStateInfo,
 };
 
 mod channel_switcher;
@@ -60,18 +59,8 @@ fn message_rendered_height(
 
 fn profile_info(user_id: u64, guild_nick: Option<&str>) -> UserProfileInfo {
     UserProfileInfo {
-        user_id: Id::new(user_id),
-        username: format!("user-{user_id}"),
-        global_name: None,
         guild_nick: guild_nick.map(str::to_owned),
-        role_ids: Vec::new(),
-        avatar_url: None,
-        bio: None,
-        pronouns: None,
-        mutual_guilds: Vec::<MutualGuildInfo>::new(),
-        mutual_friends_count: 0,
-        friend_status: FriendStatus::None,
-        note: None,
+        ..UserProfileInfo::test(Id::new(user_id), format!("user-{user_id}"))
     }
 }
 
@@ -82,7 +71,7 @@ fn notification_message_event(channel_id: Id<ChannelMarker>, content: &str) -> A
         message_id: Id::new(50),
         author_id: Id::new(99),
         content: Some(content.to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     })
 }
 
@@ -93,7 +82,7 @@ fn direct_message_create_event(channel_id: Id<ChannelMarker>, message_id: u64) -
         message_id: Id::new(message_id),
         author_id: Id::new(99),
         content: Some("hello from dm".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     })
 }
 
@@ -155,18 +144,15 @@ fn push_reply_message_with_attachments(
         reference: Some(MessageReferenceInfo {
             guild_id: Some(Id::new(1)),
             channel_id: Some(Id::new(2)),
-            message_id: Some(Id::new(42)),
+            ..MessageReferenceInfo::test(Id::new(42))
         }),
         reply: Some(ReplyInfo {
-            author_id: None,
-            author: "original".to_owned(),
             content: Some("original message".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
+            ..ReplyInfo::test("original")
         }),
         content: content.map(str::to_owned),
         attachments,
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 }
 
@@ -197,7 +183,7 @@ fn state_with_thread_created_message_after_regular_message() -> DashboardState {
         message_id: Id::new(1),
         author_id: Id::new(99),
         content: Some("older parent message ".repeat(20)),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state.push_event(message_create_event(MessageCreateFixture {
         guild_id: Some(guild_id),
@@ -211,7 +197,7 @@ fn state_with_thread_created_message_after_regular_message() -> DashboardState {
             message_id: None,
         }),
         content: Some("release notes ".repeat(20)),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
     state
 }
@@ -256,26 +242,10 @@ fn forum_preview_message(
 ) -> MessageInfo {
     MessageInfo {
         guild_id: Some(guild_id),
-        channel_id,
-        message_id: Id::new(message_id),
         author_id: Id::new(99),
         author: author.to_owned(),
-        author_avatar_url: None,
-        author_role_ids: Vec::new(),
-        message_kind: MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        pinned: false,
-        reactions: Vec::new(),
         content: Some(content.to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-        ..MessageInfo::default()
+        ..MessageInfo::test(channel_id, Id::new(message_id))
     }
 }
 
@@ -298,11 +268,8 @@ fn state_with_many_forum_channel_posts(count: u64) -> DashboardState {
         .rev()
         .map(|index| ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id: Id::new(30 + index),
             parent_id: Some(forum_id),
-            owner_id: None,
             position: Some(i32::try_from(index).expect("test index fits i32")),
-            last_message_id: None,
             name: if count == 2 && index == 0 {
                 "welcome".to_owned()
             } else if count == 2 && index == 1 {
@@ -310,15 +277,10 @@ fn state_with_many_forum_channel_posts(count: u64) -> DashboardState {
             } else {
                 format!("post {}", index + 1)
             },
-            kind: "GuildPublicThread".to_owned(),
             message_count: Some(index + 1),
-            member_count: None,
             total_message_sent: Some(index + 1),
             thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(Id::new(30 + index), "GuildPublicThread")
         })
         .collect();
     state.push_event(AppEvent::ForumPostsLoaded {

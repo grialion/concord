@@ -107,18 +107,7 @@ fn header_keeps_current_user_white_while_speaking() {
     assert_eq!(buffer[(user_col, 0)].fg, Color::White);
 
     state.push_event(AppEvent::VoiceStateUpdate {
-        state: VoiceStateInfo {
-            guild_id: Id::new(1),
-            channel_id: Some(Id::new(11)),
-            user_id: Id::new(10),
-            session_id: None,
-            member: None,
-            deaf: false,
-            mute: false,
-            self_deaf: false,
-            self_mute: false,
-            self_stream: false,
-        },
+        state: VoiceStateInfo::test(Id::new(1), Some(Id::new(11)), Id::new(10)),
     });
     state.push_event(AppEvent::VoiceSpeakingUpdate {
         guild_id: Id::new(1),
@@ -164,16 +153,10 @@ fn header_labels_other_client_voice_connection() {
     });
     state.push_event(AppEvent::VoiceStateUpdate {
         state: VoiceStateInfo {
-            guild_id: Id::new(1),
-            channel_id: Some(Id::new(11)),
-            user_id: Id::new(10),
             session_id: Some("other-client-voice-session".to_owned()),
-            member: None,
-            deaf: false,
-            mute: false,
             self_deaf: true,
             self_mute: true,
-            self_stream: false,
+            ..VoiceStateInfo::test(Id::new(1), Some(Id::new(11)), Id::new(10))
         },
     });
 
@@ -324,21 +307,8 @@ fn muted_server_name_is_dimmed() {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: Vec::new(),
         presences: Vec::new(),
@@ -348,13 +318,9 @@ fn muted_server_name_is_dimmed() {
     });
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(guild_id),
             message_notifications: Some(NotificationLevel::OnlyMentions),
             muted: true,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
-            channel_overrides: Vec::new(),
+            ..GuildNotificationSettingsInfo::test(Some(guild_id))
         }],
     });
     state.set_guild_view_height(20);
@@ -465,12 +431,8 @@ fn channel_pane_shows_voice_participants_under_voice_channel() {
             },
         ],
         members: vec![MemberInfo {
-            user_id: alice,
-            display_name: "Alice".to_owned(),
             username: Some("alice".to_owned()),
-            is_bot: false,
-            avatar_url: None,
-            role_ids: Vec::new(),
+            ..MemberInfo::test(alice, "Alice")
         }],
         presences: Vec::new(),
         roles: Vec::new(),
@@ -479,16 +441,10 @@ fn channel_pane_shows_voice_participants_under_voice_channel() {
     });
     state.push_event(AppEvent::VoiceStateUpdate {
         state: VoiceStateInfo {
-            guild_id,
-            channel_id: Some(voice_id),
-            user_id: alice,
-            session_id: None,
-            member: None,
             deaf: true,
             mute: true,
-            self_deaf: false,
-            self_mute: false,
             self_stream: true,
+            ..VoiceStateInfo::test(guild_id, Some(voice_id), alice)
         },
     });
     state.push_event(AppEvent::VoiceSpeakingUpdate {
@@ -641,29 +597,13 @@ fn member_pane_keeps_normal_style_for_speaking_voice_members() {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id: voice_id,
-            parent_id: None,
-            owner_id: None,
             position: Some(0),
-            last_message_id: None,
             name: "Lobby".to_owned(),
-            kind: "GuildVoice".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(voice_id, "GuildVoice")
         }],
         members: vec![MemberInfo {
-            user_id: alice,
-            display_name: "Alice".to_owned(),
             username: Some("alice".to_owned()),
-            is_bot: false,
-            avatar_url: None,
-            role_ids: Vec::new(),
+            ..MemberInfo::test(alice, "Alice")
         }],
         presences: vec![(alice, PresenceStatus::Online)],
         roles: Vec::new(),
@@ -676,18 +616,7 @@ fn member_pane_keeps_normal_style_for_speaking_voice_members() {
         online: 1,
     });
     state.push_event(AppEvent::VoiceStateUpdate {
-        state: VoiceStateInfo {
-            guild_id,
-            channel_id: Some(voice_id),
-            user_id: alice,
-            session_id: None,
-            member: None,
-            deaf: false,
-            mute: false,
-            self_deaf: false,
-            self_mute: false,
-            self_stream: false,
-        },
+        state: VoiceStateInfo::test(guild_id, Some(voice_id), alice),
     });
 
     let backend = TestBackend::new(40, 6);
@@ -722,25 +651,13 @@ fn pane_filters_keep_content_width_when_active() {
     let channels = (0..12)
         .map(|index| ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id: Id::new(10 + index),
-            parent_id: None,
-            owner_id: None,
             position: Some(i32::try_from(index).expect("test index should fit i32")),
-            last_message_id: None,
             name: if index == 0 {
                 matching_name.to_owned()
             } else {
                 format!("other-{index}")
             },
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(Id::new(10 + index), "GuildText")
         })
         .collect();
     let mut state = DashboardState::new();
@@ -864,18 +781,12 @@ fn muted_category_and_channel_names_are_dimmed() {
     state.confirm_selected_guild();
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(guild_id),
             message_notifications: Some(NotificationLevel::OnlyMentions),
-            muted: false,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
             channel_overrides: vec![ChannelNotificationOverrideInfo {
-                channel_id: category_id,
-                message_notifications: None,
                 muted: true,
-                mute_end_time: None,
+                ..ChannelNotificationOverrideInfo::test(category_id)
             }],
+            ..GuildNotificationSettingsInfo::test(Some(guild_id))
         }],
     });
     state.set_channel_view_height(20);
@@ -929,10 +840,8 @@ fn muted_category_and_channel_names_are_dimmed() {
 #[test]
 fn forum_post_lines_render_title_author_and_preview() {
     let post = ChannelThreadItem {
-        channel_id: Id::new(30),
         section_label: Some("Active posts".to_owned()),
         label: "A useful Rust crate".to_owned(),
-        archived: false,
         locked: true,
         pinned: true,
         preview_author_id: Some(Id::new(99)),
@@ -940,13 +849,14 @@ fn forum_post_lines_render_title_author_and_preview() {
         preview_author_color: Some(0x3366CC),
         preview_content: Some("This crate solves a small but annoying problem".to_owned()),
         preview_reactions: vec![ReactionInfo {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
             count: 2,
             me: true,
+            ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
         }],
         comment_count: Some(4),
         new_message_count: 3,
         last_activity_message_id: Some(Id::new(30)),
+        ..ChannelThreadItem::test(Id::new(30))
     };
 
     let lines = forum_post_viewport_lines(&[post], Some(0), 80, false);
@@ -996,20 +906,13 @@ fn forum_post_scrollbar_visible_count_uses_rendered_rows() {
 #[test]
 fn forum_post_lines_can_reserve_scrollbar_column() {
     let post = ChannelThreadItem {
-        channel_id: Id::new(30),
-        section_label: None,
         label: "A useful Rust crate".to_owned(),
-        archived: false,
-        locked: false,
-        pinned: false,
         preview_author_id: Some(Id::new(99)),
         preview_author: Some("neo".to_owned()),
-        preview_author_color: None,
         preview_content: Some("short preview".to_owned()),
-        preview_reactions: Vec::new(),
         comment_count: Some(1),
-        new_message_count: 0,
         last_activity_message_id: Some(Id::new(30)),
+        ..ChannelThreadItem::test(Id::new(30))
     };
 
     let lines = forum_post_viewport_lines(

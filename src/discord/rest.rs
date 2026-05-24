@@ -971,12 +971,7 @@ fn profile_avatar_url(user: &Value) -> Option<String> {
 }
 
 fn reaction_route_component(emoji: &ReactionEmoji) -> String {
-    match emoji {
-        ReactionEmoji::Unicode(name) => percent_encode_path_segment(name),
-        ReactionEmoji::Custom { id, name, .. } => {
-            percent_encode_path_segment(&format!("{}:{id}", name.as_deref().unwrap_or_default()))
-        }
-    }
+    emoji.route_component()
 }
 
 fn parse_forum_threads(
@@ -1090,19 +1085,6 @@ fn merge_forum_pages(active: ForumPostPage, recent: ForumPostPage) -> ForumPostP
         first_messages,
         has_more: active.has_more,
     }
-}
-
-fn percent_encode_path_segment(value: &str) -> String {
-    let mut encoded = String::new();
-    for byte in value.bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
-                encoded.push(char::from(byte));
-            }
-            _ => encoded.push_str(&format!("%{byte:02X}")),
-        }
-    }
-    encoded
 }
 
 fn next_reaction_users_after(

@@ -35,7 +35,7 @@ fn loaded_messages_are_unselected_until_message_pane_is_focused() {
             message_id: Id::new(id),
             author_id: Id::new(99),
             content: Some(format!("msg {id}")),
-            ..MessageCreateFixture::default()
+            ..guild_message_create_fixture()
         }));
     }
 
@@ -63,7 +63,7 @@ fn startup_events_do_not_auto_open_direct_messages() {
         message_id: Id::new(30),
         author_id: Id::new(99),
         content: Some("hello".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     assert_eq!(state.selected_channel_id(), None);
@@ -354,7 +354,7 @@ fn collapsed_category_keeps_unread_child_visible_until_another_channel_is_select
         author_id: Id::new(20),
         author: "alice".to_owned(),
         content: Some("unread".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     state.toggle_selected_channel_category();

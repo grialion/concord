@@ -334,6 +334,90 @@ pub enum AppEvent {
     GatewayClosed,
 }
 
+#[cfg(test)]
+pub(crate) mod test_builders {
+    use super::*;
+
+    pub(crate) struct MessageCreateFixture {
+        pub(crate) guild_id: Option<Id<GuildMarker>>,
+        pub(crate) channel_id: Id<ChannelMarker>,
+        pub(crate) message_id: Id<MessageMarker>,
+        pub(crate) author_id: Id<UserMarker>,
+        pub(crate) author: String,
+        pub(crate) author_avatar_url: Option<String>,
+        pub(crate) author_is_bot: bool,
+        pub(crate) author_role_ids: Vec<Id<RoleMarker>>,
+        pub(crate) message_kind: MessageKind,
+        pub(crate) interaction: Option<MessageInteractionInfo>,
+        pub(crate) reference: Option<MessageReferenceInfo>,
+        pub(crate) reply: Option<ReplyInfo>,
+        pub(crate) poll: Option<PollInfo>,
+        pub(crate) content: Option<String>,
+        pub(crate) sticker_names: Vec<String>,
+        pub(crate) mentions: Vec<MentionInfo>,
+        pub(crate) attachments: Vec<AttachmentInfo>,
+        pub(crate) embeds: Vec<EmbedInfo>,
+        pub(crate) forwarded_snapshots: Vec<MessageSnapshotInfo>,
+    }
+
+    impl Default for MessageCreateFixture {
+        fn default() -> Self {
+            Self {
+                guild_id: None,
+                channel_id: Id::new(2),
+                message_id: Id::new(1),
+                author_id: Id::new(99),
+                author: "neo".to_owned(),
+                author_avatar_url: None,
+                author_is_bot: false,
+                author_role_ids: Vec::new(),
+                message_kind: MessageKind::regular(),
+                interaction: None,
+                reference: None,
+                reply: None,
+                poll: None,
+                content: Some("hello".to_owned()),
+                sticker_names: Vec::new(),
+                mentions: Vec::new(),
+                attachments: Vec::new(),
+                embeds: Vec::new(),
+                forwarded_snapshots: Vec::new(),
+            }
+        }
+    }
+
+    pub(crate) fn guild_message_create_fixture() -> MessageCreateFixture {
+        MessageCreateFixture {
+            guild_id: Some(Id::new(1)),
+            ..MessageCreateFixture::default()
+        }
+    }
+
+    pub(crate) fn message_create_event(event: MessageCreateFixture) -> AppEvent {
+        AppEvent::MessageCreate {
+            guild_id: event.guild_id,
+            channel_id: event.channel_id,
+            message_id: event.message_id,
+            author_id: event.author_id,
+            author: event.author,
+            author_avatar_url: event.author_avatar_url,
+            author_is_bot: event.author_is_bot,
+            author_role_ids: event.author_role_ids,
+            message_kind: event.message_kind,
+            interaction: event.interaction,
+            reference: event.reference,
+            reply: event.reply,
+            poll: event.poll,
+            content: event.content,
+            sticker_names: event.sticker_names,
+            mentions: event.mentions,
+            attachments: event.attachments,
+            embeds: event.embeds,
+            forwarded_snapshots: event.forwarded_snapshots,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SequencedAppEvent {
     pub revision: u64,
@@ -436,11 +520,10 @@ fn poll_result_info_from_fields<'a>(
         .unwrap_or_default();
 
     Some(PollInfo {
-        question,
         answers,
-        allow_multiselect: false,
         results_finalized: Some(true),
         total_votes,
+        ..PollInfo::test(question)
     })
 }
 
@@ -523,15 +606,13 @@ mod tests {
 
     fn attachment_info(filename: &str, content_type: Option<&str>) -> AttachmentInfo {
         AttachmentInfo {
-            id: Id::new(1),
-            filename: filename.to_owned(),
             url: format!("https://cdn.discordapp.com/{filename}"),
             proxy_url: format!("https://media.discordapp.net/{filename}"),
             content_type: content_type.map(str::to_owned),
             size: 1024,
             width: Some(640),
             height: Some(480),
-            description: None,
+            ..AttachmentInfo::test(Id::new(1), filename)
         }
     }
 }

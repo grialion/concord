@@ -1146,7 +1146,7 @@ mod tests {
     use crate::discord::ids::Id;
 
     use crate::discord::{
-        AppEvent, ChannelInfo, ForumPostArchiveState, FriendStatus, MemberInfo, UserProfileInfo,
+        AppEvent, ChannelInfo, ForumPostArchiveState, MemberInfo, UserProfileInfo,
     };
 
     use super::{
@@ -1359,21 +1359,10 @@ mod tests {
     ) -> ChannelInfo {
         ChannelInfo {
             guild_id: Some(Id::new(100)),
-            channel_id: Id::new(channel_id),
             parent_id: Some(forum_id),
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: format!("post {channel_id}"),
-            kind: "GuildPublicThread".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
             thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(Id::new(channel_id), "GuildPublicThread")
         }
     }
 
@@ -1392,20 +1381,7 @@ mod tests {
     }
 
     fn user_profile(user_id: Id<crate::discord::ids::marker::UserMarker>) -> UserProfileInfo {
-        UserProfileInfo {
-            user_id,
-            username: "neo".to_owned(),
-            global_name: None,
-            guild_nick: None,
-            role_ids: Vec::new(),
-            avatar_url: None,
-            bio: None,
-            pronouns: None,
-            mutual_guilds: Vec::new(),
-            mutual_friends_count: 0,
-            friend_status: FriendStatus::None,
-            note: None,
-        }
+        UserProfileInfo::test(user_id, "neo")
     }
 
     #[test]
@@ -1493,12 +1469,8 @@ mod tests {
         requests.record_event(&AppEvent::GuildMemberUpsert {
             guild_id,
             member: MemberInfo {
-                user_id,
-                display_name: "neo".to_owned(),
                 username: Some("neo".to_owned()),
-                is_bot: false,
-                avatar_url: None,
-                role_ids: Vec::new(),
+                ..MemberInfo::test(user_id, "neo")
             },
         });
         assert_eq!(

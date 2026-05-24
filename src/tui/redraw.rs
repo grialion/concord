@@ -418,22 +418,26 @@ pub(super) fn visible_dashboard_signature(state: &DashboardState) -> VisibleDash
             visible_guilds: state
                 .visible_guild_pane_entries()
                 .into_iter()
-                .map(|entry| match entry {
-                    state::GuildPaneEntry::DirectMessages => GuildEntrySignature {
-                        row: debug_signature(&entry),
-                        unread_count: Some(state.direct_message_unread_count()),
-                        unread_state: None,
-                    },
-                    state::GuildPaneEntry::Guild { state: guild, .. } => GuildEntrySignature {
+                .map(|entry| {
+                    if matches!(entry, state::GuildPaneEntry::DirectMessages) {
+                        return GuildEntrySignature {
+                            row: debug_signature(&entry),
+                            unread_count: Some(state.direct_message_unread_count()),
+                            unread_state: None,
+                        };
+                    }
+                    if let Some(guild) = entry.guild_state() {
+                        return GuildEntrySignature {
+                            row: debug_signature(&entry),
+                            unread_count: None,
+                            unread_state: Some(state.sidebar_guild_unread(guild.id)),
+                        };
+                    }
+                    GuildEntrySignature {
                         row: debug_signature(&entry),
                         unread_count: None,
-                        unread_state: Some(state.sidebar_guild_unread(guild.id)),
-                    },
-                    state::GuildPaneEntry::FolderHeader { .. } => GuildEntrySignature {
-                        row: debug_signature(&entry),
-                        unread_count: None,
                         unread_state: None,
-                    },
+                    }
                 })
                 .collect(),
         },
@@ -442,23 +446,21 @@ pub(super) fn visible_dashboard_signature(state: &DashboardState) -> VisibleDash
             visible_channels: state
                 .visible_channel_pane_entries()
                 .into_iter()
-                .map(|entry| match entry {
-                    state::ChannelPaneEntry::Channel { state: channel, .. }
-                    | state::ChannelPaneEntry::Thread { state: channel, .. } => {
-                        ChannelEntrySignature {
+                .map(|entry| {
+                    if let Some(channel) = entry.channel_state() {
+                        return ChannelEntrySignature {
                             row: debug_signature(&entry),
                             unread: Some(state.channel_unread(channel.id)),
                             unread_message_count: Some(
                                 state.channel_unread_message_count(channel.id),
                             ),
-                        }
+                        };
                     }
-                    state::ChannelPaneEntry::VoiceParticipant { .. }
-                    | state::ChannelPaneEntry::CategoryHeader { .. } => ChannelEntrySignature {
+                    ChannelEntrySignature {
                         row: debug_signature(&entry),
                         unread: None,
                         unread_message_count: None,
-                    },
+                    }
                 })
                 .collect(),
         },

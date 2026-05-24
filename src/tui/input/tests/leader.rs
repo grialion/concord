@@ -519,18 +519,12 @@ fn leader_channel_actions_unmute_when_already_muted() {
     let mut state = state_with_channel_tree();
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(Id::new(1)),
             message_notifications: Some(NotificationLevel::OnlyMentions),
-            muted: false,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
             channel_overrides: vec![ChannelNotificationOverrideInfo {
-                channel_id: Id::new(11),
-                message_notifications: None,
                 muted: true,
-                mute_end_time: None,
+                ..ChannelNotificationOverrideInfo::test(Id::new(11))
             }],
+            ..GuildNotificationSettingsInfo::test(Some(Id::new(1)))
         }],
     });
     state.focus_pane(FocusPane::Channels);
@@ -580,13 +574,9 @@ fn leader_server_actions_unmute_when_already_muted() {
     let mut state = state_with_channel_tree();
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(Id::new(1)),
             message_notifications: Some(NotificationLevel::OnlyMentions),
             muted: true,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
-            channel_overrides: Vec::new(),
+            ..GuildNotificationSettingsInfo::test(Some(Id::new(1)))
         }],
     });
     state.focus_pane(FocusPane::Guilds);

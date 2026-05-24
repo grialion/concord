@@ -37,8 +37,8 @@ fn stores_message_kind_from_message_create() {
         message_kind: MessageKind::new(20),
         interaction: Some(MessageInteractionInfo {
             user_id: Some(Id::new(30)),
-            user: "casey".to_owned(),
             command_name: Some("anime search".to_owned()),
+            ..MessageInteractionInfo::test("casey")
         }),
         content: Some(String::new()),
         ..MessageCreateFixture::default()
@@ -129,11 +129,8 @@ fn stores_reply_preview_from_message_create() {
         author_id: Id::new(99),
         message_kind: MessageKind::new(19),
         reply: Some(ReplyInfo {
-            author_id: None,
-            author: "Alex".to_owned(),
             content: Some("잘되는군".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
+            ..ReplyInfo::test("Alex")
         }),
         content: Some("asdf".to_owned()),
         ..MessageCreateFixture::default()
@@ -170,11 +167,8 @@ fn duplicate_message_create_preserves_cached_reply_preview() {
         author_id,
         message_kind: MessageKind::new(19),
         reply: Some(ReplyInfo {
-            author_id: None,
-            author: "Alex".to_owned(),
             content: Some("잘되는군".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
+            ..ReplyInfo::test("Alex")
         }),
         content: Some("asdf".to_owned()),
         ..MessageCreateFixture::default()
@@ -472,11 +466,8 @@ fn message_capabilities_expose_action_facets_for_chat_messages_only() {
 fn message_capabilities_track_reply_and_forwarded_traits() {
     let mut message = message_state("reply body");
     message.reply = Some(ReplyInfo {
-        author_id: None,
-        author: "neo".to_owned(),
         content: Some("original".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
+        ..ReplyInfo::test("neo")
     });
     message.forwarded_snapshots = vec![snapshot_info("forwarded")];
 
@@ -565,7 +556,7 @@ fn history_merge_preserves_message_reference() {
     let reference = MessageReferenceInfo {
         guild_id: Some(Id::new(1)),
         channel_id: Some(Id::new(20)),
-        message_id: Some(Id::new(30)),
+        ..MessageReferenceInfo::test(Id::new(30))
     };
 
     state.apply_event(&latest_history_loaded(
@@ -867,9 +858,9 @@ fn history_merge_clears_reactions_from_authoritative_history() {
         channel_id,
         vec![MessageInfo {
             reactions: vec![ReactionInfo {
-                emoji: ReactionEmoji::Unicode("👍".to_owned()),
                 count: 2,
                 me: true,
+                ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
             }],
             ..message_info(channel_id, 20, "hello")
         }],
@@ -1296,15 +1287,11 @@ fn gateway_reaction_clear_events_update_cached_reaction_summary() {
         vec![MessageInfo {
             reactions: vec![
                 ReactionInfo {
-                    emoji: thumbs_up.clone(),
                     count: 2,
                     me: true,
+                    ..ReactionInfo::test(thumbs_up.clone())
                 },
-                ReactionInfo {
-                    emoji: party,
-                    count: 1,
-                    me: false,
-                },
+                ReactionInfo::test(party),
             ],
             ..message_info(channel_id, message_id.get(), "hello")
         }],

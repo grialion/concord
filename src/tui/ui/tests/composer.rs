@@ -161,12 +161,7 @@ fn composer_lines_use_image_width_for_loaded_custom_emoji() {
     let mut state = state_with_message();
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(60),
-            name: "long_custom".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(60), "long_custom")],
     });
     state.start_composer();
     for ch in ":lo".chars() {
@@ -250,10 +245,8 @@ fn dashboard_renders_emoji_picker_above_composer() {
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
         emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party_time".to_owned(),
             animated: true,
-            available: true,
+            ..CustomEmojiInfo::test(Id::new(50), "party_time")
         }],
     });
     state.start_composer();
@@ -276,12 +269,12 @@ fn dashboard_renders_composer_pickers_across_composer_width() {
     mention_state.push_event(AppEvent::GuildMemberUpsert {
         guild_id: Id::new(1),
         member: MemberInfo {
-            user_id: Id::new(101),
-            display_name: "candidate visible past the old narrow picker limit".to_owned(),
             username: Some("candidate_visible_past_the_old_narrow_picker_limit".to_owned()),
             is_bot: true,
-            avatar_url: None,
-            role_ids: Vec::new(),
+            ..MemberInfo::test(
+                Id::new(101),
+                "candidate visible past the old narrow picker limit",
+            )
         },
     });
     mention_state.start_composer();
@@ -297,12 +290,10 @@ fn dashboard_renders_composer_pickers_across_composer_width() {
     let mut emoji_state = state_with_message();
     emoji_state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party_visible_past_the_old_narrow_picker_limit".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(
+            Id::new(50),
+            "party_visible_past_the_old_narrow_picker_limit",
+        )],
     });
     emoji_state.start_composer();
     for ch in ":party".chars() {
@@ -318,24 +309,18 @@ fn dashboard_renders_composer_pickers_across_composer_width() {
     command_state.push_event(AppEvent::ApplicationCommandsLoaded {
         guild_id: Some(Id::new(1)),
         commands: vec![ApplicationCommandInfo {
-            id: Id::new(100),
             application_id: Id::new(200),
             version: "1".to_owned(),
-            name: "lookup".to_owned(),
             application_name: Some("LookupBot".to_owned()),
             description:
                 "show details with a very long explanation visible past the old narrow picker limit"
                     .to_owned(),
             options: vec![ApplicationCommandOptionInfo {
-                kind: 1,
-                name: "item".to_owned(),
                 description: "item subcommand".to_owned(),
-                required: false,
-                autocomplete: false,
-                choices: Vec::new(),
-                options: Vec::new(),
+                ..ApplicationCommandOptionInfo::test(1, "item")
             }],
             raw: serde_json::json!({ "name": "lookup" }),
+            ..ApplicationCommandInfo::test(Id::new(100), "lookup")
         }],
     });
     command_state.start_composer();
@@ -419,12 +404,8 @@ fn dashboard_renders_scrollbar_for_overflowing_composer_pickers() {
         state.push_event(AppEvent::GuildMemberUpsert {
             guild_id: Id::new(1),
             member: MemberInfo {
-                user_id: Id::new(100 + index),
-                display_name: format!("Scroll {index:02}"),
                 username: Some(format!("scroll{index:02}")),
-                is_bot: false,
-                avatar_url: None,
-                role_ids: Vec::new(),
+                ..MemberInfo::test(Id::new(100 + index), format!("Scroll {index:02}"))
             },
         });
     }
@@ -454,11 +435,8 @@ fn dashboard_renders_scrollbar_for_overflowing_composer_pickers() {
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
         emojis: (0..10)
-            .map(|index| CustomEmojiInfo {
-                id: Id::new(100 + index),
-                name: format!("overflow_{index:02}"),
-                animated: false,
-                available: true,
+            .map(|index| {
+                CustomEmojiInfo::test(Id::new(100 + index), format!("overflow_{index:02}"))
             })
             .collect(),
     });

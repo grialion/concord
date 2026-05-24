@@ -3,15 +3,16 @@ use crate::discord::ids::{
     marker::{ChannelMarker, GuildMarker, MessageMarker, RoleMarker, UserMarker},
 };
 
+use crate::discord::test_builders::{MessageCreateFixture, message_create_event};
 use crate::discord::{
-    ActivityInfo, ActivityKind, AppEvent, AttachmentInfo, AttachmentUpdate, ChannelInfo,
+    ActivityInfo, ActivityKind, AppEvent, AttachmentUpdate, ChannelInfo,
     ChannelNotificationOverrideInfo, ChannelRecipientInfo, ChannelUnreadState,
-    ChannelVisibilityStats, CurrentVoiceConnectionState, CustomEmojiInfo, DiscordState, EmbedInfo,
-    FriendStatus, GuildNotificationSettingsInfo, MemberInfo, MentionInfo, MessageInfo,
-    MessageInteractionInfo, MessageKind, MessageReferenceInfo, MessageSnapshotInfo, MessageState,
-    MutualGuildInfo, NotificationLevel, PermissionOverwriteInfo, PermissionOverwriteKind,
-    PollAnswerInfo, PollInfo, PresenceStatus, ReactionEmoji, ReactionInfo, ReadStateInfo,
-    RelationshipInfo, ReplyInfo, RoleInfo, UserProfileInfo, VoiceStateInfo,
+    ChannelVisibilityStats, CurrentVoiceConnectionState, CustomEmojiInfo, DiscordState,
+    FriendStatus, GuildNotificationSettingsInfo, MemberInfo, MentionInfo, MessageInfo, MessageKind,
+    MessageReferenceInfo, MessageSnapshotInfo, MessageState, NotificationLevel,
+    PermissionOverwriteInfo, PermissionOverwriteKind, PollAnswerInfo, PollInfo, PresenceStatus,
+    ReactionEmoji, ReactionInfo, ReadStateInfo, RelationshipInfo, ReplyInfo, RoleInfo,
+    UserProfileInfo, VoiceStateInfo,
 };
 
 mod channels;
@@ -22,28 +23,6 @@ mod notifications;
 mod permissions;
 mod profiles;
 mod reads;
-
-struct MessageCreateFixture {
-    guild_id: Option<Id<GuildMarker>>,
-    channel_id: Id<ChannelMarker>,
-    message_id: Id<MessageMarker>,
-    author_id: Id<UserMarker>,
-    author: String,
-    author_avatar_url: Option<String>,
-    author_is_bot: bool,
-    author_role_ids: Vec<Id<RoleMarker>>,
-    message_kind: MessageKind,
-    interaction: Option<MessageInteractionInfo>,
-    reference: Option<MessageReferenceInfo>,
-    reply: Option<ReplyInfo>,
-    poll: Option<PollInfo>,
-    content: Option<String>,
-    sticker_names: Vec<String>,
-    mentions: Vec<MentionInfo>,
-    attachments: Vec<AttachmentInfo>,
-    embeds: Vec<EmbedInfo>,
-    forwarded_snapshots: Vec<MessageSnapshotInfo>,
-}
 
 struct GuildCreateFixture {
     guild_id: Id<GuildMarker>,
@@ -73,56 +52,6 @@ impl GuildCreateFixture {
     }
 }
 
-impl Default for MessageCreateFixture {
-    fn default() -> Self {
-        Self {
-            guild_id: None,
-            channel_id: Id::new(2),
-            message_id: Id::new(1),
-            author_id: Id::new(99),
-            author: "neo".to_owned(),
-            author_avatar_url: None,
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
-            content: Some("hello".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments: Vec::new(),
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-        }
-    }
-}
-
-fn message_create_event(event: MessageCreateFixture) -> AppEvent {
-    AppEvent::MessageCreate {
-        guild_id: event.guild_id,
-        channel_id: event.channel_id,
-        message_id: event.message_id,
-        author_id: event.author_id,
-        author: event.author,
-        author_avatar_url: event.author_avatar_url,
-        author_is_bot: event.author_is_bot,
-        author_role_ids: event.author_role_ids,
-        message_kind: event.message_kind,
-        interaction: event.interaction,
-        reference: event.reference,
-        reply: event.reply,
-        poll: event.poll,
-        content: event.content,
-        sticker_names: event.sticker_names,
-        mentions: event.mentions,
-        attachments: event.attachments,
-        embeds: event.embeds,
-        forwarded_snapshots: event.forwarded_snapshots,
-    }
-}
-
 fn guild_create_event(event: GuildCreateFixture) -> AppEvent {
     AppEvent::GuildCreate {
         guild_id: event.guild_id,
@@ -139,18 +68,8 @@ fn guild_create_event(event: GuildCreateFixture) -> AppEvent {
 
 fn profile_info(user_id: u64, guild_nick: Option<&str>) -> UserProfileInfo {
     UserProfileInfo {
-        user_id: Id::new(user_id),
-        username: format!("user-{user_id}"),
-        global_name: None,
         guild_nick: guild_nick.map(str::to_owned),
-        role_ids: Vec::new(),
-        avatar_url: None,
-        bio: None,
-        pronouns: None,
-        mutual_guilds: Vec::<MutualGuildInfo>::new(),
-        mutual_friends_count: 0,
-        friend_status: FriendStatus::None,
-        note: None,
+        ..UserProfileInfo::test(Id::new(user_id), format!("user-{user_id}"))
     }
 }
 
@@ -263,14 +182,7 @@ fn guild_voice_channel(guild_id: Id<GuildMarker>, channel_id: Id<ChannelMarker>)
 }
 
 fn member_info(user_id: Id<UserMarker>, display_name: impl Into<String>) -> MemberInfo {
-    MemberInfo {
-        user_id,
-        display_name: display_name.into(),
-        username: None,
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
-    }
+    MemberInfo::test(user_id, display_name)
 }
 
 fn member_with_username(user_id: Id<UserMarker>, display_name: &str, username: &str) -> MemberInfo {
@@ -293,12 +205,8 @@ fn member_with_roles(
 
 fn role_info(role_id: Id<RoleMarker>, name: impl Into<String>, permissions: u64) -> RoleInfo {
     RoleInfo {
-        id: role_id,
-        name: name.into(),
-        color: None,
-        position: 0,
-        hoist: false,
         permissions,
+        ..RoleInfo::test(role_id, name)
     }
 }
 
@@ -307,18 +215,7 @@ fn voice_state(
     channel_id: Option<Id<ChannelMarker>>,
     user_id: Id<UserMarker>,
 ) -> VoiceStateInfo {
-    VoiceStateInfo {
-        guild_id,
-        channel_id,
-        user_id,
-        session_id: None,
-        member: None,
-        deaf: false,
-        mute: false,
-        self_deaf: false,
-        self_mute: false,
-        self_stream: false,
-    }
+    VoiceStateInfo::test(guild_id, channel_id, user_id)
 }
 
 fn read_state_info(
@@ -327,9 +224,9 @@ fn read_state_info(
     mention_count: u32,
 ) -> ReadStateInfo {
     ReadStateInfo {
-        channel_id,
         last_acked_message_id,
         mention_count,
+        ..ReadStateInfo::test(channel_id)
     }
 }
 
@@ -346,25 +243,15 @@ fn notification_settings(
     level: NotificationLevel,
 ) -> GuildNotificationSettingsInfo {
     GuildNotificationSettingsInfo {
-        guild_id: Some(guild_id),
         message_notifications: Some(level),
-        muted: false,
-        mute_end_time: None,
-        suppress_everyone: false,
-        suppress_roles: false,
-        channel_overrides: Vec::new(),
+        ..GuildNotificationSettingsInfo::test(Some(guild_id))
     }
 }
 
 fn private_notification_settings(level: NotificationLevel) -> GuildNotificationSettingsInfo {
     GuildNotificationSettingsInfo {
-        guild_id: None,
         message_notifications: Some(level),
-        muted: false,
-        mute_end_time: None,
-        suppress_everyone: false,
-        suppress_roles: false,
-        channel_overrides: Vec::new(),
+        ..GuildNotificationSettingsInfo::test(None)
     }
 }
 
@@ -390,26 +277,10 @@ fn message_create(
 fn message_info(channel_id: Id<ChannelMarker>, message_id: u64, content: &str) -> MessageInfo {
     MessageInfo {
         guild_id: None,
-        channel_id,
-        message_id: Id::new(message_id),
         author_id: Id::new(99),
         author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_role_ids: Vec::new(),
-        message_kind: MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        pinned: false,
-        reactions: Vec::new(),
         content: Some(content.to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-        ..MessageInfo::default()
+        ..MessageInfo::test(channel_id, Id::new(message_id))
     }
 }
 
@@ -453,44 +324,31 @@ fn attachment_info(id: u64, filename: &str, content_type: &str) -> crate::discor
 }
 
 fn mention_info(user_id: u64, display_name: &str) -> MentionInfo {
-    MentionInfo {
-        user_id: Id::new(user_id),
-        guild_nick: None,
-        display_name: display_name.to_owned(),
-    }
+    MentionInfo::test(Id::new(user_id), display_name.to_owned())
 }
 
 fn poll_info() -> PollInfo {
     PollInfo {
-        question: "오늘 뭐 먹지?".to_owned(),
         answers: vec![
             PollAnswerInfo {
-                answer_id: 1,
-                text: "김치찌개".to_owned(),
                 vote_count: Some(2),
                 me_voted: true,
+                ..PollAnswerInfo::test(1, "김치찌개")
             },
             PollAnswerInfo {
-                answer_id: 2,
-                text: "라멘".to_owned(),
                 vote_count: Some(1),
-                me_voted: false,
+                ..PollAnswerInfo::test(2, "라멘")
             },
         ],
-        allow_multiselect: false,
         results_finalized: Some(false),
         total_votes: Some(3),
+        ..PollInfo::test("오늘 뭐 먹지?")
     }
 }
 
 fn snapshot_info(content: &str) -> MessageSnapshotInfo {
     MessageSnapshotInfo {
         content: Some(content.to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        source_channel_id: None,
-        timestamp: None,
+        ..MessageSnapshotInfo::test()
     }
 }

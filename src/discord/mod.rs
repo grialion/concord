@@ -42,6 +42,8 @@ pub use commands::{
     MAX_UPLOAD_ATTACHMENT_COUNT, MAX_UPLOAD_FILE_BYTES, MAX_UPLOAD_TOTAL_BYTES,
     MessageAttachmentUpload, ReactionEmoji,
 };
+#[cfg(test)]
+pub(crate) use events::test_builders;
 pub use events::{AppEvent, SequencedAppEvent};
 pub use guild::{CustomEmojiInfo, GuildFolder};
 pub use ids::{Id, marker};

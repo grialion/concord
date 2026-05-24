@@ -47,9 +47,8 @@ fn forum_posts_loaded_event_populates_selected_forum_items() {
     let mut preview =
         forum_preview_message(guild_id, Id::new(30), 30, "neo", "first message preview");
     preview.reactions = vec![ReactionInfo {
-        emoji: ReactionEmoji::Unicode("👍".to_owned()),
         count: 2,
-        me: false,
+        ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
     }];
 
     state.push_event(AppEvent::ForumPostsLoaded {
@@ -157,12 +156,9 @@ fn forum_post_preview_uses_thread_creator_when_starter_is_missing() {
         members: vec![member_with_roles(owner_id, "neo", vec![role_id])],
         presences: Vec::new(),
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Maintainer".to_owned(),
             color: Some(0xFFAA00),
             position: 10,
-            hoist: false,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Maintainer")
         }],
         emojis: Vec::new(),
     });
@@ -726,13 +722,8 @@ fn forum_sidebar_unread_aggregates_child_notification_count() {
     ));
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(guild_id),
             message_notifications: Some(NotificationLevel::AllMessages),
-            muted: false,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
-            channel_overrides: Vec::new(),
+            ..GuildNotificationSettingsInfo::test(Some(guild_id))
         }],
     });
     state.push_event(AppEvent::ReadStateInit {
@@ -744,7 +735,7 @@ fn forum_sidebar_unread_aggregates_child_notification_count() {
         message_id: Id::new(300),
         author_id: Id::new(99),
         content: Some("new post body".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     assert_eq!(
@@ -1033,7 +1024,7 @@ fn poll_vote_actions_are_available_by_default() {
         author_id: Id::new(99),
         poll: Some(poll_info(false)),
         content: Some(String::new()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     let actions = state.selected_message_action_items();

@@ -22,3 +22,16 @@ pub struct CustomEmojiInfo {
     pub animated: bool,
     pub available: bool,
 }
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl CustomEmojiInfo {
+    pub(crate) fn test(id: Id<EmojiMarker>, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            animated: false,
+            available: true,
+        }
+    }
+}

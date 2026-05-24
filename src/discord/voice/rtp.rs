@@ -46,6 +46,18 @@ pub(super) struct VoiceOutboundRtpState {
     pub(super) ssrc: u32,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl VoiceOutboundRtpState {
+    pub(super) fn test() -> Self {
+        Self {
+            sequence: 0,
+            timestamp: 0,
+            ssrc: 0,
+        }
+    }
+}
+
 impl VoiceRtpDecryptor {
     pub(super) fn new(mode: &str, secret_key: &[u8]) -> Result<Self, String> {
         match mode {

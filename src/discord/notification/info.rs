@@ -31,6 +31,19 @@ pub struct ChannelNotificationOverrideInfo {
     pub mute_end_time: Option<String>,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl ChannelNotificationOverrideInfo {
+    pub(crate) fn test(channel_id: Id<ChannelMarker>) -> Self {
+        Self {
+            channel_id,
+            message_notifications: None,
+            muted: false,
+            mute_end_time: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GuildNotificationSettingsInfo {
     pub guild_id: Option<Id<GuildMarker>>,
@@ -40,4 +53,20 @@ pub struct GuildNotificationSettingsInfo {
     pub suppress_everyone: bool,
     pub suppress_roles: bool,
     pub channel_overrides: Vec<ChannelNotificationOverrideInfo>,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl GuildNotificationSettingsInfo {
+    pub(crate) fn test(guild_id: Option<Id<GuildMarker>>) -> Self {
+        Self {
+            guild_id,
+            message_notifications: None,
+            muted: false,
+            mute_end_time: None,
+            suppress_everyone: false,
+            suppress_roles: false,
+            channel_overrides: Vec::new(),
+        }
+    }
 }

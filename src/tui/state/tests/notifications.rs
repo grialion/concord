@@ -17,13 +17,8 @@ fn desktop_notification_for_event_formats_eligible_guild_message() {
     let channel_id = Id::new(3);
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(Id::new(1)),
             message_notifications: Some(NotificationLevel::AllMessages),
-            muted: false,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
-            channel_overrides: Vec::new(),
+            ..GuildNotificationSettingsInfo::test(Some(Id::new(1)))
         }],
     });
     let event = notification_message_event(channel_id, "hello from concord");
@@ -42,18 +37,13 @@ fn desktop_notification_for_event_suppresses_muted_channel() {
     let channel_id = Id::new(3);
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(Id::new(1)),
             message_notifications: Some(NotificationLevel::AllMessages),
-            muted: false,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
             channel_overrides: vec![ChannelNotificationOverrideInfo {
-                channel_id,
                 message_notifications: Some(NotificationLevel::AllMessages),
                 muted: true,
-                mute_end_time: None,
+                ..ChannelNotificationOverrideInfo::test(channel_id)
             }],
+            ..GuildNotificationSettingsInfo::test(Some(Id::new(1)))
         }],
     });
     let event = notification_message_event(channel_id, "hello");
@@ -67,13 +57,8 @@ fn desktop_notification_for_event_suppresses_active_channel() {
     let channel_id = Id::new(2);
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(Id::new(1)),
             message_notifications: Some(NotificationLevel::AllMessages),
-            muted: false,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
-            channel_overrides: Vec::new(),
+            ..GuildNotificationSettingsInfo::test(Some(Id::new(1)))
         }],
     });
     let event = notification_message_event(channel_id, "hello");
@@ -108,13 +93,8 @@ fn desktop_notification_for_event_respects_notification_opt_out() {
     });
     state.push_event(AppEvent::UserGuildNotificationSettingsInit {
         settings: vec![GuildNotificationSettingsInfo {
-            guild_id: Some(guild_id),
             message_notifications: Some(NotificationLevel::AllMessages),
-            muted: false,
-            mute_end_time: None,
-            suppress_everyone: false,
-            suppress_roles: false,
-            channel_overrides: Vec::new(),
+            ..GuildNotificationSettingsInfo::test(Some(guild_id))
         }],
     });
     let event = notification_message_event(channel_id, "hello");

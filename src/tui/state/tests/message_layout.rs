@@ -199,12 +199,8 @@ fn forwarded_mentions_affect_height_from_source_channel_guild() {
         embeds: Vec::new(),
         forwarded_snapshots: vec![MessageSnapshotInfo {
             content: Some("<@10><@10>".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments: Vec::new(),
-            embeds: Vec::new(),
             source_channel_id: Some(Id::new(9)),
-            timestamp: None,
+            ..MessageSnapshotInfo::test()
         }],
         ..MessageState::default()
     };
@@ -375,12 +371,8 @@ fn forwarded_snapshot_wrapped_content_increases_rendered_height() {
         embeds: Vec::new(),
         forwarded_snapshots: vec![MessageSnapshotInfo {
             content: Some("abcdefghijkl".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
             attachments: vec![image_attachment(1)],
-            embeds: Vec::new(),
-            source_channel_id: None,
-            timestamp: None,
+            ..MessageSnapshotInfo::test()
         }],
         ..MessageState::default()
     };
@@ -411,12 +403,8 @@ fn forwarded_snapshot_wide_content_uses_terminal_width() {
         embeds: Vec::new(),
         forwarded_snapshots: vec![MessageSnapshotInfo {
             content: Some("漢字仮名交じ".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
             attachments: vec![image_attachment(1)],
-            embeds: Vec::new(),
-            source_channel_id: None,
-            timestamp: None,
+            ..MessageSnapshotInfo::test()
         }],
         ..MessageState::default()
     };
@@ -532,11 +520,8 @@ fn reply_preview_reserves_connector_row_without_extra_type_label() {
         interaction: None,
         reference: None,
         reply: Some(ReplyInfo {
-            author_id: None,
-            author: "casey".to_owned(),
             content: Some("looks good".to_owned()),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
+            ..ReplyInfo::test("casey")
         }),
         poll: None,
         pinned: false,
@@ -631,11 +616,8 @@ fn thread_starter_message_reserves_system_card_rows() {
     let mut message = height_test_message("");
     message.message_kind = MessageKind::new(21);
     message.reply = Some(ReplyInfo {
-        author_id: None,
-        author: "alice".to_owned(),
         content: Some("original topic".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
+        ..ReplyInfo::test("alice")
     });
 
     assert_eq!(message_rendered_height(&message, 200, 16, 3), 4);

@@ -27,6 +27,21 @@ pub struct DisplayOptionItem {
     pub description: &'static str,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl DisplayOptionItem {
+    pub(crate) fn test(label: &'static str) -> Self {
+        Self {
+            label,
+            enabled: false,
+            value: None,
+            gauge_percent: None,
+            effective: false,
+            description: "",
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub(super) struct OptionsUiState {
     pub(super) display_options: DisplayOptions,

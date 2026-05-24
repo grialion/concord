@@ -57,12 +57,7 @@ fn emoji_picker_items_include_custom_emojis_from_update_event() {
 
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id,
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(60),
-            name: "wave".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(60), "wave")],
     });
 
     let items = state.emoji_reaction_items();
@@ -89,7 +84,7 @@ fn emoji_picker_uses_channel_guild_when_selected_message_lacks_guild_id() {
         message_id: Id::new(2),
         author_id: Id::new(99),
         content: Some("history message without guild".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     let items = state.emoji_reaction_items();
@@ -111,7 +106,7 @@ fn emoji_picker_items_stay_unicode_only_for_direct_messages() {
         message_id: Id::new(1),
         author_id: Id::new(99),
         content: Some("hello".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     let items = state.emoji_reaction_items();
@@ -176,11 +171,7 @@ fn reaction_picker_requires_history_and_existing_or_add_reactions_permission() {
 fn existing_reaction_can_be_added_without_add_reactions_permission() {
     let mut state = state_with_other_user_message_permissions(
         PERM_VIEW_CHANNEL | PERM_READ_MESSAGE_HISTORY,
-        vec![ReactionInfo {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
-            count: 1,
-            me: false,
-        }],
+        vec![ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))],
     );
     state.focus_pane(FocusPane::Messages);
     state.open_emoji_reaction_picker();
@@ -234,11 +225,7 @@ fn reaction_picker_prioritizes_existing_reactions_and_qwerty_shortcuts() {
 
 #[test]
 fn show_reacted_users_requires_read_message_history() {
-    let reactions = vec![ReactionInfo {
-        emoji: ReactionEmoji::Unicode("👍".to_owned()),
-        count: 1,
-        me: false,
-    }];
+    let reactions = vec![ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))];
     let mut without_history =
         state_with_other_user_message_permissions(PERM_VIEW_CHANNEL, reactions.clone());
     without_history.focus_pane(FocusPane::Messages);
@@ -299,11 +286,8 @@ fn reaction_users_loaded_opens_popup_state() {
         channel_id: Id::new(2),
         message_id: Id::new(1),
         reactions: vec![ReactionUsersInfo {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
-            users: vec![ReactionUserInfo {
-                user_id: Id::new(10),
-                display_name: "neo".to_owned(),
-            }],
+            users: vec![ReactionUserInfo::test(Id::new(10), "neo")],
+            ..ReactionUsersInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
         }],
     });
 
@@ -323,13 +307,10 @@ fn reaction_users_popup_scroll_down_clamps_at_bottom() {
         channel_id: Id::new(2),
         message_id: Id::new(1),
         reactions: vec![ReactionUsersInfo {
-            emoji: ReactionEmoji::Unicode("👍".to_owned()),
             users: (1..=6)
-                .map(|id| ReactionUserInfo {
-                    user_id: Id::new(id),
-                    display_name: format!("user-{id}"),
-                })
+                .map(|id| ReactionUserInfo::test(Id::new(id), format!("user-{id}")))
                 .collect(),
+            ..ReactionUsersInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
         }],
     });
     // 1 header + 6 users = 7 data lines. With a 3-line viewport the

@@ -93,14 +93,8 @@ fn tracks_voice_participants_join_move_and_leave() {
     assert_eq!(
         state.current_user_voice_connection(),
         Some(CurrentVoiceConnectionState {
-            guild_id,
-            channel_id: first_voice,
             self_mute: true,
-            self_deaf: false,
-            allow_microphone_transmit: false,
-            microphone_sensitivity: Default::default(),
-            microphone_volume: Default::default(),
-            voice_output_volume: Default::default(),
+            ..CurrentVoiceConnectionState::test(guild_id, first_voice)
         })
     );
 
@@ -151,16 +145,7 @@ fn tracks_voice_participants_join_move_and_leave() {
     assert!(!state.current_user_voice_speaking());
     assert_eq!(
         state.current_user_voice_connection(),
-        Some(CurrentVoiceConnectionState {
-            guild_id,
-            channel_id: second_voice,
-            self_mute: false,
-            self_deaf: false,
-            allow_microphone_transmit: false,
-            microphone_sensitivity: Default::default(),
-            microphone_volume: Default::default(),
-            voice_output_volume: Default::default(),
-        })
+        Some(CurrentVoiceConnectionState::test(guild_id, second_voice))
     );
 
     state.apply_event(&AppEvent::VoiceStateUpdate {
@@ -347,12 +332,10 @@ fn guild_create_caches_roles_and_member_role_ids() {
         members: vec![member_with_roles(user_id, "alice", vec![role_id])],
         presences: Vec::new(),
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Admin".to_owned(),
             color: Some(0xFFAA00),
             position: 10,
             hoist: true,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Admin")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -382,12 +365,10 @@ fn message_author_role_color_uses_history_author_roles_when_member_is_missing() 
         members: Vec::new(),
         presences: Vec::new(),
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Red".to_owned(),
             color: Some(0xCC0000),
             position: 10,
             hoist: true,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Red")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -421,12 +402,10 @@ fn message_author_role_color_uses_live_author_roles_when_member_is_missing() {
         members: Vec::new(),
         presences: Vec::new(),
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Red".to_owned(),
             color: Some(0xCC0000),
             position: 10,
             hoist: true,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Red")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -465,12 +444,10 @@ fn message_author_role_color_uses_profile_roles_when_message_roles_are_missing()
         members: Vec::new(),
         presences: Vec::new(),
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Red".to_owned(),
             color: Some(0xCC0000),
             position: 10,
             hoist: true,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Red")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -509,12 +486,10 @@ fn message_author_role_color_does_not_use_message_roles_when_member_is_cached() 
         members: vec![member_info(user_id, "test-user")],
         presences: Vec::new(),
         roles: vec![RoleInfo {
-            id: stale_role_id,
-            name: "Old Red".to_owned(),
             color: Some(0xCC0000),
             position: 10,
             hoist: true,
-            permissions: 0,
+            ..RoleInfo::test(stale_role_id, "Old Red")
         }],
         emojis: Vec::new(),
         owner_id: None,

@@ -12,3 +12,15 @@ pub struct ReadStateInfo {
     pub last_acked_message_id: Option<Id<MessageMarker>>,
     pub mention_count: u32,
 }
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl ReadStateInfo {
+    pub(crate) fn test(channel_id: Id<ChannelMarker>) -> Self {
+        Self {
+            channel_id,
+            last_acked_message_id: None,
+            mention_count: 0,
+        }
+    }
+}

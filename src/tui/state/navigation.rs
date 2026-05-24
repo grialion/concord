@@ -451,14 +451,7 @@ impl DashboardState {
     fn max_channel_horizontal_scroll(&self) -> usize {
         self.channel_pane_filtered_entries()
             .into_iter()
-            .map(|entry| match entry {
-                ChannelPaneEntry::CategoryHeader { state, .. }
-                | ChannelPaneEntry::Channel { state, .. }
-                | ChannelPaneEntry::Thread { state, .. } => state.name.width().saturating_sub(1),
-                ChannelPaneEntry::VoiceParticipant { participant, .. } => {
-                    participant.display_name.width().saturating_sub(1)
-                }
-            })
+            .map(|entry| entry.display_name().width().saturating_sub(1))
             .max()
             .unwrap_or_default()
     }

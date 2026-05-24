@@ -117,12 +117,8 @@ fn user_profile_popup_status_uses_dm_recipient_status_without_guild() {
 
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         recipients: Some(vec![ChannelRecipientInfo {
-            user_id,
-            display_name: "neo".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
             status: Some(PresenceStatus::Idle),
+            ..ChannelRecipientInfo::test(user_id, "neo")
         }]),
         ..dm_channel_info(Id::new(20), "neo")
     }));
@@ -158,12 +154,8 @@ fn user_profile_popup_status_prefers_cached_presence_over_unknown_recipient() {
     });
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         recipients: Some(vec![ChannelRecipientInfo {
-            user_id,
-            display_name: "test-user".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
             status: Some(PresenceStatus::Unknown),
+            ..ChannelRecipientInfo::test(user_id, "test-user")
         }]),
         ..dm_channel_info(Id::new(20), "test-user")
     }));

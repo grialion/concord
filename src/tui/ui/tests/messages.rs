@@ -11,21 +11,9 @@ fn server_pane_shows_guild_mention_badge() {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
             last_message_id: Some(Id::new(10)),
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: Vec::new(),
         presences: Vec::new(),
@@ -35,9 +23,9 @@ fn server_pane_shows_guild_mention_badge() {
     });
     state.push_event(AppEvent::ReadStateInit {
         entries: vec![ReadStateInfo {
-            channel_id,
             last_acked_message_id: Some(Id::new(10)),
             mention_count: 2,
+            ..ReadStateInfo::test(channel_id)
         }],
     });
     let backend = TestBackend::new(80, 20);
@@ -73,21 +61,9 @@ fn active_server_mention_badge_keeps_active_name_style() {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
             last_message_id: Some(Id::new(10)),
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: Vec::new(),
         presences: Vec::new(),
@@ -101,9 +77,9 @@ fn active_server_mention_badge_keeps_active_name_style() {
     state.focus_pane(FocusPane::Messages);
     state.push_event(AppEvent::ReadStateInit {
         entries: vec![ReadStateInfo {
-            channel_id,
             last_acked_message_id: Some(Id::new(10)),
             mention_count: 2,
+            ..ReadStateInfo::test(channel_id)
         }],
     });
     let backend = TestBackend::new(40, 6);
@@ -156,65 +132,33 @@ fn message_viewport_author_uses_resolved_role_color() {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: vec![MemberInfo {
-            user_id: author_id,
-            display_name: "neo".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
             role_ids: vec![role_id],
+            ..MemberInfo::test(author_id, "neo")
         }],
         presences: vec![(author_id, PresenceStatus::Online)],
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Blue".to_owned(),
             color: Some(0x3366CC),
             position: 10,
-            hoist: false,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Blue")
         }],
         emojis: Vec::new(),
         owner_id: None,
     });
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: None,
+    state.push_event(message_create_event(MessageCreateFixture {
         channel_id,
         message_id: Id::new(1),
         author_id,
         author: "fallback".to_owned(),
-        author_avatar_url: None,
         author_is_bot: true,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some("hello".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..MessageCreateFixture::default()
+    }));
 
     let messages = state.messages();
     let lines = message_viewport_lines(
@@ -256,13 +200,12 @@ fn pinned_message_remains_selectable_for_unpin_action() {
 #[test]
 fn forum_post_reaction_summary_reserves_custom_emoji_image_slot() {
     let reactions = vec![ReactionInfo {
-        emoji: ReactionEmoji::Custom {
+        me: true,
+        ..ReactionInfo::test(ReactionEmoji::Custom {
             id: Id::new(42),
             name: Some("party".to_owned()),
             animated: false,
-        },
-        count: 1,
-        me: true,
+        })
     }];
 
     assert_eq!(
@@ -285,38 +228,18 @@ fn history_message_author_uses_channel_guild_for_role_color() {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: vec![MemberInfo {
-            user_id: author_id,
-            display_name: "neo".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
             role_ids: vec![role_id],
+            ..MemberInfo::test(author_id, "neo")
         }],
         presences: vec![(author_id, PresenceStatus::Online)],
         roles: vec![RoleInfo {
-            id: role_id,
-            name: "Blue".to_owned(),
             color: Some(0x3366CC),
             position: 10,
-            hoist: false,
-            permissions: 0,
+            ..RoleInfo::test(role_id, "Blue")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -1232,21 +1155,13 @@ fn thread_created_message_uses_cached_thread_details() {
     let mut state = DashboardState::new();
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(Id::new(1)),
-        channel_id: Id::new(10),
         parent_id: Some(message.channel_id),
-        owner_id: None,
-        position: None,
         last_message_id: Some(latest_thread_message_id),
         name: "release notes".to_owned(),
-        kind: "thread".to_owned(),
         message_count: Some(12),
-        member_count: None,
         total_message_sent: Some(14),
         thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
-        flags: None,
-        current_user_joined_thread: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(Id::new(10), "thread")
     }));
 
     let lines = format_message_content_lines(&message, &state, 200);
@@ -1273,43 +1188,19 @@ fn thread_created_message_uses_cached_thread_message_when_last_id_missing() {
     let mut state = DashboardState::new();
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(Id::new(1)),
-        channel_id: Id::new(10),
         parent_id: Some(message.channel_id),
-        owner_id: None,
-        position: None,
-        last_message_id: None,
         name: "release notes".to_owned(),
-        kind: "thread".to_owned(),
         message_count: Some(12),
-        member_count: None,
         total_message_sent: Some(14),
         thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
-        flags: None,
-        current_user_joined_thread: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(Id::new(10), "thread")
     }));
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
+    state.push_event(message_create_event(MessageCreateFixture {
         channel_id: Id::new(10),
         message_id: latest_thread_message_id,
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some("latest reply".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
 
     let lines = format_message_content_lines(&message, &state, 200);
     let texts = line_texts(&lines);
@@ -1327,21 +1218,12 @@ fn thread_created_message_falls_back_to_system_message_time() {
     let mut state = DashboardState::new();
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(Id::new(1)),
-        channel_id: Id::new(10),
         parent_id: Some(message.channel_id),
-        owner_id: None,
-        position: None,
-        last_message_id: None,
         name: "release notes".to_owned(),
-        kind: "thread".to_owned(),
         message_count: Some(12),
-        member_count: None,
         total_message_sent: Some(14),
         thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(false, false)),
-        flags: None,
-        current_user_joined_thread: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(Id::new(10), "thread")
     }));
 
     let lines = format_message_content_lines(&message, &state, 200);
@@ -1360,21 +1242,12 @@ fn thread_created_message_keeps_archived_and_locked_metadata() {
     let mut state = DashboardState::new();
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(Id::new(1)),
-        channel_id: Id::new(10),
         parent_id: Some(message.channel_id),
-        owner_id: None,
-        position: None,
-        last_message_id: None,
         name: "release notes".to_owned(),
-        kind: "thread".to_owned(),
         message_count: Some(12),
-        member_count: None,
         total_message_sent: Some(14),
         thread_metadata: Some(crate::discord::ThreadMetadataInfo::test(true, true)),
-        flags: None,
-        current_user_joined_thread: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(Id::new(10), "thread")
     }));
 
     let lines = format_message_content_lines(&message, &state, 200);
@@ -1387,11 +1260,8 @@ fn thread_starter_message_uses_referenced_message_card() {
     let mut message = message_with_content(Some(String::new()));
     message.message_kind = MessageKind::new(21);
     message.reply = Some(ReplyInfo {
-        author_id: None,
-        author: "alice".to_owned(),
         content: Some("original topic".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
+        ..ReplyInfo::test("alice")
     });
 
     let lines = format_message_content_lines(&message, &DashboardState::new(), 200);
@@ -1407,11 +1277,8 @@ fn reply_preview_renders_known_user_mentions() {
     let mut message = message_with_content(Some("asdf".to_owned()));
     message.message_kind = MessageKind::new(19);
     message.reply = Some(ReplyInfo {
-        author_id: None,
-        author: "neo".to_owned(),
         content: Some("hello <@10>".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
+        ..ReplyInfo::test("neo")
     });
     let state = state_with_member(10, "alice");
 
@@ -1425,11 +1292,9 @@ fn reply_preview_renders_mentions_from_reply_metadata() {
     let mut message = message_with_content(Some("asdf".to_owned()));
     message.message_kind = MessageKind::new(19);
     message.reply = Some(ReplyInfo {
-        author_id: None,
-        author: "neo".to_owned(),
         content: Some("hello <@10>".to_owned()),
-        sticker_names: Vec::new(),
         mentions: vec![mention_info(10, "alice")],
+        ..ReplyInfo::test("neo")
     });
 
     let lines = format_message_content_lines(&message, &DashboardState::new(), 200);
@@ -1463,9 +1328,9 @@ fn poll_message_body_highlights_mentions_inside_box() {
 fn message_content_renders_reaction_chips_below_message() {
     let mut message = message_with_content(Some("hello".to_owned()));
     message.reactions = vec![ReactionInfo {
-        emoji: ReactionEmoji::Unicode("👍".to_owned()),
         count: 3,
         me: true,
+        ..ReactionInfo::test(ReactionEmoji::Unicode("👍".to_owned()))
     }];
 
     let lines = format_message_content_lines(&message, &DashboardState::new(), 200);
@@ -1519,21 +1384,8 @@ fn forwarded_snapshot_content_uses_source_channel_guild_for_mentions() {
     let mut state = state_with_member(10, "outer");
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         guild_id: Some(Id::new(2)),
-        channel_id: Id::new(9),
-        parent_id: None,
-        owner_id: None,
-        position: None,
-        last_message_id: None,
         name: "source".to_owned(),
-        kind: "GuildText".to_owned(),
-        message_count: None,
-        member_count: None,
-        total_message_sent: None,
-        thread_metadata: None,
-        flags: None,
-        current_user_joined_thread: None,
-        recipients: None,
-        permission_overwrites: Vec::new(),
+        ..ChannelInfo::test(Id::new(9), "GuildText")
     }));
     state.push_event(AppEvent::GuildMemberUpsert {
         guild_id: Id::new(2),

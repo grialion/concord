@@ -243,7 +243,7 @@ fn missing_thread_preview_requests_skip_forum_posts_without_starter_preview() {
         message_id: Id::new(300),
         author_id: Id::new(99),
         content: Some("starter preview".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     let post = state

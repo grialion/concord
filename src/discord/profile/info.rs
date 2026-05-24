@@ -25,6 +25,20 @@ pub struct RelationshipInfo {
     pub username: Option<String>,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl RelationshipInfo {
+    pub(crate) fn test(user_id: Id<UserMarker>, status: FriendStatus) -> Self {
+        Self {
+            user_id,
+            status,
+            nickname: None,
+            display_name: None,
+            username: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MutualGuildInfo {
     pub guild_id: Id<GuildMarker>,
@@ -53,5 +67,26 @@ impl UserProfileInfo {
             .as_deref()
             .or(self.global_name.as_deref())
             .unwrap_or(&self.username)
+    }
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl UserProfileInfo {
+    pub(crate) fn test(user_id: Id<UserMarker>, username: impl Into<String>) -> Self {
+        Self {
+            user_id,
+            username: username.into(),
+            global_name: None,
+            guild_nick: None,
+            role_ids: Vec::new(),
+            avatar_url: None,
+            bio: None,
+            pronouns: None,
+            mutual_guilds: Vec::new(),
+            mutual_friends_count: 0,
+            friend_status: FriendStatus::None,
+            note: None,
+        }
     }
 }

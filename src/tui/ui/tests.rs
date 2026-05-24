@@ -1,6 +1,9 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::discord::ids::{Id, marker::MessageMarker};
+use crate::discord::test_builders::{
+    MessageCreateFixture, guild_message_create_fixture, message_create_event,
+};
 use ratatui::{
     Terminal,
     backend::TestBackend,
@@ -43,12 +46,11 @@ use crate::{
         ActivityEmoji, ActivityInfo, ActivityKind, AppEvent, ApplicationCommandInfo,
         ApplicationCommandOptionInfo, AttachmentInfo, ChannelInfo, ChannelNotificationOverrideInfo,
         ChannelRecipientState, ChannelState, ChannelUnreadState, ChannelVisibilityStats,
-        CustomEmojiInfo, EmbedInfo, FriendStatus, GuildMemberState, GuildNotificationSettingsInfo,
-        MemberInfo, MentionInfo, MessageAttachmentUpload, MessageInfo, MessageInteractionInfo,
-        MessageKind, MessageSnapshotInfo, MessageState, MutualGuildInfo, NotificationLevel,
-        PollAnswerInfo, PollInfo, PresenceStatus, ReactionEmoji, ReactionInfo, ReactionUserInfo,
-        ReactionUsersInfo, ReadStateInfo, ReplyInfo, RoleInfo, UserProfileInfo,
-        VoiceConnectionStatus, VoiceStateInfo,
+        CustomEmojiInfo, EmbedInfo, GuildMemberState, GuildNotificationSettingsInfo, MemberInfo,
+        MentionInfo, MessageAttachmentUpload, MessageInfo, MessageInteractionInfo, MessageKind,
+        MessageSnapshotInfo, MessageState, MutualGuildInfo, NotificationLevel, PollAnswerInfo,
+        PollInfo, PresenceStatus, ReactionEmoji, ReactionInfo, ReactionUserInfo, ReactionUsersInfo,
+        ReadStateInfo, ReplyInfo, RoleInfo, UserProfileInfo, VoiceConnectionStatus, VoiceStateInfo,
     },
     tui::{
         format::{TextHighlightKind, truncate_display_width, truncate_display_width_from},
@@ -195,22 +197,16 @@ fn youtube_embed() -> EmbedInfo {
     EmbedInfo {
         color: Some(0xff0000),
         provider_name: Some("YouTube".to_owned()),
-        author_name: None,
         title: Some("Example Video".to_owned()),
         description: Some("A video description".to_owned()),
-        timestamp: None,
-        fields: Vec::new(),
-        footer_text: None,
         url: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
         thumbnail_url: Some("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg".to_owned()),
-        thumbnail_proxy_url: None,
         thumbnail_width: Some(480),
         thumbnail_height: Some(360),
         image_url: Some("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg".to_owned()),
-        image_proxy_url: None,
         image_width: Some(480),
         image_height: Some(360),
-        video_url: None,
+        ..EmbedInfo::test()
     }
 }
 
@@ -220,27 +216,12 @@ fn state_with_message() -> DashboardState {
 
 fn state_with_file_attachment_message() -> DashboardState {
     let mut state = state_with_message();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
+    state.push_event(message_create_event(MessageCreateFixture {
         message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some("file".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
         attachments: vec![file_attachment()],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
     state.jump_bottom();
     state.move_down();
     state
@@ -257,21 +238,8 @@ fn state_with_message_id(message_id: Id<MessageMarker>, content: &str) -> Dashbo
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: Vec::new(),
         presences: Vec::new(),
@@ -282,27 +250,12 @@ fn state_with_message_id(message_id: Id<MessageMarker>, content: &str) -> Dashbo
     state.confirm_selected_guild();
     state.confirm_selected_channel();
     state.focus_pane(FocusPane::Messages);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(guild_id),
+    state.push_event(message_create_event(MessageCreateFixture {
         channel_id,
         message_id,
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some(content.to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
     state
 }
 
@@ -317,21 +270,8 @@ fn state_with_forum_posts(post_count: usize) -> DashboardState {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id: forum_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "forum".to_owned(),
-            kind: "GuildForum".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(forum_id, "GuildForum")
         }],
         members: Vec::new(),
         presences: Vec::new(),
@@ -387,14 +327,12 @@ fn state_with_unread_direct_messages() -> DashboardState {
     state.push_event(AppEvent::ReadStateInit {
         entries: vec![
             ReadStateInfo {
-                channel_id: Id::new(10),
                 last_acked_message_id: Some(Id::new(100)),
-                mention_count: 0,
+                ..ReadStateInfo::test(Id::new(10))
             },
             ReadStateInfo {
-                channel_id: Id::new(20),
                 last_acked_message_id: Some(Id::new(100)),
-                mention_count: 0,
+                ..ReadStateInfo::test(Id::new(20))
             },
         ],
     });
@@ -409,27 +347,10 @@ fn state_with_unread_direct_messages_with_loaded_unread_messages(count: u64) -> 
         messages: (0..count)
             .map(|offset| MessageInfo {
                 guild_id: None,
-                channel_id: Id::new(20),
-                message_id: Id::new(101 + offset),
                 author_id: Id::new(99),
                 author: "neo".to_owned(),
-                author_avatar_url: None,
-                author_is_bot: false,
-                author_role_ids: Vec::new(),
-                message_kind: crate::discord::MessageKind::regular(),
-                interaction: None,
-                reference: None,
-                reply: None,
-                poll: None,
-                pinned: false,
-                reactions: Vec::new(),
                 content: Some(format!("dm {offset}")),
-                sticker_names: Vec::new(),
-                mentions: Vec::new(),
-                attachments: Vec::new(),
-                embeds: Vec::new(),
-                forwarded_snapshots: Vec::new(),
-                ..MessageInfo::default()
+                ..MessageInfo::test(Id::new(20), Id::new(101 + offset))
             })
             .collect(),
     });
@@ -441,53 +362,21 @@ fn push_message(state: &mut DashboardState, message_id: u64, content: &str) {
 }
 
 fn push_message_with_id(state: &mut DashboardState, message_id: Id<MessageMarker>, content: &str) {
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
+    state.push_event(message_create_event(MessageCreateFixture {
         message_id,
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some(content.to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
 }
 
 fn message_info(message_id: u64, author: &str, content: &str, pinned: bool) -> MessageInfo {
     MessageInfo {
         guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(message_id),
         author_id: Id::new(99),
         author: author.to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         pinned,
-        reactions: Vec::new(),
         content: Some(content.to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-        ..MessageInfo::default()
+        ..MessageInfo::test(Id::new(2), Id::new(message_id))
     }
 }
 
@@ -518,24 +407,21 @@ fn message_with_forwarded_snapshot(snapshot: MessageSnapshotInfo) -> MessageStat
 
 fn poll_info(allow_multiselect: bool) -> PollInfo {
     PollInfo {
-        question: "What should we eat?".to_owned(),
         answers: vec![
             PollAnswerInfo {
-                answer_id: 1,
-                text: "Soup".to_owned(),
                 vote_count: Some(2),
                 me_voted: true,
+                ..PollAnswerInfo::test(1, "Soup")
             },
             PollAnswerInfo {
-                answer_id: 2,
-                text: "Noodles".to_owned(),
                 vote_count: Some(1),
-                me_voted: false,
+                ..PollAnswerInfo::test(2, "Noodles")
             },
         ],
         allow_multiselect,
         results_finalized: Some(false),
         total_votes: Some(3),
+        ..PollInfo::test("What should we eat?")
     }
 }
 
@@ -545,12 +431,8 @@ fn forwarded_snapshot(
 ) -> MessageSnapshotInfo {
     MessageSnapshotInfo {
         content: content.map(str::to_owned),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
         attachments,
-        embeds: Vec::new(),
-        source_channel_id: None,
-        timestamp: None,
+        ..MessageSnapshotInfo::test()
     }
 }
 
@@ -580,12 +462,8 @@ fn state_with_role(role_id: u64, name: &str) -> DashboardState {
         members: Vec::new(),
         presences: Vec::new(),
         roles: vec![RoleInfo {
-            id: Id::new(role_id),
-            name: name.to_owned(),
-            color: None,
             position: 1,
-            hoist: false,
-            permissions: 0,
+            ..RoleInfo::test(Id::new(role_id), name)
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -594,46 +472,21 @@ fn state_with_role(role_id: u64, name: &str) -> DashboardState {
 }
 
 fn member_info(user_id: u64, display_name: &str) -> MemberInfo {
-    MemberInfo {
-        user_id: Id::new(user_id),
-        display_name: display_name.to_owned(),
-        username: None,
-        is_bot: false,
-        avatar_url: None,
-        role_ids: Vec::new(),
-    }
+    MemberInfo::test(Id::new(user_id), display_name)
 }
 
 fn user_profile_info(user_id: u64, username: &str) -> UserProfileInfo {
-    UserProfileInfo {
-        user_id: Id::new(user_id),
-        username: username.to_owned(),
-        global_name: None,
-        guild_nick: None,
-        role_ids: Vec::new(),
-        avatar_url: None,
-        bio: None,
-        pronouns: None,
-        mutual_guilds: Vec::<MutualGuildInfo>::new(),
-        mutual_friends_count: 0,
-        friend_status: FriendStatus::None,
-        note: None,
-    }
+    UserProfileInfo::test(Id::new(user_id), username)
 }
 
 fn mention_info(user_id: u64, display_name: &str) -> MentionInfo {
-    MentionInfo {
-        user_id: Id::new(user_id),
-        guild_nick: None,
-        display_name: display_name.to_owned(),
-    }
+    MentionInfo::test(Id::new(user_id), display_name.to_owned())
 }
 
 fn mention_info_with_nick(user_id: u64, nick: &str) -> MentionInfo {
     MentionInfo {
-        user_id: Id::new(user_id),
         guild_nick: Some(nick.to_owned()),
-        display_name: nick.to_owned(),
+        ..MentionInfo::test(Id::new(user_id), nick.to_owned())
     }
 }
 
@@ -693,15 +546,13 @@ fn line_texts_from_ratatui(lines: &[ratatui::text::Line<'_>]) -> Vec<String> {
 
 fn image_attachment() -> AttachmentInfo {
     AttachmentInfo {
-        id: Id::new(3),
-        filename: "cat.png".to_owned(),
         url: "https://cdn.discordapp.com/cat.png".to_owned(),
         proxy_url: "https://media.discordapp.net/cat.png".to_owned(),
         content_type: Some("image/png".to_owned()),
         size: 2048,
         width: Some(640),
         height: Some(480),
-        description: None,
+        ..AttachmentInfo::test(Id::new(3), "cat.png")
     }
 }
 
@@ -721,28 +572,22 @@ fn image_attachments(count: u64) -> Vec<AttachmentInfo> {
 
 fn video_attachment() -> AttachmentInfo {
     AttachmentInfo {
-        id: Id::new(4),
-        filename: "clip.mp4".to_owned(),
         url: "https://cdn.discordapp.com/clip.mp4".to_owned(),
         proxy_url: "https://media.discordapp.net/clip.mp4".to_owned(),
         content_type: Some("video/mp4".to_owned()),
         size: 78_364_758,
         width: Some(1920),
         height: Some(1080),
-        description: None,
+        ..AttachmentInfo::test(Id::new(4), "clip.mp4")
     }
 }
 
 fn file_attachment() -> AttachmentInfo {
     AttachmentInfo {
-        id: Id::new(5),
-        filename: "notes.txt".to_owned(),
         url: "https://cdn.discordapp.com/notes.txt".to_owned(),
         proxy_url: "https://media.discordapp.net/notes.txt".to_owned(),
         content_type: Some("text/plain".to_owned()),
         size: 42,
-        width: None,
-        height: None,
-        description: None,
+        ..AttachmentInfo::test(Id::new(5), "notes.txt")
     }
 }

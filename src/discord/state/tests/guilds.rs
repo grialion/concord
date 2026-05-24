@@ -8,10 +8,8 @@ fn stores_and_clears_custom_guild_emojis() {
     state.apply_event(&guild_create_event(GuildCreateFixture {
         guild_id,
         emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party".to_owned(),
             animated: true,
-            available: true,
+            ..CustomEmojiInfo::test(Id::new(50), "party")
         }],
         ..GuildCreateFixture::new(guild_id)
     }));
@@ -31,21 +29,14 @@ fn guild_emojis_update_replaces_cached_custom_emojis() {
 
     state.apply_event(&guild_create_event(GuildCreateFixture {
         guild_id,
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(50), "party")],
         ..GuildCreateFixture::new(guild_id)
     }));
     state.apply_event(&AppEvent::GuildEmojisUpdate {
         guild_id,
         emojis: vec![CustomEmojiInfo {
-            id: Id::new(60),
-            name: "wave".to_owned(),
             animated: true,
-            available: true,
+            ..CustomEmojiInfo::test(Id::new(60), "wave")
         }],
     });
 
@@ -63,12 +54,7 @@ fn guild_update_replaces_custom_emojis_when_field_is_present() {
 
     state.apply_event(&guild_create_event(GuildCreateFixture {
         guild_id,
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(50), "party")],
         ..GuildCreateFixture::new(guild_id)
     }));
     state.apply_event(&AppEvent::GuildUpdate {
@@ -76,10 +62,8 @@ fn guild_update_replaces_custom_emojis_when_field_is_present() {
         name: "guild renamed".to_owned(),
         roles: None,
         emojis: Some(vec![CustomEmojiInfo {
-            id: Id::new(70),
-            name: "dance".to_owned(),
             animated: true,
-            available: true,
+            ..CustomEmojiInfo::test(Id::new(70), "dance")
         }]),
         owner_id: None,
     });
@@ -97,12 +81,7 @@ fn guild_update_without_emoji_field_keeps_cached_custom_emojis() {
 
     state.apply_event(&guild_create_event(GuildCreateFixture {
         guild_id,
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(50), "party")],
         ..GuildCreateFixture::new(guild_id)
     }));
     state.apply_event(&AppEvent::GuildUpdate {

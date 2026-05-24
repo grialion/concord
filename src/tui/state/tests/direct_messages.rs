@@ -99,7 +99,7 @@ fn direct_message_cursor_stays_on_same_channel_after_recency_sort() {
         message_id: Id::new(300),
         author_id: Id::new(99),
         content: Some("new empty dm".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     assert_eq!(channel_entry_names(&state), vec!["empty", "new", "old"]);

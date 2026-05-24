@@ -24,6 +24,24 @@ impl ApplicationCommandInfo {
     }
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl ApplicationCommandInfo {
+    pub(crate) fn test(id: Id<ApplicationMarker>, name: impl Into<String>) -> Self {
+        let name = name.into();
+        Self {
+            id,
+            application_id: id,
+            version: String::new(),
+            name: name.clone(),
+            application_name: None,
+            description: String::new(),
+            options: Vec::new(),
+            raw: Value::Null,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ApplicationCommandOptionInfo {
     pub kind: u64,
@@ -33,6 +51,22 @@ pub struct ApplicationCommandOptionInfo {
     pub autocomplete: bool,
     pub choices: Vec<ApplicationCommandChoiceInfo>,
     pub options: Vec<ApplicationCommandOptionInfo>,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl ApplicationCommandOptionInfo {
+    pub(crate) fn test(kind: u64, name: impl Into<String>) -> Self {
+        Self {
+            kind,
+            name: name.into(),
+            description: String::new(),
+            required: false,
+            autocomplete: false,
+            choices: Vec::new(),
+            options: Vec::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -457,10 +491,8 @@ mod tests {
         options: Vec<ApplicationCommandOptionInfo>,
     ) -> ApplicationCommandInfo {
         ApplicationCommandInfo {
-            id: Id::new(100),
             application_id: Id::new(200),
             version: "1".to_owned(),
-            name: name.to_owned(),
             application_name: Some("TestBot".to_owned()),
             description: format!("{name} command"),
             options,
@@ -470,6 +502,7 @@ mod tests {
                 "version": "1",
                 "name": name,
             }),
+            ..ApplicationCommandInfo::test(Id::new(100), name)
         }
     }
 
@@ -480,13 +513,10 @@ mod tests {
         options: Vec<ApplicationCommandOptionInfo>,
     ) -> ApplicationCommandOptionInfo {
         ApplicationCommandOptionInfo {
-            kind,
-            name: name.to_owned(),
             description: format!("{name} option"),
             required,
-            autocomplete: false,
-            choices: Vec::new(),
             options,
+            ..ApplicationCommandOptionInfo::test(kind, name)
         }
     }
 

@@ -19,12 +19,10 @@ fn member_groups_use_roles_and_status_sorted_entries() {
         ],
         presences: vec![(alice, PresenceStatus::Online), (bob, PresenceStatus::Idle)],
         roles: vec![RoleInfo {
-            id: admin_role,
-            name: "Admin".to_owned(),
             color: Some(0xFFAA00),
             position: 10,
             hoist: true,
-            permissions: 0,
+            ..RoleInfo::test(admin_role, "Admin")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -67,28 +65,19 @@ fn member_role_color_uses_highest_nonzero_role_color() {
         presences: vec![(user_id, PresenceStatus::Online)],
         roles: vec![
             RoleInfo {
-                id: low_role,
-                name: "Low".to_owned(),
                 color: Some(0x112233),
                 position: 1,
-                hoist: false,
-                permissions: 0,
+                ..RoleInfo::test(low_role, "Low")
             },
             RoleInfo {
-                id: zero_role,
-                name: "Zero".to_owned(),
                 color: Some(0),
                 position: 99,
-                hoist: false,
-                permissions: 0,
+                ..RoleInfo::test(zero_role, "Zero")
             },
             RoleInfo {
-                id: high_role,
-                name: "High".to_owned(),
                 color: Some(0x445566),
                 position: 10,
-                hoist: false,
-                permissions: 0,
+                ..RoleInfo::test(high_role, "High")
             },
         ],
         emojis: Vec::new(),
@@ -184,20 +173,14 @@ fn member_role_color_breaks_equal_position_ties_by_role_id() {
         presences: vec![(user_id, PresenceStatus::Online)],
         roles: vec![
             RoleInfo {
-                id: newer_role,
-                name: "Newer".to_owned(),
                 color: Some(0x112233),
                 position: 10,
-                hoist: false,
-                permissions: 0,
+                ..RoleInfo::test(newer_role, "Newer")
             },
             RoleInfo {
-                id: older_role,
-                name: "Older".to_owned(),
                 color: Some(0x445566),
                 position: 10,
-                hoist: false,
-                permissions: 0,
+                ..RoleInfo::test(older_role, "Older")
             },
         ],
         emojis: Vec::new(),
@@ -218,20 +201,12 @@ fn member_groups_show_selected_group_dm_recipients() {
         kind: "group-dm".to_owned(),
         recipients: Some(vec![
             ChannelRecipientInfo {
-                user_id: Id::new(30),
-                display_name: "bob".to_owned(),
-                username: None,
-                is_bot: false,
-                avatar_url: None,
                 status: Some(PresenceStatus::Idle),
+                ..ChannelRecipientInfo::test(Id::new(30), "bob")
             },
             ChannelRecipientInfo {
-                user_id: Id::new(10),
-                display_name: "alice".to_owned(),
-                username: None,
-                is_bot: false,
-                avatar_url: None,
                 status: Some(PresenceStatus::Online),
+                ..ChannelRecipientInfo::test(Id::new(10), "alice")
             },
         ]),
         ..dm_channel_info(channel_id, "project chat")
@@ -325,12 +300,10 @@ fn member_groups_keep_offline_hoisted_members_in_role_buckets() {
             (Id::new(21), PresenceStatus::Offline),
         ],
         roles: vec![RoleInfo {
-            id: admin_role,
-            name: "Admin".to_owned(),
             color: Some(0xFFAA00),
             position: 10,
             hoist: true,
-            permissions: 0,
+            ..RoleInfo::test(admin_role, "Admin")
         }],
         emojis: Vec::new(),
         owner_id: None,
@@ -418,12 +391,8 @@ fn member_groups_show_selected_dm_recipient() {
     let channel_id = Id::new(20);
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         recipients: Some(vec![ChannelRecipientInfo {
-            user_id: Id::new(10),
-            display_name: "alice".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
             status: Some(PresenceStatus::DoNotDisturb),
+            ..ChannelRecipientInfo::test(Id::new(10), "alice")
         }]),
         ..dm_channel_info(channel_id, "alice")
     }));
@@ -517,15 +486,7 @@ fn member_navigation_skips_over_activity_subrows() {
         guild_id: Id::new(1),
         user_id: Id::new(2),
         status: PresenceStatus::Online,
-        activities: vec![ActivityInfo {
-            kind: ActivityKind::Playing,
-            name: "Concord".to_owned(),
-            details: None,
-            state: None,
-            url: None,
-            application_id: None,
-            emoji: None,
-        }],
+        activities: vec![ActivityInfo::test(ActivityKind::Playing, "Concord")],
     });
 
     // Lines: 0 group header, 1 member 1, 2 member 2, 3 activity, 4 member 3.

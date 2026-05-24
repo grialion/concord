@@ -8,10 +8,8 @@ fn application_command(
     options: Vec<ApplicationCommandOptionInfo>,
 ) -> ApplicationCommandInfo {
     ApplicationCommandInfo {
-        id: Id::new(100),
         application_id: Id::new(200),
         version: "1".to_owned(),
-        name: name.to_owned(),
         application_name: Some("TestBot".to_owned()),
         description: format!("{name} command"),
         options,
@@ -21,6 +19,7 @@ fn application_command(
             "version": "1",
             "name": name,
         }),
+        ..ApplicationCommandInfo::test(Id::new(100), name)
     }
 }
 
@@ -31,13 +30,10 @@ fn application_command_option(
     options: Vec<ApplicationCommandOptionInfo>,
 ) -> ApplicationCommandOptionInfo {
     ApplicationCommandOptionInfo {
-        kind,
-        name: name.to_owned(),
         description: format!("{name} option"),
         required,
-        autocomplete: false,
-        choices: Vec::new(),
         options,
+        ..ApplicationCommandOptionInfo::test(kind, name)
     }
 }
 
@@ -152,10 +148,8 @@ fn submit_composer_drops_message_when_send_revoked_after_open() {
     // overwrite on @everyone (role id == guild id == 1).
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         permission_overwrites: vec![PermissionOverwriteInfo {
-            id: 1,
-            kind: PermissionOverwriteKind::Role,
-            allow: 0,
             deny: 0x800,
+            ..PermissionOverwriteInfo::test(1, PermissionOverwriteKind::Role)
         }],
         ..positioned_text_channel_info(Id::new(1), Id::new(2), "general", 0)
     }));
@@ -172,10 +166,8 @@ fn active_channel_is_cleared_when_view_permission_is_revoked() {
 
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         permission_overwrites: vec![PermissionOverwriteInfo {
-            id: 1,
-            kind: PermissionOverwriteKind::Role,
-            allow: 0,
             deny: 0x400,
+            ..PermissionOverwriteInfo::test(1, PermissionOverwriteKind::Role)
         }],
         ..positioned_text_channel_info(Id::new(1), Id::new(2), "general", 0)
     }));
@@ -917,11 +909,8 @@ fn emoji_picker_keeps_more_than_visible_candidates_selectable() {
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
         emojis: (0..10)
-            .map(|index| CustomEmojiInfo {
-                id: Id::new(100 + index),
-                name: format!("overflow_{index:02}"),
-                animated: false,
-                available: true,
+            .map(|index| {
+                CustomEmojiInfo::test(Id::new(100 + index), format!("overflow_{index:02}"))
             })
             .collect(),
     });
@@ -980,12 +969,7 @@ fn custom_emoji_submit_keeps_readable_text_and_sends_wire_format() {
     let mut state = state_with_messages(1);
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id,
-        emojis: vec![CustomEmojiInfo {
-            id: Id::new(60),
-            name: "wave".to_owned(),
-            animated: false,
-            available: true,
-        }],
+        emojis: vec![CustomEmojiInfo::test(Id::new(60), "wave")],
     });
     state.start_composer();
     for ch in ":wa".chars() {
@@ -1015,10 +999,8 @@ fn submit_expands_mention_and_following_custom_emoji_without_stale_ranges() {
     state.push_event(AppEvent::GuildEmojisUpdate {
         guild_id: Id::new(1),
         emojis: vec![CustomEmojiInfo {
-            id: Id::new(50),
-            name: "party_time".to_owned(),
             animated: true,
-            available: true,
+            ..CustomEmojiInfo::test(Id::new(50), "party_time")
         }],
     });
     state.start_composer();
@@ -1189,7 +1171,7 @@ fn typing_footer_resolves_one_user_to_alias() {
         author_id: user_id,
         author: "Live Nick".to_owned(),
         content: Some("sent".to_owned()),
-        ..MessageCreateFixture::default()
+        ..guild_message_create_fixture()
     }));
 
     assert_eq!(state.typing_footer_for_selected_channel(), None);

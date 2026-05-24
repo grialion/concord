@@ -14,19 +14,17 @@ const PIN_MESSAGES: u64 = 0x0008_0000_0000_0000;
 
 fn perm_role(id: u64, allow: u64, deny: u64) -> PermissionOverwriteInfo {
     PermissionOverwriteInfo {
-        id,
-        kind: PermissionOverwriteKind::Role,
         allow,
         deny,
+        ..PermissionOverwriteInfo::test(id, PermissionOverwriteKind::Role)
     }
 }
 
 fn perm_member(id: u64, allow: u64, deny: u64) -> PermissionOverwriteInfo {
     PermissionOverwriteInfo {
-        id,
-        kind: PermissionOverwriteKind::Member,
         allow,
         deny,
+        ..PermissionOverwriteInfo::test(id, PermissionOverwriteKind::Member)
     }
 }
 
@@ -111,12 +109,9 @@ fn administrator_role_bypasses_channel_overwrites() {
         vec![
             role_info(Id::new(guild.get()), "@everyone", 0),
             RoleInfo {
-                id: admin_role,
-                name: "Admin".to_owned(),
-                color: None,
                 position: 1,
-                hoist: false,
                 permissions: ADMINISTRATOR,
+                ..RoleInfo::test(admin_role, "Admin")
             },
         ],
         // Channel-level deny is irrelevant for ADMINISTRATOR holders.
@@ -164,12 +159,8 @@ fn role_allow_overrides_everyone_deny() {
         vec![
             role_info(Id::new(guild.get()), "@everyone", VIEW_CHANNEL),
             RoleInfo {
-                id: staff_role,
-                name: "Staff".to_owned(),
-                color: None,
                 position: 1,
-                hoist: false,
-                permissions: 0,
+                ..RoleInfo::test(staff_role, "Staff")
             },
         ],
         vec![
@@ -197,12 +188,9 @@ fn current_user_roles_handle_partial_and_complete_member_upserts() {
         vec![
             role_info(Id::new(guild.get()), "@everyone", 0),
             RoleInfo {
-                id: staff_role,
-                name: "Staff".to_owned(),
-                color: None,
                 position: 1,
-                hoist: false,
                 permissions: VIEW_CHANNEL,
+                ..RoleInfo::test(staff_role, "Staff")
             },
         ],
         Vec::new(),
@@ -238,12 +226,9 @@ fn current_user_roles_handle_partial_and_complete_member_upserts() {
         vec![
             role_info(Id::new(guild.get()), "@everyone", 0),
             RoleInfo {
-                id: staff_role,
-                name: "Staff".to_owned(),
-                color: None,
                 position: 1,
-                hoist: false,
                 permissions: VIEW_CHANNEL,
+                ..RoleInfo::test(staff_role, "Staff")
             },
         ],
         Vec::new(),
@@ -274,12 +259,9 @@ fn member_overwrite_has_the_final_word() {
         vec![
             role_info(Id::new(guild.get()), "@everyone", 0),
             RoleInfo {
-                id: staff_role,
-                name: "Staff".to_owned(),
-                color: None,
                 position: 1,
-                hoist: false,
                 permissions: VIEW_CHANNEL,
+                ..RoleInfo::test(staff_role, "Staff")
             },
         ],
         vec![perm_member(me.get(), 0, VIEW_CHANNEL)],
@@ -392,13 +374,9 @@ fn cannot_send_when_role_overwrite_denies_send_messages() {
         channel,
         vec![],
         vec![RoleInfo {
-            id: Id::new(guild.get()),
-            name: "@everyone".to_owned(),
-            color: None,
-            position: 0,
-            hoist: false,
             // VIEW + SEND globally, but channel overwrite revokes SEND.
             permissions: VIEW_CHANNEL | SEND_MESSAGES,
+            ..RoleInfo::test(Id::new(guild.get()), "@everyone")
         }],
         vec![perm_role(guild.get(), 0, SEND_MESSAGES)],
     );
@@ -444,13 +422,9 @@ fn cannot_attach_when_role_overwrite_denies_attach_files() {
         channel,
         vec![],
         vec![RoleInfo {
-            id: Id::new(guild.get()),
-            name: "@everyone".to_owned(),
-            color: None,
-            position: 0,
-            hoist: false,
             // VIEW + SEND + ATTACH globally, channel revokes only ATTACH.
             permissions: VIEW_CHANNEL | SEND_MESSAGES | ATTACH_FILES,
+            ..RoleInfo::test(Id::new(guild.get()), "@everyone")
         }],
         vec![perm_role(guild.get(), 0, ATTACH_FILES)],
     );

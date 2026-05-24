@@ -78,3 +78,19 @@ pub struct ActivityInfo {
     pub application_id: Option<String>,
     pub emoji: Option<ActivityEmoji>,
 }
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl ActivityInfo {
+    pub(crate) fn test(kind: ActivityKind, name: impl Into<String>) -> Self {
+        Self {
+            kind,
+            name: name.into(),
+            details: None,
+            state: None,
+            url: None,
+            application_id: None,
+            emoji: None,
+        }
+    }
+}

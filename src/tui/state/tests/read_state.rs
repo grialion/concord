@@ -79,13 +79,8 @@ fn active_channel_read_state_coalesces_when_new_messages_arrive_at_latest() {
         let mut state = state_with_writable_channel();
         state.push_event(AppEvent::UserGuildNotificationSettingsInit {
             settings: vec![GuildNotificationSettingsInfo {
-                guild_id: Some(Id::new(1)),
                 message_notifications: Some(NotificationLevel::AllMessages),
-                muted: false,
-                mute_end_time: None,
-                suppress_everyone: false,
-                suppress_roles: false,
-                channel_overrides: Vec::new(),
+                ..GuildNotificationSettingsInfo::test(Some(Id::new(1)))
             }],
         });
 
@@ -125,7 +120,7 @@ fn active_channel_read_state_coalesces_when_new_messages_arrive_at_latest() {
             author_id: Id::new(10),
             author: "me".to_owned(),
             content: Some("sent while reading latest".to_owned()),
-            ..MessageCreateFixture::default()
+            ..guild_message_create_fixture()
         }));
 
         assert_eq!(state.channel_unread(Id::new(2)), ChannelUnreadState::Seen);

@@ -2520,18 +2520,13 @@ fn message_create_parser_keeps_forwarded_snapshot_fields() {
 }
 
 fn mention_info(user_id: u64, display_name: &str) -> MentionInfo {
-    MentionInfo {
-        user_id: Id::new(user_id),
-        guild_nick: None,
-        display_name: display_name.to_owned(),
-    }
+    MentionInfo::test(Id::new(user_id), display_name.to_owned())
 }
 
 fn mention_info_with_nick(user_id: u64, nick: &str) -> MentionInfo {
     MentionInfo {
-        user_id: Id::new(user_id),
         guild_nick: Some(nick.to_owned()),
-        display_name: nick.to_owned(),
+        ..MentionInfo::test(Id::new(user_id), nick.to_owned())
     }
 }
 

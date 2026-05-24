@@ -136,6 +136,19 @@ pub struct PermissionOverwriteInfo {
     pub deny: u64,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
+impl PermissionOverwriteInfo {
+    pub(crate) fn test(id: u64, kind: PermissionOverwriteKind) -> Self {
+        Self {
+            id,
+            kind,
+            allow: 0,
+            deny: 0,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ChannelRecipientInfo {
     pub user_id: Id<UserMarker>,
@@ -147,4 +160,19 @@ pub struct ChannelRecipientInfo {
     pub is_bot: bool,
     pub avatar_url: Option<String>,
     pub status: Option<PresenceStatus>,
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+impl ChannelRecipientInfo {
+    pub(crate) fn test(user_id: Id<UserMarker>, display_name: impl Into<String>) -> Self {
+        Self {
+            user_id,
+            display_name: display_name.into(),
+            username: None,
+            is_bot: false,
+            avatar_url: None,
+            status: None,
+        }
+    }
 }

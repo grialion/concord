@@ -115,10 +115,9 @@ fn muted_channel_does_not_add_numeric_notification_badge() {
     settings
         .channel_overrides
         .push(ChannelNotificationOverrideInfo {
-            channel_id,
             message_notifications: Some(NotificationLevel::AllMessages),
             muted: true,
-            mute_end_time: None,
+            ..ChannelNotificationOverrideInfo::test(channel_id)
         });
 
     state.apply_event(&AppEvent::Ready {
@@ -171,10 +170,9 @@ fn muted_parent_category_does_not_add_server_sidebar_unread() {
     settings
         .channel_overrides
         .push(ChannelNotificationOverrideInfo {
-            channel_id: category_id,
             message_notifications: Some(NotificationLevel::AllMessages),
             muted: true,
-            mute_end_time: None,
+            ..ChannelNotificationOverrideInfo::test(category_id)
         });
 
     state.apply_event(&AppEvent::Ready {
@@ -229,18 +227,15 @@ fn explicit_channel_unmute_override_beats_muted_parent_category() {
     settings
         .channel_overrides
         .push(ChannelNotificationOverrideInfo {
-            channel_id: category_id,
             message_notifications: Some(NotificationLevel::AllMessages),
             muted: true,
-            mute_end_time: None,
+            ..ChannelNotificationOverrideInfo::test(category_id)
         });
     settings
         .channel_overrides
         .push(ChannelNotificationOverrideInfo {
-            channel_id,
             message_notifications: Some(NotificationLevel::AllMessages),
-            muted: false,
-            mute_end_time: None,
+            ..ChannelNotificationOverrideInfo::test(channel_id)
         });
 
     state.apply_event(&AppEvent::Ready {
@@ -370,10 +365,8 @@ fn private_channel_override_no_messages_suppresses_numeric_badge() {
     settings
         .channel_overrides
         .push(ChannelNotificationOverrideInfo {
-            channel_id,
             message_notifications: Some(NotificationLevel::NoMessages),
-            muted: false,
-            mute_end_time: None,
+            ..ChannelNotificationOverrideInfo::test(channel_id)
         });
 
     state.apply_event(&AppEvent::Ready {
@@ -408,10 +401,9 @@ fn muted_private_channel_override_suppresses_numeric_badge() {
     settings
         .channel_overrides
         .push(ChannelNotificationOverrideInfo {
-            channel_id,
             message_notifications: Some(NotificationLevel::AllMessages),
             muted: true,
-            mute_end_time: None,
+            ..ChannelNotificationOverrideInfo::test(channel_id)
         });
 
     state.apply_event(&AppEvent::Ready {

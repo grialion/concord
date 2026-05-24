@@ -5,6 +5,9 @@ use std::{
 };
 
 use crate::discord::ids::Id;
+use crate::discord::test_builders::{
+    MessageCreateFixture, guild_message_create_fixture, message_create_event,
+};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
 
@@ -214,12 +217,8 @@ fn state_with_direct_message(kind: &str) -> DashboardState {
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         name: "alice".to_owned(),
         recipients: Some(vec![ChannelRecipientInfo {
-            user_id: Id::new(30),
-            display_name: "alice".to_owned(),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
             status: Some(PresenceStatus::Online),
+            ..ChannelRecipientInfo::test(Id::new(30), "alice")
         }]),
         ..ChannelInfo::test(channel_id, kind)
     }));
@@ -253,27 +252,12 @@ fn state_with_messages_from_state(mut state: DashboardState, count: u64) -> Dash
     state.confirm_selected_guild();
     state.confirm_selected_channel();
     for id in 1..=count {
-        state.push_event(AppEvent::MessageCreate {
-            guild_id: Some(guild_id),
+        state.push_event(message_create_event(MessageCreateFixture {
             channel_id,
             message_id: Id::new(id),
-            author_id: Id::new(99),
-            author: "neo".to_owned(),
-            author_avatar_url: None,
-            author_is_bot: false,
-            author_role_ids: Vec::new(),
-            message_kind: crate::discord::MessageKind::regular(),
-            interaction: None,
-            reference: None,
-            reply: None,
-            poll: None,
             content: Some(format!("msg {id}")),
-            sticker_names: Vec::new(),
-            mentions: Vec::new(),
-            attachments: Vec::new(),
-            embeds: Vec::new(),
-            forwarded_snapshots: Vec::new(),
-        });
+            ..guild_message_create_fixture()
+        }));
     }
     state
 }
@@ -292,14 +276,7 @@ fn state_with_members(count: u64) -> DashboardState {
     let channel_id = Id::new(2);
     let mut state = DashboardState::new();
     let members = (1..=count)
-        .map(|id| MemberInfo {
-            user_id: Id::new(id),
-            display_name: format!("member {id}"),
-            username: None,
-            is_bot: false,
-            avatar_url: None,
-            role_ids: Vec::new(),
-        })
+        .map(|id| MemberInfo::test(Id::new(id), format!("member {id}")))
         .collect();
     let presences = (1..=count)
         .map(|id| (Id::new(id), PresenceStatus::Online))
@@ -358,76 +335,45 @@ fn state_with_thread_created_message() -> DashboardState {
     });
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(guild_id),
+    state.push_event(message_create_event(MessageCreateFixture {
         channel_id: parent_id,
         message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
         message_kind: crate::discord::MessageKind::new(18),
-        interaction: None,
         reference: Some(MessageReferenceInfo {
             guild_id: Some(guild_id),
             channel_id: Some(thread_id),
             message_id: None,
         }),
-        reply: None,
-        poll: None,
         content: Some("release notes".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
     state
 }
 
 fn state_with_multiselect_poll() -> DashboardState {
     let mut state = state_with_messages(1);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
+    state.push_event(message_create_event(MessageCreateFixture {
         message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
         poll: Some(PollInfo {
-            question: "Pick foods".to_owned(),
             answers: vec![
                 PollAnswerInfo {
-                    answer_id: 1,
-                    text: "Soup".to_owned(),
                     vote_count: Some(2),
                     me_voted: true,
+                    ..PollAnswerInfo::test(1, "Soup")
                 },
                 PollAnswerInfo {
-                    answer_id: 2,
-                    text: "Noodles".to_owned(),
                     vote_count: Some(1),
-                    me_voted: false,
+                    ..PollAnswerInfo::test(2, "Noodles")
                 },
             ],
             allow_multiselect: true,
             results_finalized: Some(false),
             total_votes: Some(3),
+            ..PollInfo::test("Pick foods")
         }),
         content: Some("msg 1".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
     state
 }
 
@@ -449,44 +395,19 @@ fn state_with_custom_emoji_message() -> DashboardState {
         presences: Vec::new(),
         roles: Vec::new(),
         emojis: vec![
-            CustomEmojiInfo {
-                id: Id::new(50),
-                name: "party".to_owned(),
-                animated: false,
-                available: true,
-            },
-            CustomEmojiInfo {
-                id: Id::new(51),
-                name: "this".to_owned(),
-                animated: false,
-                available: true,
-            },
+            CustomEmojiInfo::test(Id::new(50), "party"),
+            CustomEmojiInfo::test(Id::new(51), "this"),
         ],
         owner_id: None,
     });
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(guild_id),
+    state.push_event(message_create_event(MessageCreateFixture {
         channel_id,
         message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some("msg 1".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
     state
 }
 
@@ -560,21 +481,8 @@ fn state_with_image_message() -> DashboardState {
         member_count: None,
         channels: vec![ChannelInfo {
             guild_id: Some(guild_id),
-            channel_id,
-            parent_id: None,
-            owner_id: None,
-            position: None,
-            last_message_id: None,
             name: "general".to_owned(),
-            kind: "GuildText".to_owned(),
-            message_count: None,
-            member_count: None,
-            total_message_sent: None,
-            thread_metadata: None,
-            flags: None,
-            current_user_joined_thread: None,
-            recipients: None,
-            permission_overwrites: Vec::new(),
+            ..ChannelInfo::test(channel_id, "GuildText")
         }],
         members: Vec::new(),
         presences: Vec::new(),
@@ -584,23 +492,10 @@ fn state_with_image_message() -> DashboardState {
     });
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(guild_id),
+    state.push_event(message_create_event(MessageCreateFixture {
         channel_id,
         message_id: Id::new(1),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
         content: Some(String::new()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
         attachments: vec![
             crate::discord::AttachmentInfo {
                 id: Id::new(3),
@@ -626,9 +521,8 @@ fn state_with_image_message() -> DashboardState {
                 description: None,
             },
         ],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
+        ..guild_message_create_fixture()
+    }));
     state
 }
 fn open_emoji_picker(state: &mut DashboardState) {
