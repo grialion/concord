@@ -122,6 +122,7 @@ pub(in crate::tui) enum UiAction {
     JumpBottom,
     ScrollHorizontalLeft,
     ScrollHorizontalRight,
+    Quit,
     CopyMessage,
     ReactMessage,
     ReplyMessage,
@@ -1161,6 +1162,7 @@ impl UiAction {
             UiAction::JumpBottom => "JumpBottom",
             UiAction::ScrollHorizontalLeft => "ScrollHorizontalLeft",
             UiAction::ScrollHorizontalRight => "ScrollHorizontalRight",
+            UiAction::Quit => "Quit",
             UiAction::CopyMessage => "CopyMessage",
             UiAction::ReactMessage => "ReactMessage",
             UiAction::ReplyMessage => "ReplyMessage",
@@ -1201,6 +1203,7 @@ impl UiAction {
             UiAction::JumpBottom => "jump bottom",
             UiAction::ScrollHorizontalLeft => "scroll left",
             UiAction::ScrollHorizontalRight => "scroll right",
+            UiAction::Quit => "quit",
             UiAction::CopyMessage => "copy message",
             UiAction::ReactMessage => "react",
             UiAction::ReplyMessage => "reply",
@@ -1345,6 +1348,7 @@ fn all_ui_actions() -> &'static [UiAction] {
         UiAction::JumpBottom,
         UiAction::ScrollHorizontalLeft,
         UiAction::ScrollHorizontalRight,
+        UiAction::Quit,
         UiAction::CopyMessage,
         UiAction::ReactMessage,
         UiAction::ReplyMessage,
@@ -1724,6 +1728,7 @@ fn default_keymap_specs(leader: KeyChord) -> BTreeMap<UiAction, KeyMapActionSpec
             UiAction::JumpBottom => vec![vec![char_chord('G')]],
             UiAction::ScrollHorizontalLeft => vec![vec![char_chord('H')]],
             UiAction::ScrollHorizontalRight => vec![vec![char_chord('L')]],
+            UiAction::Quit => vec![vec![char_chord('q')]],
             UiAction::CopyMessage => vec![vec![char_chord('y')]],
             UiAction::ReactMessage => vec![vec![char_chord('r')]],
             UiAction::ReplyMessage => vec![vec![char_chord('R')]],
@@ -1926,6 +1931,7 @@ impl KeyBindings {
             UiAction::JumpBottom => Some(DashboardAction::JumpBottom),
             UiAction::ScrollHorizontalLeft => Some(DashboardAction::ScrollHorizontalLeft),
             UiAction::ScrollHorizontalRight => Some(DashboardAction::ScrollHorizontalRight),
+            UiAction::Quit => Some(DashboardAction::Quit),
             UiAction::CopyMessage if focus == FocusPane::Messages => Some(
                 DashboardAction::MessageShortcut(MessageShortcutAction::CopyContent),
             ),
@@ -1968,7 +1974,6 @@ impl KeyBindings {
 
         match key.code {
             KeyCode::Esc => Some(DashboardAction::Back),
-            KeyCode::Char('q') => Some(DashboardAction::Quit),
             KeyCode::Char('h') | KeyCode::Left if key.modifiers.contains(KeyModifiers::ALT) => {
                 Some(DashboardAction::ResizePaneLeft)
             }
@@ -2888,6 +2893,7 @@ mod tests {
             UiAction::from_name("OpenFocusedPaneAction"),
             Some(UiAction::OpenFocusedPaneAction)
         );
+        assert_eq!(UiAction::from_name("Quit"), Some(UiAction::Quit));
         assert_eq!(UiAction::from_name("OpenVoiceActions"), None);
     }
 
@@ -3515,6 +3521,28 @@ mod tests {
                 KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE)
             ),
             Some(KeyMapLookup::Action(UiAction::VoiceDeafen))
+        );
+    }
+
+    #[test]
+    fn keymap_can_remap_quit_action() {
+        let keymap = KeymapOptions {
+            mappings: [("Quit".to_owned(), KeymapBinding::one("x"))]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        let key_bindings = KeyBindings::try_from_options(&keymap).expect("quit should parse");
+
+        assert_eq!(
+            key_bindings
+                .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE)),
+            Some(KeyMapLookup::Action(UiAction::Quit))
+        );
+        assert_eq!(
+            key_bindings
+                .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE)),
+            None
         );
     }
 

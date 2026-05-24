@@ -518,6 +518,7 @@ sequence if you want direct keys for them.
 | `JumpBottom`              | `"G"`                              | Jump to the bottom.                          |
 | `ScrollHorizontalLeft`    | `"H"`                              | Scroll focused pane horizontally left.       |
 | `ScrollHorizontalRight`   | `"L"`                              | Scroll focused pane horizontally right.      |
+| `Quit`                    | `"q"`                              | Quit Concord.                                |
 | `CopyMessage`             | `"y"`                              | Copy selected message content.               |
 | `ReactMessage`            | `"r"`                              | Add or remove a reaction.                    |
 | `ReplyMessage`            | `"R"`                              | Start a reply.                               |
@@ -664,6 +665,7 @@ JumpTop = "g"
 JumpBottom = "G"
 ScrollHorizontalLeft = "H"
 ScrollHorizontalRight = "L"
+Quit = "q"
 CopyMessage = "y"
 ReactMessage = "r"
 ReplyMessage = "R"

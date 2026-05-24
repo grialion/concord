@@ -474,6 +474,24 @@ fn configured_direct_keymap_can_override_dashboard_shortcut() {
 }
 
 #[test]
+fn configured_quit_key_replaces_default_q() {
+    let mut mappings = BTreeMap::new();
+    mappings.insert("Quit".to_owned(), KeymapBinding::one("x"));
+    let mut state = state_with_keymap(KeymapOptions {
+        leader: None,
+        groups: BTreeMap::new(),
+        mappings,
+        ..Default::default()
+    });
+
+    handle_key(&mut state, char_key('q'));
+    assert!(!state.should_quit());
+
+    handle_key(&mut state, char_key('x'));
+    assert!(state.should_quit());
+}
+
+#[test]
 fn leader_channel_actions_offer_mute_duration_and_submit_command() {
     let mut state = state_with_channel_tree();
     state.focus_pane(FocusPane::Channels);
