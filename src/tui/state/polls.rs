@@ -34,9 +34,7 @@ impl DashboardState {
     pub fn toggle_selected_poll_vote_answer(&mut self) {
         if let Some(picker) = &mut self.popups.poll_vote_picker {
             let index = clamp_selected_index(picker.selected, picker.answers.len());
-            if let Some(answer) = picker.answers.get_mut(index) {
-                answer.selected = !answer.selected;
-            }
+            toggle_poll_answer_selection(picker, index);
         }
     }
 
@@ -55,9 +53,7 @@ impl DashboardState {
             return;
         };
         picker.selected = index;
-        if let Some(answer) = picker.answers.get_mut(index) {
-            answer.selected = !answer.selected;
-        }
+        toggle_poll_answer_selection(picker, index);
     }
 
     pub fn selected_poll_vote_picker_index(&self) -> Option<usize> {
@@ -89,18 +85,59 @@ impl DashboardState {
         {
             self.popups.poll_vote_picker = Some(PollVotePickerState {
                 selected: 0,
+                allow_multiselect: poll.allow_multiselect,
                 channel_id: message.channel_id,
                 message_id: message.id,
-                answers: poll
-                    .answers
-                    .iter()
-                    .map(|answer| PollVotePickerItem {
-                        answer_id: answer.answer_id,
-                        label: answer.text.clone(),
-                        selected: answer.me_voted,
-                    })
-                    .collect(),
+                answers: normalized_poll_vote_picker_answers(
+                    poll.allow_multiselect,
+                    poll.answers
+                        .iter()
+                        .map(|answer| PollVotePickerItem {
+                            answer_id: answer.answer_id,
+                            label: answer.text.clone(),
+                            selected: answer.me_voted,
+                        })
+                        .collect(),
+                ),
             });
         }
+    }
+}
+
+fn normalized_poll_vote_picker_answers(
+    allow_multiselect: bool,
+    mut answers: Vec<PollVotePickerItem>,
+) -> Vec<PollVotePickerItem> {
+    if allow_multiselect {
+        return answers;
+    }
+
+    let mut seen_selected = false;
+    for answer in &mut answers {
+        if answer.selected && seen_selected {
+            answer.selected = false;
+        }
+        seen_selected |= answer.selected;
+    }
+    answers
+}
+
+fn toggle_poll_answer_selection(picker: &mut PollVotePickerState, index: usize) {
+    if picker.allow_multiselect {
+        if let Some(answer) = picker.answers.get_mut(index) {
+            answer.selected = !answer.selected;
+        }
+        return;
+    }
+
+    let was_selected = picker
+        .answers
+        .get(index)
+        .is_some_and(|answer| answer.selected);
+    for answer in &mut picker.answers {
+        answer.selected = false;
+    }
+    if !was_selected && let Some(answer) = picker.answers.get_mut(index) {
+        answer.selected = true;
     }
 }

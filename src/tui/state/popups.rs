@@ -142,6 +142,7 @@ pub struct EmojiReactionPickerState {
     pub(super) items: Vec<EmojiReactionItem>,
     pub(super) filtered_items: Vec<EmojiReactionItem>,
     pub(super) existing_reactions: Vec<ReactionEmoji>,
+    pub(super) own_reactions: Vec<ReactionEmoji>,
     pub(super) guild_id: Option<Id<GuildMarker>>,
     pub(super) channel_id: Id<ChannelMarker>,
     pub(super) message_id: Id<MessageMarker>,
@@ -150,6 +151,7 @@ pub struct EmojiReactionPickerState {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PollVotePickerState {
     pub(super) selected: usize,
+    pub(super) allow_multiselect: bool,
     pub(super) channel_id: Id<ChannelMarker>,
     pub(super) message_id: Id<MessageMarker>,
     pub(super) answers: Vec<PollVotePickerItem>,

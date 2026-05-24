@@ -72,7 +72,6 @@ fn esc_closes_modal_before_returning_from_opened_thread() {
     let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
-    handle_key(&mut state, key(KeyCode::Down));
     handle_key(&mut state, key(KeyCode::Enter));
     assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
 

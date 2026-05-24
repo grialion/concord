@@ -160,6 +160,7 @@ struct MessageInteractionPopupSignature {
     emoji_reaction_filter: Option<String>,
     filtered_emoji_reaction_items: DebugSignature,
     existing_emoji_reactions: DebugSignature,
+    own_emoji_reactions: DebugSignature,
     reaction_users_open: bool,
     reaction_users_popup: DebugSignature,
     poll_vote_picker_open: bool,
@@ -363,6 +364,11 @@ pub(super) fn visible_dashboard_signature(state: &DashboardState) -> VisibleDash
                     },
                     existing_emoji_reactions: if state.is_emoji_reaction_picker_open() {
                         debug_signature(&state.existing_emoji_reactions())
+                    } else {
+                        debug_signature(&())
+                    },
+                    own_emoji_reactions: if state.is_emoji_reaction_picker_open() {
+                        debug_signature(&state.own_emoji_reactions())
                     } else {
                         debug_signature(&())
                     },

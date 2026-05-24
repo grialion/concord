@@ -245,11 +245,9 @@ fn pinned_message_remains_selectable_for_unpin_action() {
         state.selected_message_state().map(|message| message.pinned),
         Some(true)
     );
-    state.open_selected_message_actions();
+    state.direct_open_selected_message_pin_confirmation();
 
-    assert!(state.selected_message_action_items().iter().any(|action| {
-        action.kind == MessageActionKind::SetPinned(false) && action.label == "Unpin message"
-    }));
+    assert!(state.is_message_pin_confirmation_open());
 }
 
 #[test]

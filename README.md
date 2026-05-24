@@ -258,7 +258,7 @@ Message shortcuts:
 | Shortcut | Action      | Description                                                 |
 | -------- | ----------- | ----------------------------------------------------------- |
 | `y`      | Copy        | Copy the selected message text and show a short toast       |
-| `r`      | React       | Open the reaction picker for the selected message           |
+| `r`      | Add/remove reaction | Open the reaction picker for the selected message           |
 | `R`      | Reply       | Start a reply to the selected message                       |
 | `d`      | Delete      | Open a delete confirmation before deleting the message      |
 | `e`      | Edit        | Start editing the selected message when editing is allowed  |
@@ -437,6 +437,9 @@ ReplyMessage = "<leader>m r"
 [keymap.channel_actions]
 MuteChannel = { keys = ["x"], description = "mute channel" }
 
+[keymap.message_actions]
+OpenThread = { keys = ["t"], description = "open thread" }
+
 [keymap.composer]
 OpenEditor = "ctrl+o"
 DeletePreviousWord = "alt+backspace"
@@ -449,7 +452,7 @@ There are five kinds of keymap settings:
 | `[keymap] leader`                                                               | The key that opens the leader popup. Defaults to `Space`.                                   |
 | `[keymap] <ActionName>`                                                         | Directly assignable UI actions such as `StartComposer`, `ChannelSwitcher`, and `VoiceMute`. |
 | `[keymap.groups]`                                                               | Optional titles for prefix popups, such as naming `<leader>v` as `Voice`.                   |
-| `[keymap.guild_actions]`, `[keymap.channel_actions]`, `[keymap.member_actions]` | Shortcuts shown inside focused-pane action menus opened by `OpenFocusedPaneAction`.         |
+| `[keymap.guild_actions]`, `[keymap.channel_actions]`, `[keymap.member_actions]`, `[keymap.message_actions]` | Shortcuts shown inside focused-pane action menus opened by `OpenFocusedPaneAction`.         |
 | `[keymap.composer]`                                                             | Shortcuts used while the message composer is open, such as editor and cursor commands.      |
 
 `[keymap]` action values can be either a string or an object with `keys` and an
@@ -519,7 +522,7 @@ sequence if you want direct keys for them.
 | `ScrollHorizontalLeft`    | `"H"`                              | Scroll focused pane horizontally left.       |
 | `ScrollHorizontalRight`   | `"L"`                              | Scroll focused pane horizontally right.      |
 | `CopyMessage`             | `"y"`                              | Copy selected message content.               |
-| `ReactMessage`            | `"r"`                              | Open the reaction picker.                    |
+| `ReactMessage`            | `"r"`                              | Add or remove a reaction.                    |
 | `ReplyMessage`            | `"R"`                              | Start a reply.                               |
 | `DeleteMessage`           | `"d"`                              | Open delete confirmation.                    |
 | `EditMessage`             | `"e"`                              | Start editing the selected message.          |
@@ -569,9 +572,9 @@ but that key will run the composer action instead of inserting text.
 ##### Focused pane actions
 
 `OpenFocusedPaneAction` opens the action menu for the pane that currently has
-focus. Server, channel, and member pane actions can be configured in scoped
-tables. Message pane actions are shown from the selected message state and are
-not configurable through these scoped tables yet.
+focus. Server, channel, member, and message pane actions can be configured in
+scoped tables. Focused-pane action menus keep their scoped actions visible, and
+actions that do not apply to the current selection are shown dimmed and disabled.
 
 Server pane actions:
 
@@ -618,24 +621,24 @@ ShowProfile = { keys = ["p"], description = "show profile" }
 | ------------- | ------- | ----------------------------------- |
 | `ShowProfile` | `p`     | Open the selected member's profile. |
 
-Messages pane actions:
+Messages pane actions can be configured under `[keymap.message_actions]`. This
+menu only contains message actions that do not already have a direct message
+shortcut.
+
+```toml
+[keymap.message_actions]
+OpenThread = "t"
+DownloadAttachment = "f"
+ShowReactionUsers = "u"
+OpenPollVotePicker = "c"
+```
 
 | Action label                    | Default shortcut | When it appears                                               |
 | ------------------------------- | ---------------- | ------------------------------------------------------------- |
-| `Reply`                         | `R`              | A message is selected.                                        |
-| `Edit message`                  | `e`              | The selected message is editable by you.                      |
-| `Delete message`                | `d`              | You can delete the selected message.                          |
-| `Open thread`                   | `t`              | The selected message has a thread.                            |
-| `View image`                    | `v`              | The selected message has a viewable image.                    |
-| `Open URL`                      | `o`              | The selected message has one or more URLs.                    |
-| `Download {filename}`           | `f`              | The selected message has a downloadable non-image attachment. |
-| `Add reaction`                  | `r`              | Reactions can be added to the selected message.               |
-| `Show profile`                  | `p`              | A message author is available.                                |
-| `Pin message` / `Unpin message` | `P`              | Pinning is allowed for the selected message.                  |
-| `Show reacted users`            | `u`              | Reaction users can be shown.                                  |
-| `Remove {reaction} reaction`    | `x`              | You reacted with that emoji.                                  |
-| `Choose poll votes`             | `c`              | A non-finalized multiselect poll is selected.                 |
-| Poll answer vote / remove vote  | Numeric fallback | A non-finalized single-select poll is selected.               |
+| `Open thread`                   | `t`              | The selected message has a thread. Otherwise dimmed.          |
+| `Download {filename}`           | `f`              | The selected message has a downloadable non-image attachment. Otherwise dimmed. |
+| `Show reacted users`            | `u`              | Reaction users can be shown. Otherwise dimmed.                |
+| `Choose poll votes`             | `c`              | A non-finalized poll is selected. Otherwise dimmed.           |
 
 Scoped action `description` changes the label shown in the action menu. Multiple
 configured `keys` work as aliases when they are unique in the current action
@@ -700,6 +703,12 @@ MuteChannel = "u"
 
 [keymap.member_actions]
 ShowProfile = "p"
+
+[keymap.message_actions]
+OpenThread = "t"
+DownloadAttachment = "f"
+ShowReactionUsers = "u"
+OpenPollVotePicker = "c"
 
 [keymap.composer]
 OpenEditor = "ctrl+e"

@@ -9,16 +9,22 @@ fn channel_leader_action_lists_threads_for_selected_channel() {
 
     assert!(state.is_channel_leader_action_active());
     let actions = state.selected_channel_action_items();
-    assert_eq!(actions.len(), 4);
-    assert_eq!(actions[0].kind, ChannelActionKind::LoadPinnedMessages);
-    assert_eq!(actions[0].label, "Show pinned messages");
-    assert!(actions[0].enabled);
-    assert_eq!(actions[1].kind, ChannelActionKind::ShowThreads);
-    assert!(actions[1].enabled);
-    assert_eq!(actions[2].kind, ChannelActionKind::MarkAsRead);
-    assert_eq!(actions[2].label, "Mark as read");
-    assert_eq!(actions[3].kind, ChannelActionKind::ToggleMute);
-    assert_eq!(actions[3].label, "Mute channel");
+    assert_eq!(actions.len(), 6);
+    assert_eq!(actions[0].kind, ChannelActionKind::JoinVoice);
+    assert_eq!(actions[0].label, "Join voice");
+    assert!(!actions[0].enabled);
+    assert_eq!(actions[1].kind, ChannelActionKind::LeaveVoice);
+    assert_eq!(actions[1].label, "Leave voice");
+    assert!(!actions[1].enabled);
+    assert_eq!(actions[2].kind, ChannelActionKind::LoadPinnedMessages);
+    assert_eq!(actions[2].label, "Show pinned messages");
+    assert!(actions[2].enabled);
+    assert_eq!(actions[3].kind, ChannelActionKind::ShowThreads);
+    assert!(actions[3].enabled);
+    assert_eq!(actions[4].kind, ChannelActionKind::MarkAsRead);
+    assert_eq!(actions[4].label, "Mark as read");
+    assert_eq!(actions[5].kind, ChannelActionKind::ToggleMute);
+    assert_eq!(actions[5].label, "Mute channel");
 
     let command = state.activate_channel_action_shortcut('t');
     assert_eq!(command, None);
@@ -117,7 +123,7 @@ fn channel_leader_action_toggle_mute_opens_duration_then_dispatches_command() {
     state.focus_pane(FocusPane::Channels);
     state.move_down();
     state.open_selected_channel_actions();
-    state.select_channel_action_row(3);
+    state.select_channel_action_row(5);
 
     assert_eq!(state.activate_selected_channel_action(), None);
     assert!(state.is_channel_action_mute_duration_phase());
@@ -138,7 +144,7 @@ fn channel_leader_action_toggle_mute_opens_duration_then_dispatches_command() {
 }
 
 #[test]
-fn category_leader_action_only_lists_mute_and_dispatches_command() {
+fn category_leader_action_lists_disabled_rows_and_dispatches_mute_command() {
     let mut state = state_with_channel_tree();
     state.focus_pane(FocusPane::Channels);
     state.move_up();
@@ -146,10 +152,24 @@ fn category_leader_action_only_lists_mute_and_dispatches_command() {
 
     assert!(state.is_channel_leader_action_active());
     let actions = state.selected_channel_action_items();
-    assert_eq!(actions.len(), 1);
-    assert_eq!(actions[0].kind, ChannelActionKind::ToggleMute);
-    assert_eq!(actions[0].label, "Mute category");
+    assert_eq!(actions.len(), 6);
+    assert_eq!(actions[0].kind, ChannelActionKind::JoinVoice);
+    assert!(!actions[0].enabled);
+    assert_eq!(actions[1].kind, ChannelActionKind::LeaveVoice);
+    assert!(!actions[1].enabled);
+    assert_eq!(actions[2].kind, ChannelActionKind::LoadPinnedMessages);
+    assert!(!actions[2].enabled);
+    assert_eq!(actions[3].kind, ChannelActionKind::ShowThreads);
+    assert!(!actions[3].enabled);
+    assert_eq!(actions[4].kind, ChannelActionKind::MarkAsRead);
+    assert!(!actions[4].enabled);
+    assert_eq!(actions[5].kind, ChannelActionKind::ToggleMute);
+    assert_eq!(actions[5].label, "Mute category");
+    assert!(actions[5].enabled);
 
+    assert_eq!(state.activate_selected_channel_action(), None);
+    assert!(state.is_channel_leader_action_active());
+    state.select_channel_action_row(5);
     assert_eq!(state.activate_selected_channel_action(), None);
     assert!(state.is_channel_action_mute_duration_phase());
 

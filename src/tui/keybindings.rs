@@ -55,6 +55,7 @@ struct ActionShortcutBindings {
     guild: Vec<ActionShortcutBinding<GuildActionKind>>,
     channel: Vec<ActionShortcutBinding<ChannelActionKind>>,
     member: Vec<ActionShortcutBinding<MemberActionKind>>,
+    message: Vec<ActionShortcutBinding<MessageActionShortcutKind>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -73,6 +74,14 @@ struct ComposerKeyBindings {
 struct ComposerKeyBinding {
     action: ComposerShortcutAction,
     shortcuts: Vec<KeyChord>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum MessageActionShortcutKind {
+    OpenThread,
+    DownloadAttachment,
+    ShowReactionUsers,
+    OpenPollVotePicker,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -432,6 +441,10 @@ impl ActionShortcutBindings {
                 &options.member_actions,
                 MemberActionKind::from_keymap_name,
             ),
+            message: parse_action_scope_lossy(
+                &options.message_actions,
+                MessageActionShortcutKind::from_keymap_name,
+            ),
         }
     }
 
@@ -452,6 +465,11 @@ impl ActionShortcutBindings {
                 "keymap.member_actions",
                 &options.member_actions,
                 MemberActionKind::from_keymap_name,
+            )?,
+            message: parse_action_scope(
+                "keymap.message_actions",
+                &options.message_actions,
+                MessageActionShortcutKind::from_keymap_name,
             )?,
         })
     }
@@ -1191,6 +1209,29 @@ impl MemberActionKind {
         match name {
             "ShowProfile" => Some(Self::ShowProfile),
             _ => None,
+        }
+    }
+}
+
+impl MessageActionShortcutKind {
+    fn from_keymap_name(name: &str) -> Option<Self> {
+        match name {
+            "OpenThread" => Some(Self::OpenThread),
+            "DownloadAttachment" => Some(Self::DownloadAttachment),
+            "ShowReactionUsers" => Some(Self::ShowReactionUsers),
+            "OpenPollVotePicker" => Some(Self::OpenPollVotePicker),
+            _ => None,
+        }
+    }
+}
+
+impl From<MessageActionKind> for MessageActionShortcutKind {
+    fn from(kind: MessageActionKind) -> Self {
+        match kind {
+            MessageActionKind::OpenThread => Self::OpenThread,
+            MessageActionKind::DownloadAttachment(_) => Self::DownloadAttachment,
+            MessageActionKind::ShowReactionUsers => Self::ShowReactionUsers,
+            MessageActionKind::OpenPollVotePicker => Self::OpenPollVotePicker,
         }
     }
 }
@@ -2480,37 +2521,53 @@ impl KeyBindings {
         }
     }
 
-    pub fn message_action_shortcut(
+    pub fn message_action_shortcuts(
         &self,
         actions: &[MessageActionItem],
         index: usize,
-    ) -> Option<char> {
-        let action = actions.get(index)?;
-        unique_preferred_shortcut(
-            self.message_action_preferred_shortcut(action.kind),
+    ) -> Vec<char> {
+        if index >= actions.len() {
+            return Vec::new();
+        }
+        action_shortcuts(
+            index,
             actions
                 .iter()
-                .map(|item| self.message_action_preferred_shortcut(item.kind)),
+                .map(|item| self.message_action_shortcut_candidates(item.kind)),
         )
-        .or_else(|| self.indexed_shortcut(index))
     }
 
-    fn message_action_preferred_shortcut(&self, kind: MessageActionKind) -> Option<char> {
+    pub fn message_action_label(&self, action: &MessageActionItem) -> String {
+        let kind = MessageActionShortcutKind::from(action.kind);
+        self.action_shortcuts
+            .message
+            .iter()
+            .find(|binding| binding.kind == kind)
+            .and_then(|binding| binding.description.clone())
+            .unwrap_or_else(|| action.label.clone())
+    }
+
+    fn message_action_shortcut_candidates(&self, kind: MessageActionKind) -> Vec<char> {
+        let shortcut_kind = MessageActionShortcutKind::from(kind);
+        if let Some(binding) = self
+            .action_shortcuts
+            .message
+            .iter()
+            .find(|binding| binding.kind == shortcut_kind)
+        {
+            return binding.shortcuts.clone();
+        }
+        self.default_message_action_shortcut(shortcut_kind)
+            .into_iter()
+            .collect()
+    }
+
+    fn default_message_action_shortcut(&self, kind: MessageActionShortcutKind) -> Option<char> {
         match kind {
-            MessageActionKind::Reply => Some('R'),
-            MessageActionKind::Edit => Some('e'),
-            MessageActionKind::Delete => Some('d'),
-            MessageActionKind::OpenThread => Some('t'),
-            MessageActionKind::ViewImage => Some('v'),
-            MessageActionKind::OpenUrl => Some('o'),
-            MessageActionKind::DownloadAttachment(_) => Some('f'),
-            MessageActionKind::AddReaction => Some('r'),
-            MessageActionKind::RemoveReaction(_) => Some('x'),
-            MessageActionKind::ShowReactionUsers => Some('u'),
-            MessageActionKind::ShowProfile => Some('p'),
-            MessageActionKind::SetPinned(_) => Some('P'),
-            MessageActionKind::VotePollAnswer(_) => None,
-            MessageActionKind::OpenPollVotePicker => Some('c'),
+            MessageActionShortcutKind::OpenThread => Some('t'),
+            MessageActionShortcutKind::DownloadAttachment => Some('f'),
+            MessageActionShortcutKind::ShowReactionUsers => Some('u'),
+            MessageActionShortcutKind::OpenPollVotePicker => Some('c'),
         }
     }
 
@@ -2583,18 +2640,6 @@ fn is_composer_newline_key(key: KeyEvent) -> bool {
             .intersects(KeyModifiers::SHIFT | KeyModifiers::CONTROL | KeyModifiers::ALT),
         _ => false,
     }
-}
-
-fn unique_preferred_shortcut(
-    preferred: Option<char>,
-    shortcuts: impl IntoIterator<Item = Option<char>>,
-) -> Option<char> {
-    let preferred = preferred?;
-    let matches = shortcuts
-        .into_iter()
-        .filter(|shortcut| shortcut.is_some_and(|shortcut| shortcut == preferred))
-        .count();
-    (matches == 1).then_some(preferred)
 }
 
 fn action_shortcuts(index: usize, shortcut_sets: impl IntoIterator<Item = Vec<char>>) -> Vec<char> {
@@ -2781,6 +2826,15 @@ mod tests {
             member_actions: [("ShowProfile".to_owned(), KeymapBinding::one("s"))]
                 .into_iter()
                 .collect(),
+            message_actions: [(
+                "OpenThread".to_owned(),
+                KeymapBinding {
+                    keys: vec!["t".to_owned(), "o".to_owned()],
+                    description: Some("open message thread".to_owned()),
+                },
+            )]
+            .into_iter()
+            .collect(),
             ..Default::default()
         };
         let key_bindings =
@@ -2818,6 +2872,20 @@ mod tests {
         assert_eq!(
             key_bindings.member_action_shortcuts(&member_actions, 0),
             vec!['s']
+        );
+
+        let message_actions = [MessageActionItem {
+            kind: MessageActionKind::OpenThread,
+            label: "Open thread".to_owned(),
+            enabled: true,
+        }];
+        assert_eq!(
+            key_bindings.message_action_shortcuts(&message_actions, 0),
+            vec!['t', 'o']
+        );
+        assert_eq!(
+            key_bindings.message_action_label(&message_actions[0]),
+            "open message thread"
         );
     }
 

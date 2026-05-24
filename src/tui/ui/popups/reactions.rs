@@ -17,6 +17,7 @@ pub(in crate::tui::ui) fn render_emoji_reaction_picker(
     }
     let filter = state.emoji_reaction_filter();
     let existing_reactions = state.existing_emoji_reactions();
+    let own_reactions = state.own_emoji_reactions();
 
     let selected = state
         .selected_emoji_reaction_index_for_len(reactions.len())
@@ -52,6 +53,7 @@ pub(in crate::tui::ui) fn render_emoji_reaction_picker(
                 max_visible_items: visible_items,
                 thumbnail_urls: &ready_urls,
                 existing_reactions,
+                own_reactions,
                 show_custom_emoji: state.show_custom_emoji(),
                 filter,
                 max_width: usize::from(content.width),
@@ -227,6 +229,7 @@ pub(in crate::tui::ui) fn emoji_reaction_picker_lines(
             max_visible_items,
             thumbnail_urls,
             existing_reactions: &[],
+            own_reactions: &[],
             show_custom_emoji: true,
             filter: None,
             max_width: usize::MAX,
@@ -250,6 +253,7 @@ pub(in crate::tui::ui) fn emoji_reaction_picker_lines_for_width(
             max_visible_items,
             thumbnail_urls,
             existing_reactions: &[],
+            own_reactions: &[],
             show_custom_emoji: true,
             filter: None,
             max_width: width,
@@ -273,6 +277,32 @@ pub(in crate::tui::ui) fn emoji_reaction_picker_lines_with_existing(
             max_visible_items,
             thumbnail_urls,
             existing_reactions,
+            own_reactions: &[],
+            show_custom_emoji: true,
+            filter: None,
+            max_width: usize::MAX,
+        },
+    )
+}
+
+#[cfg(test)]
+pub(in crate::tui::ui) fn emoji_reaction_picker_lines_with_own_reactions(
+    reactions: &[EmojiReactionItem],
+    existing_reactions: &[crate::discord::ReactionEmoji],
+    own_reactions: &[crate::discord::ReactionEmoji],
+    selected: usize,
+    max_visible_items: usize,
+    thumbnail_urls: &[String],
+) -> Vec<Line<'static>> {
+    emoji_reaction_picker_lines_with_custom_emoji_images(
+        reactions,
+        selected,
+        EmojiReactionPickerRenderOptions {
+            key_bindings: &crate::tui::keybindings::KeyBindings::default(),
+            max_visible_items,
+            thumbnail_urls,
+            existing_reactions,
+            own_reactions,
             show_custom_emoji: true,
             filter: None,
             max_width: usize::MAX,
@@ -296,6 +326,7 @@ pub(in crate::tui::ui) fn filtered_emoji_reaction_picker_lines(
             max_visible_items,
             thumbnail_urls,
             existing_reactions: &[],
+            own_reactions: &[],
             show_custom_emoji: true,
             filter: Some(filter),
             max_width: usize::MAX,
@@ -308,6 +339,7 @@ struct EmojiReactionPickerRenderOptions<'a> {
     max_visible_items: usize,
     thumbnail_urls: &'a [String],
     existing_reactions: &'a [crate::discord::ReactionEmoji],
+    own_reactions: &'a [crate::discord::ReactionEmoji],
     show_custom_emoji: bool,
     filter: Option<&'a str>,
     max_width: usize,
@@ -334,6 +366,9 @@ fn emoji_reaction_picker_lines_with_custom_emoji_images(
                 index,
             ));
             let mut style = Style::default();
+            if options.own_reactions.contains(&reaction.emoji) {
+                style = style.fg(Color::Yellow);
+            }
             if index == selected {
                 style = style
                     .bg(Color::Rgb(40, 45, 90))

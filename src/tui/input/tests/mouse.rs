@@ -501,10 +501,10 @@ fn user_profile_popup_absorbs_left_clicks_only_inside_popup() {
 
 #[test]
 fn mouse_click_selects_message_action_row() {
-    let mut state = state_with_messages(1);
+    let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
-    let (column, row) = message_action_row_point(1);
+    let (column, row) = message_action_row_point(0);
 
     assert!(handle_mouse(
         &mut state,
@@ -512,16 +512,16 @@ fn mouse_click_selects_message_action_row() {
         dashboard_area(),
     ));
 
-    assert_eq!(state.selected_message_action_index(), Some(1));
+    assert_eq!(state.selected_message_action_index(), Some(0));
 }
 
 #[test]
 fn mouse_double_click_activates_message_action_row_like_enter() {
-    let mut state = state_with_messages(1);
+    let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
     let mut clicks = MouseClickTracker::default();
-    let (column, row) = message_action_row_point(1);
+    let (column, row) = message_action_row_point(0);
 
     handle_mouse_event(
         &mut state,
@@ -544,12 +544,12 @@ fn mouse_double_click_activates_message_action_row_like_enter() {
 
     assert_eq!(second.command, None);
     assert!(!state.is_message_action_menu_open());
-    assert!(state.is_emoji_reaction_picker_open());
+    assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
 }
 
 #[test]
 fn mouse_wheel_moves_message_action_selection() {
-    let mut state = state_with_messages(1);
+    let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
     let (column, row) = message_action_row_point(0);

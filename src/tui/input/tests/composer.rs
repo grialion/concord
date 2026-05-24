@@ -483,7 +483,6 @@ fn paste_file_path_while_editing_inserts_text_instead_of_attachment() {
     let path = temp_upload_file("edit paste.txt", b"no attach");
     let mut state = state_with_own_message();
     state.focus_pane(FocusPane::Messages);
-    handle_key(&mut state, key(KeyCode::Enter));
     handle_key(&mut state, char_key('e'));
 
     assert!(handle_paste(
@@ -661,12 +660,11 @@ fn emoji_picker_escape_returns_to_composer_text() {
 }
 
 #[test]
-fn message_action_menu_reply_opens_composer() {
+fn direct_reply_shortcut_opens_composer() {
     let mut state = state_with_messages(1);
     state.focus_pane(FocusPane::Messages);
-    handle_key(&mut state, key(KeyCode::Enter));
 
-    let command = handle_key(&mut state, key(KeyCode::Enter));
+    let command = handle_key(&mut state, char_key('R'));
 
     assert_eq!(command, None);
     assert!(!state.is_message_action_menu_open());
@@ -692,8 +690,7 @@ fn message_action_menu_reply_opens_composer() {
 fn canceling_reply_composer_clears_reply_target() {
     let mut state = state_with_messages(1);
     state.focus_pane(FocusPane::Messages);
-    handle_key(&mut state, key(KeyCode::Enter));
-    handle_key(&mut state, key(KeyCode::Enter));
+    handle_key(&mut state, char_key('R'));
     handle_key(&mut state, char_key('x'));
     handle_key(&mut state, key(KeyCode::Esc));
 
@@ -733,13 +730,11 @@ fn canceling_edit_composer_clears_edit_draft() {
 }
 
 #[test]
-fn message_action_menu_add_reaction_opens_emoji_picker() {
+fn direct_reaction_shortcut_opens_emoji_picker() {
     let mut state = state_with_messages(1);
     state.focus_pane(FocusPane::Messages);
-    handle_key(&mut state, key(KeyCode::Enter));
-    handle_key(&mut state, key(KeyCode::Down));
 
-    let command = handle_key(&mut state, key(KeyCode::Enter));
+    let command = handle_key(&mut state, char_key('r'));
 
     assert_eq!(command, None);
     assert!(!state.is_message_action_menu_open());

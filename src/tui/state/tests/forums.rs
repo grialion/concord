@@ -940,14 +940,12 @@ fn poll_vote_actions_are_available_by_default() {
     assert_eq!(
         actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
         vec![
-            MessageActionKind::Reply,
-            MessageActionKind::AddReaction,
-            MessageActionKind::ShowProfile,
-            MessageActionKind::SetPinned(true),
-            MessageActionKind::VotePollAnswer(1),
-            MessageActionKind::VotePollAnswer(2),
+            MessageActionKind::OpenThread,
+            MessageActionKind::DownloadAttachment(0),
+            MessageActionKind::ShowReactionUsers,
+            MessageActionKind::OpenPollVotePicker,
         ]
     );
-    assert_eq!(actions[4].label, "Remove poll vote: Soup");
-    assert_eq!(actions[5].label, "Vote poll: Noodles");
+    assert_eq!(actions[3].label, "Choose poll votes");
+    assert!(actions[3].enabled);
 }

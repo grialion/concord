@@ -211,8 +211,12 @@ fn voice_channel_action_emits_join_then_leave_command() {
     });
     state.open_selected_channel_actions();
     let actions = state.selected_channel_action_items();
-    assert_eq!(actions[0].kind, ChannelActionKind::LeaveVoice);
+    assert_eq!(actions[0].kind, ChannelActionKind::JoinVoice);
+    assert!(!actions[0].enabled);
+    assert_eq!(actions[1].kind, ChannelActionKind::LeaveVoice);
+    assert!(actions[1].enabled);
 
+    state.select_channel_action_row(1);
     let command = state.activate_selected_channel_action();
     assert_eq!(
         command,

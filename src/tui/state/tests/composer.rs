@@ -1314,7 +1314,6 @@ fn composer_sends_to_opened_thread_channel() {
     let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
     state.open_selected_message_actions();
-    state.move_message_action_down();
     state.activate_selected_message_action();
 
     state.start_composer();

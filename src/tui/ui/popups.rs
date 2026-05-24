@@ -16,9 +16,9 @@ mod reactions;
 mod toast;
 
 #[cfg(test)]
-pub(super) use action_menu::message_action_menu_lines;
-#[cfg(test)]
 pub(super) use action_menu::message_url_picker_lines_for_width;
+#[cfg(test)]
+pub(super) use action_menu::{leader_action_lines_for_test, message_action_menu_lines};
 pub(super) use action_menu::{render_leader_popup, render_message_action_menu};
 #[cfg(test)]
 pub(super) use channel_switcher::{channel_switcher_cursor_position, channel_switcher_lines};
@@ -51,8 +51,8 @@ pub(super) use profile::{user_profile_popup_lines, user_profile_popup_lines_with
 #[cfg(test)]
 pub(super) use reactions::{
     emoji_reaction_picker_lines, emoji_reaction_picker_lines_for_width,
-    emoji_reaction_picker_lines_with_existing, filtered_emoji_reaction_picker_lines,
-    reaction_users_popup_lines,
+    emoji_reaction_picker_lines_with_existing, emoji_reaction_picker_lines_with_own_reactions,
+    filtered_emoji_reaction_picker_lines, reaction_users_popup_lines,
 };
 pub(super) use reactions::{render_emoji_reaction_picker, render_reaction_users_popup};
 pub(super) use toast::render_toast;

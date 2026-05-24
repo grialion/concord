@@ -133,14 +133,16 @@ fn reaction_message_actions_use_single_reacted_users_item() {
     assert_eq!(
         actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
         vec![
-            MessageActionKind::Reply,
-            MessageActionKind::AddReaction,
-            MessageActionKind::ShowProfile,
-            MessageActionKind::SetPinned(true),
+            MessageActionKind::OpenThread,
+            MessageActionKind::DownloadAttachment(0),
             MessageActionKind::ShowReactionUsers,
-            MessageActionKind::RemoveReaction(0),
+            MessageActionKind::OpenPollVotePicker,
         ]
     );
+    assert!(!actions[0].enabled);
+    assert!(!actions[1].enabled);
+    assert!(actions[2].enabled);
+    assert!(!actions[3].enabled);
     assert_eq!(
         actions
             .iter()
@@ -152,19 +154,15 @@ fn reaction_message_actions_use_single_reacted_users_item() {
 }
 
 #[test]
-fn add_reaction_action_requires_history_and_existing_or_add_reactions_permission() {
+fn reaction_picker_requires_history_and_existing_or_add_reactions_permission() {
     let mut without_add = state_with_other_user_message_permissions(
         PERM_VIEW_CHANNEL | PERM_READ_MESSAGE_HISTORY,
         Vec::new(),
     );
     without_add.focus_pane(FocusPane::Messages);
 
-    assert!(
-        !without_add
-            .selected_message_action_items()
-            .iter()
-            .any(|action| action.kind == MessageActionKind::AddReaction)
-    );
+    without_add.open_emoji_reaction_picker();
+    assert!(!without_add.is_emoji_reaction_picker_open());
 
     let mut with_add = state_with_other_user_message_permissions(
         PERM_VIEW_CHANNEL | PERM_READ_MESSAGE_HISTORY | PERM_ADD_REACTIONS,
@@ -172,12 +170,8 @@ fn add_reaction_action_requires_history_and_existing_or_add_reactions_permission
     );
     with_add.focus_pane(FocusPane::Messages);
 
-    assert!(
-        with_add
-            .selected_message_action_items()
-            .iter()
-            .any(|action| action.kind == MessageActionKind::AddReaction)
-    );
+    with_add.open_emoji_reaction_picker();
+    assert!(with_add.is_emoji_reaction_picker_open());
 }
 
 #[test]
@@ -191,15 +185,8 @@ fn existing_reaction_can_be_added_without_add_reactions_permission() {
         }],
     );
     state.focus_pane(FocusPane::Messages);
-    let add_reaction_index = state
-        .selected_message_action_items()
-        .iter()
-        .position(|action| action.kind == MessageActionKind::AddReaction)
-        .expect("existing reaction should keep reaction picker available");
-    state.open_selected_message_actions();
-    assert!(state.select_message_action_row(add_reaction_index));
+    state.open_emoji_reaction_picker();
 
-    assert_eq!(state.activate_selected_message_action(), None);
     assert!(state.is_emoji_reaction_picker_open());
     assert_eq!(
         state
@@ -258,12 +245,12 @@ fn show_reacted_users_requires_read_message_history() {
         state_with_other_user_message_permissions(PERM_VIEW_CHANNEL, reactions.clone());
     without_history.focus_pane(FocusPane::Messages);
 
-    assert!(
-        !without_history
-            .selected_message_action_items()
-            .iter()
-            .any(|action| action.kind == MessageActionKind::ShowReactionUsers)
-    );
+    let without_history_action = without_history
+        .selected_message_action_items()
+        .into_iter()
+        .find(|action| action.kind == MessageActionKind::ShowReactionUsers)
+        .expect("show reacted users action should still be visible");
+    assert!(!without_history_action.enabled);
 
     let mut with_history = state_with_other_user_message_permissions(
         PERM_VIEW_CHANNEL | PERM_READ_MESSAGE_HISTORY,
@@ -271,45 +258,12 @@ fn show_reacted_users_requires_read_message_history() {
     );
     with_history.focus_pane(FocusPane::Messages);
 
-    assert!(
-        with_history
-            .selected_message_action_items()
-            .iter()
-            .any(|action| action.kind == MessageActionKind::ShowReactionUsers)
-    );
-}
-
-#[test]
-fn custom_emoji_action_label_uses_id_when_images_are_disabled() {
-    let mut state = state_with_messages(1);
-    state.push_event(latest_history_loaded(
-        Id::new(2),
-        vec![MessageInfo {
-            reactions: vec![ReactionInfo {
-                emoji: ReactionEmoji::Custom {
-                    id: Id::new(50),
-                    name: Some("party".to_owned()),
-                    animated: false,
-                },
-                count: 1,
-                me: true,
-            }],
-            ..message_info(Id::new(2), 1)
-        }],
-    ));
-    state.open_options_popup();
-    for _ in 0..4 {
-        state.move_option_down();
-    }
-    state.toggle_selected_display_option();
-    state.close_options_popup();
-    state.focus_pane(FocusPane::Messages);
-
-    let actions = state.selected_message_action_items();
-
-    assert!(actions.iter().any(|action| {
-        action.kind == MessageActionKind::RemoveReaction(0) && action.label == "Remove 50 reaction"
-    }));
+    let with_history_action = with_history
+        .selected_message_action_items()
+        .into_iter()
+        .find(|action| action.kind == MessageActionKind::ShowReactionUsers)
+        .expect("show reacted users action should be visible");
+    assert!(with_history_action.enabled);
 }
 
 #[test]
@@ -317,9 +271,7 @@ fn show_reacted_users_action_loads_all_reaction_emojis() {
     let mut state = state_with_reaction_message();
     state.focus_pane(FocusPane::Messages);
     state.open_selected_message_actions();
-    for _ in 0..4 {
-        state.move_message_action_down();
-    }
+    assert!(state.select_message_action_row(2));
 
     let command = state.activate_selected_message_action();
 

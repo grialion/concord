@@ -447,8 +447,8 @@ fn leader_message_action_matches(state: &DashboardState, shortcut: char) -> bool
         action.enabled
             && state
                 .key_bindings()
-                .message_action_shortcut(&actions, index)
-                == Some(shortcut)
+                .message_action_shortcuts(&actions, index)
+                .contains(&shortcut)
     })
 }
 

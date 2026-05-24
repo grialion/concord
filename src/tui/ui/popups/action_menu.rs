@@ -151,12 +151,11 @@ fn leader_action_lines(state: &DashboardState) -> Vec<Line<'static>> {
             .iter()
             .enumerate()
             .map(|(index, action)| {
-                leader_shortcut_line(
-                    state
+                leader_shortcut_keys_line(
+                    &state
                         .key_bindings()
-                        .message_action_shortcut(&actions, index)
-                        .unwrap_or(' '),
-                    &action.label,
+                        .message_action_shortcuts(&actions, index),
+                    &state.key_bindings().message_action_label(action),
                     action.enabled,
                 )
             })
@@ -254,6 +253,13 @@ fn leader_action_lines(state: &DashboardState) -> Vec<Line<'static>> {
         "No actions available",
         Style::default().fg(DIM),
     ))]
+}
+
+#[cfg(test)]
+pub(in crate::tui::ui) fn leader_action_lines_for_test(
+    state: &DashboardState,
+) -> Vec<Line<'static>> {
+    leader_action_lines(state)
 }
 
 fn leader_shortcut_line(key: char, label: &str, enabled: bool) -> Line<'static> {
@@ -357,11 +363,15 @@ fn message_action_menu_lines_with_key_bindings(
         .enumerate()
         .map(|(index, action)| {
             let marker = if index == selected { "› " } else { "  " };
-            let shortcut = shortcut_prefix(key_bindings.message_action_shortcut(actions, index));
+            let shortcut =
+                shortcut_keys_prefix(&key_bindings.message_action_shortcuts(actions, index));
             let label = if action.enabled {
-                action.label.to_owned()
+                key_bindings.message_action_label(action)
             } else {
-                format!("{} (unavailable)", action.label)
+                format!(
+                    "{} (unavailable)",
+                    key_bindings.message_action_label(action)
+                )
             };
             let mut style = if action.enabled {
                 Style::default()
@@ -380,6 +390,20 @@ fn message_action_menu_lines_with_key_bindings(
             ])
         })
         .collect()
+}
+
+fn shortcut_keys_prefix(shortcuts: &[char]) -> String {
+    if shortcuts.is_empty() {
+        return "    ".to_owned();
+    }
+    format!(
+        "[{}] ",
+        shortcuts
+            .iter()
+            .map(char::to_string)
+            .collect::<Vec<_>>()
+            .join("/")
+    )
 }
 
 pub(in crate::tui::ui) fn message_url_picker_lines(

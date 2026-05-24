@@ -101,7 +101,8 @@ use self::{
     popups::{
         centered_viewer_preview_area, channel_switcher_cursor_position, channel_switcher_lines,
         debug_log_popup_lines, emoji_reaction_picker_lines, emoji_reaction_picker_lines_for_width,
-        emoji_reaction_picker_lines_with_existing, filtered_emoji_reaction_picker_lines,
+        emoji_reaction_picker_lines_with_existing, emoji_reaction_picker_lines_with_own_reactions,
+        filtered_emoji_reaction_picker_lines, leader_action_lines_for_test,
         message_action_menu_lines, message_delete_confirmation_lines,
         message_pin_confirmation_lines, message_url_picker_lines_for_width, options_popup_lines,
         poll_vote_picker_lines, reaction_users_popup_lines, toast_area, toast_line,

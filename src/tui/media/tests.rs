@@ -577,9 +577,7 @@ fn image_preview_targets_layout_album_grids() {
 fn image_viewer_target_fits_source_image_inside_viewer_layout() {
     let mut state = state_with_image_messages(1, &[1]);
     state.focus_pane(FocusPane::Messages);
-    state.open_selected_message_actions();
-    state.move_message_action_down();
-    state.activate_selected_message_action();
+    state.direct_open_selected_message_image_viewer();
 
     let target = visible_image_preview_targets(&state, layout(12))
         .into_iter()
@@ -1037,9 +1035,7 @@ fn image_viewer_target_caps_large_youtube_embed_image_url() {
         forwarded_snapshots: Vec::new(),
     });
     state.focus_pane(FocusPane::Messages);
-    state.open_selected_message_actions();
-    state.move_message_action_down();
-    state.activate_selected_message_action();
+    state.direct_open_selected_message_image_viewer();
 
     let target = visible_image_preview_targets(&state, layout(12))
         .into_iter()
@@ -1615,9 +1611,7 @@ fn emoji_image_targets_include_visible_custom_reactions() {
         }],
     });
     state.focus_pane(FocusPane::Messages);
-    state.open_selected_message_actions();
-    state.move_message_action_down();
-    state.activate_selected_message_action();
+    state.open_emoji_reaction_picker();
 
     let targets = visible_emoji_image_targets(&state);
 
@@ -1709,9 +1703,7 @@ fn disabled_custom_emoji_images_create_no_targets_or_requests() {
         }],
     });
     state.focus_pane(FocusPane::Messages);
-    state.open_selected_message_actions();
-    state.move_message_action_down();
-    state.activate_selected_message_action();
+    state.open_emoji_reaction_picker();
     state.open_options_popup();
     for _ in 0..4 {
         state.move_option_down();

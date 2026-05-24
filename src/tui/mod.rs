@@ -193,10 +193,9 @@ mod tests {
 
         let mut state = state_with_messages(1);
         state.focus_pane(FocusPane::Messages);
-        state.open_selected_message_actions();
         let before = visible_dashboard_signature(&state);
 
-        state.move_message_action_down();
+        state.open_selected_message_actions();
         let after = visible_dashboard_signature(&state);
 
         assert_ne!(before, after);

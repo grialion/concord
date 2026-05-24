@@ -68,8 +68,7 @@ fn composer_lines_show_saved_draft_when_not_composing() {
 #[test]
 fn reply_composer_text_uses_original_reply_target_after_selection_changes() {
     let mut state = state_with_message();
-    state.open_selected_message_actions();
-    state.activate_selected_message_action();
+    state.direct_reply_to_selected_message();
     push_message(&mut state, 2, "newer selected message");
 
     assert_eq!(
@@ -85,8 +84,7 @@ fn reply_composer_text_uses_original_reply_target_after_selection_changes() {
 #[test]
 fn reply_composer_hint_line_is_dim() {
     let mut state = state_with_message();
-    state.open_selected_message_actions();
-    state.activate_selected_message_action();
+    state.direct_reply_to_selected_message();
 
     let lines = composer_lines(&state, 80);
 
@@ -105,8 +103,7 @@ fn composer_border_title_tracks_message_mode() {
     let normal_rendered = render_dashboard_dump(80, 16, &mut normal).join("\n");
 
     let mut reply = state_with_message();
-    reply.open_selected_message_actions();
-    reply.activate_selected_message_action();
+    reply.direct_reply_to_selected_message();
     let reply_rendered = render_dashboard_dump(80, 16, &mut reply).join("\n");
 
     let mut edit = state_with_message();
@@ -114,9 +111,7 @@ fn composer_border_title_tracks_message_mode() {
         user: "neo".to_owned(),
         user_id: Some(Id::new(99)),
     });
-    edit.open_selected_message_actions();
-    assert!(edit.select_message_action_row(1));
-    edit.activate_selected_message_action();
+    edit.direct_edit_selected_message();
     let edit_rendered = render_dashboard_dump(80, 16, &mut edit).join("\n");
 
     assert!(
@@ -215,8 +210,7 @@ fn composer_cursor_position_tracks_input_cursor() {
 #[test]
 fn composer_cursor_position_accounts_for_upload_and_reply_rows() {
     let mut state = state_with_message();
-    state.open_selected_message_actions();
-    state.activate_selected_message_action();
+    state.direct_reply_to_selected_message();
     state.add_pending_composer_attachments(vec![MessageAttachmentUpload::from_path(
         "/tmp/cat.png".into(),
         "cat.png".to_owned(),
@@ -494,8 +488,7 @@ fn dashboard_renders_scrollbar_for_overflowing_composer_pickers() {
 #[test]
 fn reply_composer_line_count_includes_reply_hint() {
     let mut state = state_with_message();
-    state.open_selected_message_actions();
-    state.activate_selected_message_action();
+    state.direct_reply_to_selected_message();
     state.push_composer_char('h');
     state.push_composer_char('\n');
     state.push_composer_char('i');

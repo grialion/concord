@@ -88,6 +88,14 @@ impl DashboardState {
             .unwrap_or(&[])
     }
 
+    pub fn own_emoji_reactions(&self) -> &[crate::discord::ReactionEmoji] {
+        self.popups
+            .emoji_reaction_picker
+            .as_ref()
+            .map(|picker| picker.own_reactions.as_slice())
+            .unwrap_or(&[])
+    }
+
     pub fn is_filtering_emoji_reactions(&self) -> bool {
         self.emoji_reaction_filter().is_some()
     }
@@ -257,6 +265,12 @@ impl DashboardState {
                 .iter()
                 .map(|reaction| reaction.emoji.clone())
                 .collect::<Vec<_>>();
+            let own_reactions = message
+                .reactions
+                .iter()
+                .filter(|reaction| reaction.me)
+                .map(|reaction| reaction.emoji.clone())
+                .collect::<Vec<_>>();
             let items = if self.can_add_new_reaction_for_message(message) {
                 prioritize_existing_reactions(
                     self.emoji_reaction_items_for_guild(guild_id),
@@ -278,6 +292,7 @@ impl DashboardState {
                 filtered_items: items.clone(),
                 items,
                 existing_reactions,
+                own_reactions,
                 guild_id,
                 channel_id: message.channel_id,
                 message_id: message.id,

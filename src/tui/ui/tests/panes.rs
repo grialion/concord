@@ -253,7 +253,7 @@ fn focus_pane_at_uses_configured_pane_widths() {
 #[test]
 fn mouse_target_at_maps_visible_message_action_rows() {
     let area = Rect::new(0, 0, 120, 20);
-    let mut state = state_with_message();
+    let mut state = state_with_file_attachment_message();
     state.open_selected_message_actions();
     let action_count = state.selected_message_action_items().len();
     let last_row = action_count

@@ -34,19 +34,9 @@ pub enum FocusPane {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MessageActionKind {
-    Reply,
-    Edit,
-    Delete,
     OpenThread,
-    ViewImage,
-    OpenUrl,
     DownloadAttachment(usize),
-    AddReaction,
-    RemoveReaction(usize),
     ShowReactionUsers,
-    ShowProfile,
-    SetPinned(bool),
-    VotePollAnswer(u8),
     OpenPollVotePicker,
 }
 

@@ -123,10 +123,7 @@ fn message_action_menu_navigation_is_modal() {
     handle_key(&mut state, key(KeyCode::Down));
 
     assert_eq!(state.selected_message(), 1);
-    assert_eq!(
-        state.selected_message_action().map(|action| action.kind),
-        Some(MessageActionKind::AddReaction)
-    );
+    assert_eq!(state.selected_message_action_index(), Some(1));
 
     handle_key(&mut state, key(KeyCode::Esc));
 
@@ -134,46 +131,28 @@ fn message_action_menu_navigation_is_modal() {
 }
 
 #[test]
-fn message_action_menu_selection_aliases_move_selection() {
+fn message_action_menu_selection_aliases_move_disabled_selection() {
     let mut state = state_with_messages(2);
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
 
     handle_key(&mut state, key(KeyCode::Down));
-    assert_eq!(
-        state.selected_message_action().map(|action| action.kind),
-        Some(MessageActionKind::AddReaction)
-    );
+    assert_eq!(state.selected_message_action_index(), Some(1));
 
     handle_key(&mut state, key(KeyCode::Up));
-    assert_eq!(
-        state.selected_message_action().map(|action| action.kind),
-        Some(MessageActionKind::Reply)
-    );
+    assert_eq!(state.selected_message_action_index(), Some(0));
 
     handle_key(&mut state, char_key('j'));
-    assert_eq!(
-        state.selected_message_action().map(|action| action.kind),
-        Some(MessageActionKind::AddReaction)
-    );
+    assert_eq!(state.selected_message_action_index(), Some(1));
 
     handle_key(&mut state, char_key('k'));
-    assert_eq!(
-        state.selected_message_action().map(|action| action.kind),
-        Some(MessageActionKind::Reply)
-    );
+    assert_eq!(state.selected_message_action_index(), Some(0));
 
     handle_key(&mut state, ctrl_key('n'));
-    assert_eq!(
-        state.selected_message_action().map(|action| action.kind),
-        Some(MessageActionKind::AddReaction)
-    );
+    assert_eq!(state.selected_message_action_index(), Some(1));
 
     handle_key(&mut state, ctrl_key('p'));
-    assert_eq!(
-        state.selected_message_action().map(|action| action.kind),
-        Some(MessageActionKind::Reply)
-    );
+    assert_eq!(state.selected_message_action_index(), Some(0));
 }
 
 #[test]
@@ -181,7 +160,6 @@ fn esc_returns_from_message_opened_thread() {
     let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
-    handle_key(&mut state, key(KeyCode::Down));
     handle_key(&mut state, key(KeyCode::Enter));
     assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
 
@@ -218,7 +196,6 @@ fn esc_returns_from_pinned_message_view() {
 fn message_action_shortcuts_edit_and_delete_own_message() {
     let mut edit_state = state_with_own_message();
     edit_state.focus_pane(FocusPane::Messages);
-    handle_key(&mut edit_state, key(KeyCode::Enter));
 
     let command = handle_key(&mut edit_state, char_key('e'));
 
@@ -228,7 +205,6 @@ fn message_action_shortcuts_edit_and_delete_own_message() {
 
     let mut delete_state = state_with_own_message();
     delete_state.focus_pane(FocusPane::Messages);
-    handle_key(&mut delete_state, key(KeyCode::Enter));
 
     let command = handle_key(&mut delete_state, char_key('d'));
 
@@ -279,22 +255,19 @@ fn message_pane_shortcuts_reuse_message_actions() {
 }
 
 #[test]
-fn message_action_menu_shortcuts_match_message_pane_shortcuts() {
+fn direct_message_shortcuts_work_from_message_pane() {
     let mut reaction_state = state_with_messages(1);
     reaction_state.focus_pane(FocusPane::Messages);
-    handle_key(&mut reaction_state, key(KeyCode::Enter));
     handle_key(&mut reaction_state, char_key('r'));
     assert!(reaction_state.is_emoji_reaction_picker_open());
 
     let mut reply_state = state_with_messages(1);
     reply_state.focus_pane(FocusPane::Messages);
-    handle_key(&mut reply_state, key(KeyCode::Enter));
     handle_key(&mut reply_state, char_key('R'));
     assert!(reply_state.is_composing());
 
     let mut pin_state = state_with_messages(1);
     pin_state.focus_pane(FocusPane::Messages);
-    handle_key(&mut pin_state, key(KeyCode::Enter));
     let command = handle_key(&mut pin_state, char_key('P'));
     assert_eq!(command, None);
     assert!(pin_state.is_message_pin_confirmation_open());
@@ -326,17 +299,11 @@ fn message_action_o_shortcut_opens_url_or_url_picker() {
     });
     state.focus_pane(FocusPane::Messages);
 
-    handle_key(&mut state, key(KeyCode::Enter));
     let command = handle_key(&mut state, char_key('o'));
 
     assert_eq!(command, None);
     assert!(state.is_message_url_picker_open());
 
-    handle_key(&mut state, key(KeyCode::Esc));
-    assert!(state.is_message_action_menu_open());
-    assert!(!state.is_message_url_picker_open());
-
-    handle_key(&mut state, char_key('o'));
     let command = handle_key(&mut state, char_key('2'));
 
     assert_eq!(
@@ -459,13 +426,11 @@ fn message_action_shortcuts_ignore_control_modified_keys() {
 }
 
 #[test]
-fn message_action_menu_view_image_opens_viewer_and_esc_closes_viewer() {
+fn direct_view_image_shortcut_opens_viewer_and_esc_closes_viewer() {
     let mut state = state_with_image_message();
     state.focus_pane(FocusPane::Messages);
-    handle_key(&mut state, key(KeyCode::Enter));
-    handle_key(&mut state, key(KeyCode::Down));
 
-    let command = handle_key(&mut state, key(KeyCode::Enter));
+    let command = handle_key(&mut state, char_key('v'));
 
     assert_eq!(command, None);
     assert!(!state.is_message_action_menu_open());
@@ -519,9 +484,7 @@ fn message_action_menu_view_image_opens_viewer_and_esc_closes_viewer() {
 fn image_viewer_d_shortcut_downloads_image() {
     let mut state = state_with_image_message();
     state.focus_pane(FocusPane::Messages);
-    handle_key(&mut state, key(KeyCode::Enter));
     handle_key(&mut state, char_key('v'));
-    handle_key(&mut state, key(KeyCode::Enter));
 
     let command = handle_key(&mut state, char_key('d'));
 

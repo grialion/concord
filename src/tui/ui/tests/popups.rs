@@ -159,7 +159,7 @@ fn options_popup_render_keeps_selected_row_visible_when_short() {
 
 #[test]
 fn image_viewer_render_shows_download_hint_below_popup() {
-    let mut state = state_with_message();
+    let mut state = state_with_file_attachment_message();
     state.push_event(AppEvent::MessageCreate {
         guild_id: Some(Id::new(1)),
         channel_id: Id::new(2),
@@ -344,13 +344,8 @@ fn user_profile_popup_lists_mutual_servers_without_selection_marker() {
 fn message_action_menu_marks_selected_and_disabled_actions() {
     let actions = vec![
         MessageActionItem {
-            kind: MessageActionKind::Reply,
-            label: "Reply".to_owned(),
-            enabled: true,
-        },
-        MessageActionItem {
-            kind: MessageActionKind::AddReaction,
-            label: "Add reaction".to_owned(),
+            kind: MessageActionKind::OpenThread,
+            label: "Open thread".to_owned(),
             enabled: true,
         },
         MessageActionItem {
@@ -359,21 +354,20 @@ fn message_action_menu_marks_selected_and_disabled_actions() {
             enabled: false,
         },
         MessageActionItem {
-            kind: MessageActionKind::SetPinned(true),
-            label: "Pin message".to_owned(),
+            kind: MessageActionKind::OpenPollVotePicker,
+            label: "Choose poll votes".to_owned(),
             enabled: true,
         },
     ];
 
-    let lines = message_action_menu_lines(&actions, 2);
+    let lines = message_action_menu_lines(&actions, 1);
 
     assert_eq!(
         line_texts_from_ratatui(&lines),
         vec![
-            "  [R] Reply",
-            "  [r] Add reaction",
+            "  [t] Open thread",
             "› [f] Download file (unavailable)",
-            "  [P] Pin message",
+            "  [c] Choose poll votes",
         ]
     );
 }
@@ -382,13 +376,13 @@ fn message_action_menu_marks_selected_and_disabled_actions() {
 fn message_action_menu_uses_numbered_shortcuts_for_duplicate_preferred_keys() {
     let actions = vec![
         MessageActionItem {
-            kind: MessageActionKind::Delete,
-            label: "Delete message".to_owned(),
+            kind: MessageActionKind::DownloadAttachment(0),
+            label: "Download image".to_owned(),
             enabled: true,
         },
         MessageActionItem {
-            kind: MessageActionKind::Delete,
-            label: "Download image".to_owned(),
+            kind: MessageActionKind::DownloadAttachment(1),
+            label: "Download video".to_owned(),
             enabled: true,
         },
     ];
@@ -397,7 +391,7 @@ fn message_action_menu_uses_numbered_shortcuts_for_duplicate_preferred_keys() {
 
     assert_eq!(
         line_texts_from_ratatui(&lines),
-        vec!["› [1] Delete message", "  [2] Download image"]
+        vec!["› [1] Download image", "  [2] Download video"]
     );
 }
 
@@ -469,6 +463,38 @@ fn emoji_reaction_picker_uses_qwerty_shortcuts_for_existing_reactions() {
         line_texts_from_ratatui(&lines),
         vec!["› [q] 👍 Thumbs up", "  [w] ❤️ Heart", "  [1] 😂 Joy"]
     );
+}
+
+#[test]
+fn emoji_reaction_picker_marks_own_reactions_yellow() {
+    let reactions = vec![
+        EmojiReactionItem {
+            emoji: ReactionEmoji::Unicode("👍".to_owned()),
+            label: "Thumbs up".to_owned(),
+        },
+        EmojiReactionItem {
+            emoji: ReactionEmoji::Unicode("❤️".to_owned()),
+            label: "Heart".to_owned(),
+        },
+    ];
+    let existing_reactions = vec![
+        ReactionEmoji::Unicode("👍".to_owned()),
+        ReactionEmoji::Unicode("❤️".to_owned()),
+    ];
+    let own_reactions = vec![ReactionEmoji::Unicode("❤️".to_owned())];
+
+    let lines = emoji_reaction_picker_lines_with_own_reactions(
+        &reactions,
+        &existing_reactions,
+        &own_reactions,
+        1,
+        10,
+        &[],
+    );
+
+    assert_eq!(lines[0].spans[2].style.fg, None);
+    assert_eq!(lines[1].spans[2].style.fg, Some(Color::Yellow));
+    assert_eq!(lines[1].spans[2].style.bg, Some(Color::Rgb(40, 45, 90)));
 }
 
 #[test]
@@ -999,6 +1025,18 @@ fn leader_action_popup_renders_focused_pane_actions() {
 }
 
 #[test]
+fn leader_action_popup_dims_disabled_channel_actions() {
+    let mut state = state_with_message();
+    state.focus_pane(FocusPane::Channels);
+    state.open_leader();
+    state.open_leader_actions_for_focused_target();
+    let lines = leader_action_lines_for_test(&state);
+
+    assert_eq!(lines[0].spans[2].content, "Join voice");
+    assert_eq!(lines[0].spans[2].style.fg, Some(DIM));
+}
+
+#[test]
 fn leader_action_popup_from_messages_hides_standalone_message_action_menu() {
     let mut state = state_with_message();
     state.focus_pane(FocusPane::Messages);
@@ -1009,7 +1047,6 @@ fn leader_action_popup_from_messages_hides_standalone_message_action_menu() {
     let rendered = dump.join("\n");
 
     assert!(rendered.contains("Message Actions"), "{rendered}");
-    assert!(rendered.contains("Reply"), "{rendered}");
     assert!(!rendered.contains("Message actions"), "{rendered}");
 }
 

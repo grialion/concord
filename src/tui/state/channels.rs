@@ -76,17 +76,6 @@ impl DashboardState {
         let Some(channel) = self.discord.cache.channel(channel_id) else {
             return Vec::new();
         };
-        if channel.is_category() {
-            return vec![ChannelActionItem {
-                kind: ChannelActionKind::ToggleMute,
-                label: if self.discord.cache.channel_notification_muted(channel_id) {
-                    "Unmute category".to_owned()
-                } else {
-                    "Mute category".to_owned()
-                },
-                enabled: true,
-            }];
-        }
         let thread_count = self
             .channels()
             .into_iter()
@@ -113,32 +102,40 @@ impl DashboardState {
                     .cache
                     .forum_child_ack_targets(channel_id)
                     .is_empty());
-        let mut actions = Vec::new();
-        if channel.is_voice()
-            && let Some(guild_id) = channel.guild_id
-        {
-            let joined_here = self.runtime.voice_connection.is_some_and(|voice| {
-                voice.guild_id == guild_id && voice.channel_id == Some(channel_id)
+        let joined_here = channel.is_voice()
+            && channel.guild_id.is_some_and(|guild_id| {
+                self.runtime.voice_connection.is_some_and(|voice| {
+                    voice.guild_id == guild_id && voice.channel_id == Some(channel_id)
+                })
             });
-            actions.push(ChannelActionItem {
-                kind: if joined_here {
-                    ChannelActionKind::LeaveVoice
-                } else {
-                    ChannelActionKind::JoinVoice
-                },
-                label: if joined_here {
-                    "Leave voice".to_owned()
-                } else {
-                    "Join voice".to_owned()
-                },
-                enabled: joined_here || self.discord.cache.can_connect_voice_channel(channel),
-            });
-        }
-        actions.extend([
+        let can_join_voice = channel.is_voice()
+            && !joined_here
+            && self.discord.cache.can_connect_voice_channel(channel);
+        let mute_label = match (
+            self.discord.cache.channel_notification_muted(channel_id),
+            channel.is_category(),
+        ) {
+            (true, true) => "Unmute category",
+            (true, false) => "Unmute channel",
+            (false, true) => "Mute category",
+            (false, false) => "Mute channel",
+        };
+
+        vec![
+            ChannelActionItem {
+                kind: ChannelActionKind::JoinVoice,
+                label: "Join voice".to_owned(),
+                enabled: can_join_voice,
+            },
+            ChannelActionItem {
+                kind: ChannelActionKind::LeaveVoice,
+                label: "Leave voice".to_owned(),
+                enabled: joined_here,
+            },
             ChannelActionItem {
                 kind: ChannelActionKind::LoadPinnedMessages,
                 label: "Show pinned messages".to_owned(),
-                enabled: true,
+                enabled: !channel.is_category(),
             },
             ChannelActionItem {
                 kind: ChannelActionKind::ShowThreads,
@@ -152,15 +149,10 @@ impl DashboardState {
             },
             ChannelActionItem {
                 kind: ChannelActionKind::ToggleMute,
-                label: if self.discord.cache.channel_notification_muted(channel_id) {
-                    "Unmute channel".to_owned()
-                } else {
-                    "Mute channel".to_owned()
-                },
+                label: mute_label.to_owned(),
                 enabled: true,
             },
-        ]);
-        actions
+        ]
     }
 
     pub fn selected_channel_mute_duration_items(&self) -> &'static [super::MuteActionDurationItem] {

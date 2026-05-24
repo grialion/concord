@@ -51,6 +51,7 @@ pub struct KeymapOptions {
     pub guild_actions: BTreeMap<String, KeymapBinding>,
     pub channel_actions: BTreeMap<String, KeymapBinding>,
     pub member_actions: BTreeMap<String, KeymapBinding>,
+    pub message_actions: BTreeMap<String, KeymapBinding>,
     pub composer: BTreeMap<String, KeymapBinding>,
     #[serde(flatten)]
     pub mappings: BTreeMap<String, KeymapBinding>,
@@ -665,7 +666,7 @@ mod tests {
     #[test]
     fn keymap_options_parse_scoped_action_bindings() {
         let keymap = parse_keymap_options(
-            "[keymap.guild_actions]\nMuteServer = { keys = [\"m\"], description = \"mute server\" }\n\n[keymap.channel_actions]\nMuteChannel = \"x\"\n\n[keymap.member_actions]\nShowProfile = \"p\"\n\n[keymap.composer]\nOpenEditor = \"ctrl+o\"\nDeletePreviousWord = { keys = [\"alt+backspace\"], description = \"delete word\" }\n",
+            "[keymap.guild_actions]\nMuteServer = { keys = [\"m\"], description = \"mute server\" }\n\n[keymap.channel_actions]\nMuteChannel = \"x\"\n\n[keymap.member_actions]\nShowProfile = \"p\"\n\n[keymap.message_actions]\nOpenThread = { keys = [\"t\"], description = \"open thread\" }\n\n[keymap.composer]\nOpenEditor = \"ctrl+o\"\nDeletePreviousWord = { keys = [\"alt+backspace\"], description = \"delete word\" }\n",
         );
 
         assert_eq!(
@@ -682,6 +683,13 @@ mod tests {
         assert_eq!(
             keymap.member_actions.get("ShowProfile"),
             Some(&crate::config::KeymapBinding::one("p"))
+        );
+        assert_eq!(
+            keymap.message_actions.get("OpenThread"),
+            Some(&crate::config::KeymapBinding {
+                keys: vec!["t".to_owned()],
+                description: Some("open thread".to_owned()),
+            })
         );
         assert_eq!(
             keymap.composer.get("OpenEditor"),

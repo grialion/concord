@@ -22,7 +22,7 @@ use crate::{
         MessageReferenceInfo, NotificationLevel, PollAnswerInfo, PollInfo, PresenceStatus,
         ReactionEmoji, ReactionUserInfo, ReactionUsersInfo, VoiceConnectionStatus,
     },
-    tui::state::{ChannelPaneEntry, DashboardState, FocusPane, GuildPaneEntry, MessageActionKind},
+    tui::state::{ChannelPaneEntry, DashboardState, FocusPane, GuildPaneEntry},
 };
 
 mod composer;
@@ -631,8 +631,6 @@ fn state_with_image_message() -> DashboardState {
     state
 }
 fn open_emoji_picker(state: &mut DashboardState) {
-    handle_key(state, key(KeyCode::Enter));
-    handle_key(state, key(KeyCode::Down));
-    handle_key(state, key(KeyCode::Enter));
+    handle_key(state, char_key('r'));
     assert!(state.is_emoji_reaction_picker_open());
 }

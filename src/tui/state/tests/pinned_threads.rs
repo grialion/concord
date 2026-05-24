@@ -6,6 +6,7 @@ fn channel_show_pinned_messages_action_enters_pinned_message_view() {
     let mut state = state_with_messages(1);
     state.focus_pane(FocusPane::Channels);
     state.open_selected_channel_actions();
+    state.select_channel_action_row(2);
 
     let command = state.activate_selected_channel_action();
 
@@ -304,7 +305,6 @@ fn return_from_opened_thread_restores_scrolled_parent_message_window() {
     let expected_line_scroll = state.message_line_scroll();
 
     state.open_selected_message_actions();
-    state.move_message_action_down();
     state.activate_selected_message_action();
     assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
 
@@ -345,7 +345,6 @@ fn history_loaded_thread_created_message_opens_reference_thread_after_rename() {
     );
 
     state.open_selected_message_actions();
-    state.move_message_action_down();
     state.activate_selected_message_action();
 
     assert_eq!(state.selected_channel_id(), Some(Id::new(10)));

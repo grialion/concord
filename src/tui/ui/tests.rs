@@ -18,18 +18,19 @@ use super::{
     composer_lines, composer_lines_with_loaded_custom_emoji_urls, composer_prompt_line_count,
     composer_text, date_separator_line, debug_log_popup_lines, dm_presence_dot_span,
     emoji_picker_lines, emoji_reaction_picker_lines, emoji_reaction_picker_lines_for_width,
-    emoji_reaction_picker_lines_with_existing, filtered_emoji_reaction_picker_lines, focus_pane_at,
-    format_message_sent_time, forum_post_reaction_summary, forum_post_scrollbar_visible_count,
-    forum_post_viewport_lines, image_viewer_image_area, image_viewer_popup,
-    inline_image_preview_area, inline_image_preview_row, member_display_label, member_name_style,
-    message_action_menu_lines, message_author_style, message_body_custom_emoji_rows,
-    message_delete_confirmation_lines, message_item_lines, message_pin_confirmation_lines,
-    message_url_picker_lines_for_width, message_viewport_lines, new_messages_notice_line,
-    options_popup_lines, poll_vote_picker_lines, primary_activity_summary,
-    reaction_users_popup_lines, reaction_users_visible_line_count, render_channels, render_guilds,
-    render_header, render_members, selected_avatar_x_offset, selected_message_card_width,
-    selected_message_content_x_offset, sync_view_heights, toast_area, toast_line,
-    user_profile_popup_has_avatar, user_profile_popup_lines,
+    emoji_reaction_picker_lines_with_existing, emoji_reaction_picker_lines_with_own_reactions,
+    filtered_emoji_reaction_picker_lines, focus_pane_at, format_message_sent_time,
+    forum_post_reaction_summary, forum_post_scrollbar_visible_count, forum_post_viewport_lines,
+    image_viewer_image_area, image_viewer_popup, inline_image_preview_area,
+    inline_image_preview_row, leader_action_lines_for_test, member_display_label,
+    member_name_style, message_action_menu_lines, message_author_style,
+    message_body_custom_emoji_rows, message_delete_confirmation_lines, message_item_lines,
+    message_pin_confirmation_lines, message_url_picker_lines_for_width, message_viewport_lines,
+    new_messages_notice_line, options_popup_lines, poll_vote_picker_lines,
+    primary_activity_summary, reaction_users_popup_lines, reaction_users_visible_line_count,
+    render_channels, render_guilds, render_header, render_members, selected_avatar_x_offset,
+    selected_message_card_width, selected_message_content_x_offset, sync_view_heights, toast_area,
+    toast_line, user_profile_popup_has_avatar, user_profile_popup_lines,
     user_profile_popup_lines_with_activities, user_profile_popup_text_geometry,
 };
 use crate::tui::message_time::{
@@ -215,6 +216,34 @@ fn youtube_embed() -> EmbedInfo {
 
 fn state_with_message() -> DashboardState {
     state_with_message_id(Id::new(1), "hello")
+}
+
+fn state_with_file_attachment_message() -> DashboardState {
+    let mut state = state_with_message();
+    state.push_event(AppEvent::MessageCreate {
+        guild_id: Some(Id::new(1)),
+        channel_id: Id::new(2),
+        message_id: Id::new(2),
+        author_id: Id::new(99),
+        author: "neo".to_owned(),
+        author_avatar_url: None,
+        author_is_bot: false,
+        author_role_ids: Vec::new(),
+        message_kind: crate::discord::MessageKind::regular(),
+        interaction: None,
+        reference: None,
+        reply: None,
+        poll: None,
+        content: Some("file".to_owned()),
+        sticker_names: Vec::new(),
+        mentions: Vec::new(),
+        attachments: vec![file_attachment()],
+        embeds: Vec::new(),
+        forwarded_snapshots: Vec::new(),
+    });
+    state.jump_bottom();
+    state.move_down();
+    state
 }
 
 fn state_with_message_id(message_id: Id<MessageMarker>, content: &str) -> DashboardState {
