@@ -105,7 +105,7 @@ struct MemberPaneSignature {
 struct VisiblePopupSignature {
     message_actions: MessageActionPopupSignature,
     message_url_picker: MessageUrlPickerPopupSignature,
-    image_viewer: ImageViewerPopupSignature,
+    attachment_viewer: AttachmentViewerPopupSignature,
     leaders: LeaderPopupSignature,
     options: OptionsPopupSignature,
     message_interactions: MessageInteractionPopupSignature,
@@ -130,10 +130,10 @@ struct MessageUrlPickerPopupSignature {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct ImageViewerPopupSignature {
-    image_viewer_open: bool,
-    selected_image_viewer_item: DebugSignature,
-    image_viewer_download_message: Option<String>,
+struct AttachmentViewerPopupSignature {
+    attachment_viewer_open: bool,
+    selected_attachment_viewer_item: DebugSignature,
+    attachment_viewer_download_message: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -327,13 +327,13 @@ pub(super) fn visible_dashboard_signature(state: &DashboardState) -> VisibleDash
                         debug_signature(&())
                     },
                 },
-                image_viewer: ImageViewerPopupSignature {
-                    image_viewer_open: state.is_image_viewer_open(),
-                    selected_image_viewer_item: debug_signature(
-                        &state.selected_image_viewer_item(),
+                attachment_viewer: AttachmentViewerPopupSignature {
+                    attachment_viewer_open: state.is_attachment_viewer_open(),
+                    selected_attachment_viewer_item: debug_signature(
+                        &state.selected_attachment_viewer_item(),
                     ),
-                    image_viewer_download_message: state
-                        .image_viewer_download_message()
+                    attachment_viewer_download_message: state
+                        .attachment_viewer_download_message()
                         .map(str::to_owned),
                 },
                 leaders: LeaderPopupSignature {

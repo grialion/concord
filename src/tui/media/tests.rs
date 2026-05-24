@@ -241,7 +241,7 @@ fn image_preview_quality_rewrites_attachment_preview_urls() {
 }
 
 #[test]
-fn original_image_preview_quality_applies_to_image_viewer_preview() {
+fn original_image_preview_quality_applies_to_attachment_viewer_preview() {
     let mut state = state_with_image_messages_and_display_options(
         0,
         &[],
@@ -278,12 +278,12 @@ fn original_image_preview_quality_applies_to_image_viewer_preview() {
         forwarded_snapshots: Vec::new(),
     });
     state.focus_pane(FocusPane::Messages);
-    assert!(state.open_image_viewer_for_selected_message());
+    assert!(state.open_attachment_viewer_for_selected_message());
 
     let target = visible_image_preview_targets(&state, layout(12))
         .into_iter()
         .next()
-        .expect("image viewer should produce preview target");
+        .expect("attachment viewer should produce preview target");
 
     assert!(target.viewer);
     assert_eq!(target.url, "https://cdn.discordapp.com/image-1.png");
@@ -574,10 +574,10 @@ fn image_preview_targets_layout_album_grids() {
 }
 
 #[test]
-fn image_viewer_target_fits_source_image_inside_viewer_layout() {
+fn attachment_viewer_target_fits_source_image_inside_viewer_layout() {
     let mut state = state_with_image_messages(1, &[1]);
     state.focus_pane(FocusPane::Messages);
-    state.direct_open_selected_message_image_viewer();
+    state.direct_open_selected_message_attachment_viewer();
 
     let target = visible_image_preview_targets(&state, layout(12))
         .into_iter()
@@ -1001,53 +1001,6 @@ fn image_preview_targets_downscale_youtube_embed_image_url() {
         "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg?token=abc"
     );
     assert_eq!(targets[0].filename, "embed-image");
-}
-
-#[test]
-fn image_viewer_target_caps_large_youtube_embed_image_url() {
-    let mut embed = youtube_embed();
-    embed.thumbnail_url = None;
-    embed.thumbnail_width = None;
-    embed.thumbnail_height = None;
-    embed.image_url = Some("https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg".to_owned());
-    embed.image_width = Some(1280);
-    embed.image_height = Some(720);
-    let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: Vec::new(),
-        embeds: vec![embed],
-        forwarded_snapshots: Vec::new(),
-    });
-    state.focus_pane(FocusPane::Messages);
-    state.direct_open_selected_message_image_viewer();
-
-    let target = visible_image_preview_targets(&state, layout(12))
-        .into_iter()
-        .next()
-        .expect("viewer should create one image target");
-
-    assert!(target.viewer);
-    assert_eq!(
-        target.url,
-        "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
-    );
-    assert_eq!(target.filename, "embed-image");
 }
 
 #[test]

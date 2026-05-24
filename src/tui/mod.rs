@@ -233,15 +233,15 @@ mod tests {
     }
 
     #[test]
-    fn visible_signature_changes_when_image_download_message_changes() {
+    fn visible_signature_changes_when_attachment_download_message_changes() {
         let mut state = state_with_messages(0);
         push_image_message(&mut state, 1);
-        assert!(state.open_image_viewer_for_selected_message());
+        assert!(state.open_attachment_viewer_for_selected_message());
         let before = visible_dashboard_signature(&state);
 
         state.push_event(AppEvent::AttachmentDownloadCompleted {
             path: "/tmp/cat.png".to_owned(),
-            source: DownloadAttachmentSource::ImageViewer,
+            source: DownloadAttachmentSource::AttachmentViewer,
         });
         let after = visible_dashboard_signature(&state);
 

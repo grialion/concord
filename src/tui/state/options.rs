@@ -377,7 +377,7 @@ impl DashboardState {
                 value: None,
                 gauge_percent: None,
                 effective: options.images_visible(),
-                description: "Attachment, embed, and image viewer previews.",
+                description: "Attachment, embed, and attachment viewer previews.",
             },
             DisplayOptionItem {
                 label: "Image preview quality",
@@ -604,9 +604,6 @@ impl DashboardState {
         update_current_voice_state: bool,
         update_current_voice_capture_permission: bool,
     ) {
-        if !self.show_images() {
-            self.close_image_viewer();
-        }
         self.clear_message_row_content_metrics_cache();
         self.options.options_save_pending = true;
         if update_current_voice_state {

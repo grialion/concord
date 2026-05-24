@@ -14,7 +14,7 @@ use super::types::{
     MessageAreas,
 };
 
-const IMAGE_VIEWER_POPUP_PERCENT: u16 = 80;
+const ATTACHMENT_VIEWER_POPUP_PERCENT: u16 = 80;
 
 pub(super) fn dashboard_areas(area: Rect, state: &DashboardState) -> DashboardAreas {
     let [header, main] = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).areas(area);
@@ -49,16 +49,16 @@ fn pane_width(visible: bool, width: u16) -> Constraint {
     Constraint::Length(if visible { width } else { 0 })
 }
 
-pub(super) fn image_viewer_popup(area: Rect) -> Rect {
+pub(super) fn attachment_viewer_popup(area: Rect) -> Rect {
     centered_rect(
         area,
-        percentage_of(area.width, IMAGE_VIEWER_POPUP_PERCENT),
-        percentage_of(area.height, IMAGE_VIEWER_POPUP_PERCENT),
+        percentage_of(area.width, ATTACHMENT_VIEWER_POPUP_PERCENT),
+        percentage_of(area.height, ATTACHMENT_VIEWER_POPUP_PERCENT),
     )
 }
 
-pub(super) fn image_viewer_image_area(area: Rect) -> Rect {
-    let inner = image_viewer_popup(area).inner(Margin {
+pub(super) fn attachment_viewer_image_area(area: Rect) -> Rect {
+    let inner = attachment_viewer_popup(area).inner(Margin {
         vertical: 1,
         horizontal: 1,
     });

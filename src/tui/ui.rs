@@ -23,8 +23,8 @@ use super::{
         lay_out_reaction_chips_with_custom_emoji_images, reaction_line_spans, wrap_text_lines,
     },
     state::{
-        ChannelSwitcherItem, ChannelThreadItem, DashboardState, DisplayOptionItem,
-        EmojiReactionItem, FORUM_POST_CARD_HEIGHT, FocusPane, ImageViewerItem, MessageActionItem,
+        AttachmentViewerItem, ChannelSwitcherItem, ChannelThreadItem, DashboardState,
+        DisplayOptionItem, EmojiReactionItem, FORUM_POST_CARD_HEIGHT, FocusPane, MessageActionItem,
         MessageUrlItem, PollVotePickerItem, discord_color, presence_color, presence_marker,
     },
 };
@@ -55,7 +55,7 @@ mod types;
 
 pub(crate) use self::interaction::{focus_pane_at, mouse_target_at, user_profile_popup_contains};
 use self::layout::{
-    centered_rect, dashboard_areas, image_viewer_image_area, image_viewer_popup,
+    attachment_viewer_image_area, attachment_viewer_popup, centered_rect, dashboard_areas,
     inline_image_preview_area, inline_image_preview_height, inline_image_preview_width,
     message_areas, message_list_area, panel_scrollbar_area, reaction_users_visible_line_count,
     vertical_scrollbar_visible,
@@ -71,8 +71,8 @@ use self::panes::{
 };
 use self::panes::{render_channels, render_guilds, render_header, render_members};
 use self::popups::{
-    render_channel_switcher_popup, render_debug_log_popup, render_emoji_reaction_picker,
-    render_image_viewer, render_leader_popup, render_message_action_menu,
+    render_attachment_viewer, render_channel_switcher_popup, render_debug_log_popup,
+    render_emoji_reaction_picker, render_leader_popup, render_message_action_menu,
     render_message_delete_confirmation, render_message_pin_confirmation, render_message_url_picker,
     render_options_popup, render_poll_vote_picker, render_reaction_users_popup, render_toast,
     render_user_profile_popup, user_profile_popup_has_avatar, user_profile_popup_text_geometry,
@@ -160,7 +160,7 @@ pub fn sync_view_heights(area: Rect, state: &mut DashboardState) {
 pub fn image_preview_layout(area: Rect, state: &DashboardState) -> ImagePreviewLayout {
     let areas = dashboard_areas(area, state);
     let list = message_list_area(areas.messages, state);
-    let viewer_image_area = image_viewer_image_area(areas.messages);
+    let viewer_image_area = attachment_viewer_image_area(areas.messages);
     ImagePreviewLayout {
         list_height: list.height as usize,
         content_width: message_content_width(list),
@@ -219,7 +219,7 @@ pub fn render(
     render_user_profile_popup(frame, areas.messages, state, profile_avatar, &emoji_images);
     render_emoji_reaction_picker(frame, areas.messages, state, emoji_images);
     render_reaction_users_popup(frame, areas.messages, state);
-    render_image_viewer(frame, areas.messages, state, viewer_image_preview);
+    render_attachment_viewer(frame, areas.messages, state, viewer_image_preview);
     render_debug_log_popup(frame, areas.messages, state);
     render_toast(frame, frame.area(), state);
 }

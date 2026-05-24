@@ -5,10 +5,10 @@ use crate::discord::ActivityKind;
 use ratatui::layout::Position;
 
 mod action_menu;
+mod attachment_viewer;
 mod channel_switcher;
 mod confirmation;
 mod debug_log;
-mod image_viewer;
 mod options;
 mod polls;
 mod profile;
@@ -19,6 +19,9 @@ mod url_picker;
 #[cfg(test)]
 pub(super) use action_menu::{leader_action_lines_for_test, message_action_menu_lines};
 pub(super) use action_menu::{render_leader_popup, render_message_action_menu};
+#[cfg(test)]
+pub(super) use attachment_viewer::centered_viewer_preview_area;
+pub(super) use attachment_viewer::render_attachment_viewer;
 #[cfg(test)]
 pub(super) use channel_switcher::{channel_switcher_cursor_position, channel_switcher_lines};
 pub(super) use channel_switcher::{
@@ -32,9 +35,6 @@ pub(super) use confirmation::{
 #[cfg(test)]
 pub(super) use debug_log::debug_log_popup_lines;
 pub(super) use debug_log::render_debug_log_popup;
-#[cfg(test)]
-pub(super) use image_viewer::centered_viewer_preview_area;
-pub(super) use image_viewer::render_image_viewer;
 #[cfg(test)]
 pub(super) use options::options_popup_lines;
 pub(super) use options::render_options_popup;

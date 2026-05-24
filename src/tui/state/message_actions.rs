@@ -72,34 +72,6 @@ impl DashboardState {
             enabled: self.thread_summary_for_message(message).is_some(),
         });
 
-        let mut has_download_action = false;
-        if message.message_kind.is_regular_or_reply() {
-            // Image attachments already have a direct `d` download path in the
-            // image viewer, so the message-level menu only surfaces downloads
-            // for the file/video kinds that have no other entry point.
-            for (index, attachment) in message.attachments_in_display_order().enumerate() {
-                if attachment.is_image() && attachment.preferred_url().is_some() {
-                    continue;
-                }
-                if attachment.preferred_url().is_none() {
-                    continue;
-                }
-                has_download_action = true;
-                actions.push(MessageActionItem {
-                    kind: MessageActionKind::DownloadAttachment(index),
-                    label: format!("Download {}", attachment.filename),
-                    enabled: true,
-                });
-            }
-        }
-        if !has_download_action {
-            actions.push(MessageActionItem {
-                kind: MessageActionKind::DownloadAttachment(0),
-                label: "Download attachment".to_owned(),
-                enabled: false,
-            });
-        }
-
         actions.push(MessageActionItem {
             kind: MessageActionKind::ShowReactionUsers,
             label: "Show reacted users".to_owned(),
@@ -189,18 +161,6 @@ impl DashboardState {
                 self.activate_channel(channel_id);
                 self.close_message_action_menu();
                 None
-            }
-            MessageActionKind::DownloadAttachment(index) => {
-                let message = self.selected_message_state()?;
-                let attachment = message.attachments_in_display_order().nth(index)?;
-                let url = attachment.preferred_url()?.to_owned();
-                let filename = attachment.filename.clone();
-                self.close_message_action_menu();
-                Some(AppCommand::DownloadAttachment {
-                    url,
-                    filename,
-                    source: crate::discord::DownloadAttachmentSource::MessageAction,
-                })
             }
             MessageActionKind::ShowReactionUsers => {
                 let message = self.selected_message_state()?;
@@ -365,8 +325,8 @@ impl DashboardState {
         self.start_edit_composer();
     }
 
-    pub fn direct_open_selected_message_image_viewer(&mut self) {
-        self.open_image_viewer_for_selected_message();
+    pub fn direct_open_selected_message_attachment_viewer(&mut self) {
+        self.open_attachment_viewer_for_selected_message();
     }
 
     pub fn direct_open_selected_message_url(&mut self) -> Option<AppCommand> {

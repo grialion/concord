@@ -306,6 +306,5 @@ pub enum AppCommand {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DownloadAttachmentSource {
-    ImageViewer,
-    MessageAction,
+    AttachmentViewer,
 }

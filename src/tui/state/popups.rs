@@ -25,7 +25,7 @@ pub(super) struct PopupUiState {
     pub(super) message_delete_confirmation: Option<MessageDeleteConfirmationState>,
     pub(super) message_pin_confirmation: Option<MessagePinConfirmationState>,
     pub(super) options_popup: Option<OptionsPopupState>,
-    pub(super) image_viewer: Option<ImageViewerState>,
+    pub(super) attachment_viewer: Option<AttachmentViewerState>,
     pub(super) guild_leader_action: Option<GuildLeaderActionState>,
     pub(super) channel_leader_action: Option<ChannelLeaderActionState>,
     pub(super) member_leader_action: Option<MemberLeaderActionState>,
@@ -81,7 +81,7 @@ pub(super) struct OptionsPopupState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) struct ImageViewerState {
+pub(super) struct AttachmentViewerState {
     pub(super) message_id: Id<MessageMarker>,
     pub(super) selected: usize,
     pub(super) download_message: Option<String>,

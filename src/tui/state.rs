@@ -7,6 +7,7 @@ use crate::discord::{
     MessageSnapshotInfo, VoiceConnectionStatus,
 };
 
+mod attachment_viewer;
 mod channel_switcher;
 mod channels;
 mod composer;
@@ -15,7 +16,6 @@ mod diagnostics;
 mod discord_ui;
 mod emoji;
 mod guilds;
-mod image_viewer;
 mod layout_cache;
 mod member_grouping;
 mod message_actions;
@@ -58,9 +58,9 @@ pub use composer::{
 pub use dashboard::DashboardState;
 pub use member_grouping::{MemberEntry, MemberGroup};
 pub use model::{
-    ChannelActionItem, ChannelPaneEntry, ChannelSwitcherItem, ChannelThreadItem, EmojiReactionItem,
-    FORUM_POST_CARD_HEIGHT, FocusPane, GuildActionItem, GuildPaneEntry, ImageViewerItem,
-    MemberActionItem, MessageActionItem, MessageActionKind, MuteActionDurationItem,
+    AttachmentViewerItem, ChannelActionItem, ChannelPaneEntry, ChannelSwitcherItem,
+    ChannelThreadItem, EmojiReactionItem, FORUM_POST_CARD_HEIGHT, FocusPane, GuildActionItem,
+    GuildPaneEntry, MemberActionItem, MessageActionItem, MessageActionKind, MuteActionDurationItem,
     PollVotePickerItem, ThreadMessagePreview, ThreadSummary,
 };
 pub use model::{ChannelActionKind, GuildActionKind, MemberActionKind, MessageUrlItem};
@@ -195,9 +195,9 @@ impl DashboardState {
                 self.refresh_active_mention_query();
             }
             AppEvent::AttachmentDownloadCompleted { path, source }
-                if *source == DownloadAttachmentSource::ImageViewer =>
+                if *source == DownloadAttachmentSource::AttachmentViewer =>
             {
-                self.record_image_viewer_download_completed(path);
+                self.record_attachment_viewer_download_completed(path);
             }
             AppEvent::UpdateAvailable { latest_version } => {
                 self.discord.update_available_version = Some(latest_version.clone());

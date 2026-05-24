@@ -171,7 +171,7 @@ Concord renders a practical subset of Discord-style Markdown in message bodies:
 - Inline image previews directly in the terminal
 - Avatar and custom emoji rendering
 - Download attachments to your platform Downloads directory (`XDG_DOWNLOAD_DIR` on Linux)
-- Large centered image viewer with navigation
+- Large centered attachment viewer with navigation
 
 Image rendering is powered by [ratatui-image](https://github.com/benjajaja/ratatui-image). On startup, Concord queries the terminal to detect the best available graphics protocol. Supported protocols:
 
@@ -263,7 +263,7 @@ Message shortcuts:
 | `d`      | Delete              | Open a delete confirmation before deleting the message      |
 | `e`      | Edit                | Start editing the selected message when editing is allowed  |
 | `o`      | Open URL            | Open the selected message URL, or choose from multiple URLs |
-| `v`      | View image          | Open the selected message's image viewer                    |
+| `v`      | View attachment     | Open the selected message's attachment viewer               |
 | `p`      | Profile             | Open the selected message author's profile                  |
 | `P`      | Pin / unpin         | Open a pin or unpin confirmation for the selected message   |
 
@@ -295,7 +295,7 @@ Voice commands:
 | `Space`, `v`, `m` | Mute voice   | Toggle Concord's Discord voice mute state |
 | `Space`, `v`, `l` | Leave voice  | Leave the current Concord voice channel   |
 
-When the image viewer is open, press `d` to download the current image directly.
+When the attachment viewer is open, press `d` to download the current attachment directly.
 
 Hidden side panes give their width back to Messages. Pressing a hidden pane's
 number key directly shows and focuses it again.
@@ -348,7 +348,7 @@ roaming AppData config directory on Windows.
 
 - Disable all image previews with one master switch
 - Toggle inline image previews
-- Set image preview quality for attachments, embeds, and the image viewer
+- Set image preview quality for attachments, embeds, and the attachment viewer
 - Toggle avatar display
 - Toggle custom emoji rendering
 - Toggle desktop notifications
@@ -413,7 +413,7 @@ voice_output_volume = 100
 - `high`: sharper resized previews using lossless quality.
 - `original`: request the original source image for previews when possible.
 
-This setting only applies to attachment, embed, and image viewer previews.
+This setting only applies to attachment, embed, and attachment viewer previews.
 Avatars and custom emoji keep their separate small-image behavior.
 
 `desktop_notifications` under `[notifications]` controls OS notifications for Discord messages that
@@ -525,7 +525,7 @@ sequence if you want direct keys for them.
 | `DeleteMessage`           | `"d"`                              | Open delete confirmation.                    |
 | `EditMessage`             | `"e"`                              | Start editing the selected message.          |
 | `OpenMessageUrl`          | `"o"`                              | Open the selected message URL.               |
-| `ViewMessageImage`        | `"v"`                              | Open the selected message image viewer.      |
+| `ViewMessageAttachment`   | `"v"`                              | Open the selected message attachment viewer. |
 | `ShowMessageProfile`      | `"p"`                              | Open the selected message author's profile.  |
 | `PinMessage`              | `"P"`                              | Open pin or unpin confirmation.              |
 | `ToggleGuildPane`         | `"<leader>1"`                      | Toggle the Servers pane.                     |
@@ -626,17 +626,15 @@ shortcut.
 ```toml
 [keymap.message_actions]
 OpenThread = "t"
-DownloadAttachment = "f"
 ShowReactionUsers = "u"
 OpenPollVotePicker = "c"
 ```
 
-| Action label          | Default shortcut | When it appears                                                                 |
-| --------------------- | ---------------- | ------------------------------------------------------------------------------- |
-| `Open thread`         | `t`              | The selected message has a thread. Otherwise dimmed.                            |
-| `Download {filename}` | `f`              | The selected message has a downloadable non-image attachment. Otherwise dimmed. |
-| `Show reacted users`  | `u`              | Reaction users can be shown. Otherwise dimmed.                                  |
-| `Choose poll votes`   | `c`              | A non-finalized poll is selected. Otherwise dimmed.                             |
+| Action label         | Default shortcut | When it appears                                     |
+| -------------------- | ---------------- | --------------------------------------------------- |
+| `Open thread`        | `t`              | The selected message has a thread. Otherwise dimmed. |
+| `Show reacted users` | `u`              | Reaction users can be shown. Otherwise dimmed.       |
+| `Choose poll votes`  | `c`              | A non-finalized poll is selected. Otherwise dimmed.  |
 
 Scoped action `description` changes the label shown in the action menu. Multiple
 configured `keys` work as aliases when they are unique in the current action
@@ -672,7 +670,7 @@ ReplyMessage = "R"
 DeleteMessage = "d"
 EditMessage = "e"
 OpenMessageUrl = "o"
-ViewMessageImage = "v"
+ViewMessageAttachment = "v"
 ShowMessageProfile = "p"
 PinMessage = "P"
 ToggleGuildPane = "<leader>1"
@@ -705,7 +703,6 @@ ShowProfile = "p"
 
 [keymap.message_actions]
 OpenThread = "t"
-DownloadAttachment = "f"
 ShowReactionUsers = "u"
 OpenPollVotePicker = "c"
 

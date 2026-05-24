@@ -1042,11 +1042,10 @@ fn poll_vote_actions_are_available_by_default() {
         actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
         vec![
             MessageActionKind::OpenThread,
-            MessageActionKind::DownloadAttachment(0),
             MessageActionKind::ShowReactionUsers,
             MessageActionKind::OpenPollVotePicker,
         ]
     );
-    assert_eq!(actions[3].label, "Choose poll votes");
-    assert!(actions[3].enabled);
+    assert_eq!(actions[2].label, "Choose poll votes");
+    assert!(actions[2].enabled);
 }

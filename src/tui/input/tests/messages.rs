@@ -357,15 +357,17 @@ fn message_pane_delete_shortcut_requires_confirmation() {
 }
 
 #[test]
-fn message_pane_view_image_shortcut_opens_viewer() {
+fn message_pane_view_attachment_shortcut_opens_viewer() {
     let mut state = state_with_image_message();
     state.focus_pane(FocusPane::Messages);
 
     handle_key(&mut state, char_key('v'));
 
-    assert!(state.is_image_viewer_open());
+    assert!(state.is_attachment_viewer_open());
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(1)
     );
 }
@@ -428,7 +430,7 @@ fn message_action_shortcuts_ignore_control_modified_keys() {
 }
 
 #[test]
-fn direct_view_image_shortcut_opens_viewer_and_esc_closes_viewer() {
+fn direct_view_attachment_shortcut_opens_viewer_and_esc_closes_viewer() {
     let mut state = state_with_image_message();
     state.focus_pane(FocusPane::Messages);
 
@@ -436,54 +438,68 @@ fn direct_view_image_shortcut_opens_viewer_and_esc_closes_viewer() {
 
     assert_eq!(command, None);
     assert!(!state.is_message_action_menu_open());
-    assert!(state.is_image_viewer_open());
+    assert!(state.is_attachment_viewer_open());
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(1)
     );
 
     handle_key(&mut state, char_key('l'));
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(2)
     );
 
     handle_key(&mut state, char_key('j'));
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(2)
     );
 
     handle_key(&mut state, char_key('k'));
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(2)
     );
 
     handle_key(&mut state, key(KeyCode::Left));
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(1)
     );
 
     handle_key(&mut state, key(KeyCode::Right));
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(2)
     );
 
     handle_key(&mut state, char_key('h'));
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(1)
     );
 
     handle_key(&mut state, key(KeyCode::Esc));
-    assert!(!state.is_image_viewer_open());
+    assert!(!state.is_attachment_viewer_open());
 }
 
 #[test]
-fn image_viewer_d_shortcut_downloads_image() {
+fn attachment_viewer_d_shortcut_downloads_attachment() {
     let mut state = state_with_image_message();
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, char_key('v'));
@@ -495,12 +511,12 @@ fn image_viewer_d_shortcut_downloads_image() {
         Some(AppCommand::DownloadAttachment {
             url: "https://cdn.discordapp.com/cat.png".to_owned(),
             filename: "cat.png".to_owned(),
-            source: DownloadAttachmentSource::ImageViewer,
+            source: DownloadAttachmentSource::AttachmentViewer,
         })
     );
     assert_eq!(
-        state.image_viewer_download_message(),
-        Some("Downloading image...")
+        state.attachment_viewer_download_message(),
+        Some("Downloading attachment...")
     );
 }
 

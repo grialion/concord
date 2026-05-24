@@ -517,11 +517,11 @@ fn mouse_click_selects_message_action_row() {
 
 #[test]
 fn mouse_double_click_activates_message_action_row_like_enter() {
-    let mut state = state_with_thread_created_message();
+    let mut state = state_with_multiselect_poll();
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
     let mut clicks = MouseClickTracker::default();
-    let (column, row) = message_action_row_point(0);
+    let (column, row) = message_action_row_point(3);
 
     handle_mouse_event(
         &mut state,
@@ -544,7 +544,7 @@ fn mouse_double_click_activates_message_action_row_like_enter() {
 
     assert_eq!(second.command, None);
     assert!(!state.is_message_action_menu_open());
-    assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
+    assert!(state.is_poll_vote_picker_open());
 }
 
 #[test]

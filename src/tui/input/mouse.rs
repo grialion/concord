@@ -314,7 +314,7 @@ fn ignores_dashboard_mouse(state: &DashboardState) -> bool {
         || state.is_emoji_reaction_picker_open()
         || state.is_message_action_menu_open()
         || state.is_message_url_picker_open()
-        || state.is_image_viewer_open()
+        || state.is_attachment_viewer_open()
         || state.is_guild_leader_action_active()
         || state.is_channel_leader_action_active()
         || state.is_member_leader_action_active()

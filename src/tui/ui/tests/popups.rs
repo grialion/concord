@@ -158,43 +158,24 @@ fn options_popup_render_keeps_selected_row_visible_when_short() {
 }
 
 #[test]
-fn image_viewer_render_shows_download_hint_below_popup() {
+fn attachment_viewer_render_shows_download_hint_below_popup() {
     let mut state = state_with_file_attachment_message();
-    state.push_event(AppEvent::MessageCreate {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(2),
-        author_id: Id::new(99),
-        author: "neo".to_owned(),
-        author_avatar_url: None,
-        author_is_bot: false,
-        author_role_ids: Vec::new(),
-        message_kind: crate::discord::MessageKind::regular(),
-        interaction: None,
-        reference: None,
-        reply: None,
-        poll: None,
-        content: Some(String::new()),
-        sticker_names: Vec::new(),
-        mentions: Vec::new(),
-        attachments: vec![image_attachment()],
-        embeds: Vec::new(),
-        forwarded_snapshots: Vec::new(),
-    });
-    assert!(state.open_image_viewer_for_selected_message());
+    assert!(state.open_attachment_viewer_for_selected_message());
 
     let dump = render_dashboard_dump(100, 25, &mut state);
     let rendered = dump.join("\n");
 
-    assert!(rendered.contains("[d] download image"), "{rendered}");
+    assert!(rendered.contains("File: notes.txt"), "{rendered}");
+    assert!(rendered.contains("Size: 42 B"), "{rendered}");
+    assert!(rendered.contains("[d] download attachment"), "{rendered}");
 }
 
 #[test]
-fn image_viewer_popup_uses_eighty_percent_of_message_area() {
+fn attachment_viewer_popup_uses_eighty_percent_of_message_area() {
     let area = Rect::new(10, 5, 100, 40);
 
-    let popup = image_viewer_popup(area);
-    let image_area = image_viewer_image_area(area);
+    let popup = attachment_viewer_popup(area);
+    let image_area = attachment_viewer_image_area(area);
 
     assert_eq!(popup, Rect::new(20, 9, 80, 32));
     assert_eq!(image_area, Rect::new(21, 10, 78, 29));
@@ -349,8 +330,8 @@ fn message_action_menu_marks_selected_and_disabled_actions() {
             enabled: true,
         },
         MessageActionItem {
-            kind: MessageActionKind::DownloadAttachment(0),
-            label: "Download file".to_owned(),
+            kind: MessageActionKind::ShowReactionUsers,
+            label: "Show reacted users".to_owned(),
             enabled: false,
         },
         MessageActionItem {
@@ -366,7 +347,7 @@ fn message_action_menu_marks_selected_and_disabled_actions() {
         line_texts_from_ratatui(&lines),
         vec![
             "  [t] Open thread",
-            "› [f] Download file (unavailable)",
+            "› [u] Show reacted users (unavailable)",
             "  [c] Choose poll votes",
         ]
     );
@@ -376,13 +357,13 @@ fn message_action_menu_marks_selected_and_disabled_actions() {
 fn message_action_menu_uses_numbered_shortcuts_for_duplicate_preferred_keys() {
     let actions = vec![
         MessageActionItem {
-            kind: MessageActionKind::DownloadAttachment(0),
-            label: "Download image".to_owned(),
+            kind: MessageActionKind::ShowReactionUsers,
+            label: "Show cat users".to_owned(),
             enabled: true,
         },
         MessageActionItem {
-            kind: MessageActionKind::DownloadAttachment(1),
-            label: "Download video".to_owned(),
+            kind: MessageActionKind::ShowReactionUsers,
+            label: "Show dog users".to_owned(),
             enabled: true,
         },
     ];
@@ -391,7 +372,7 @@ fn message_action_menu_uses_numbered_shortcuts_for_duplicate_preferred_keys() {
 
     assert_eq!(
         line_texts_from_ratatui(&lines),
-        vec!["› [1] Download image", "  [2] Download video"]
+        vec!["› [1] Show cat users", "  [2] Show dog users"]
     );
 }
 

@@ -134,15 +134,13 @@ fn reaction_message_actions_use_single_reacted_users_item() {
         actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
         vec![
             MessageActionKind::OpenThread,
-            MessageActionKind::DownloadAttachment(0),
             MessageActionKind::ShowReactionUsers,
             MessageActionKind::OpenPollVotePicker,
         ]
     );
     assert!(!actions[0].enabled);
-    assert!(!actions[1].enabled);
-    assert!(actions[2].enabled);
-    assert!(!actions[3].enabled);
+    assert!(actions[1].enabled);
+    assert!(!actions[2].enabled);
     assert_eq!(
         actions
             .iter()
@@ -271,7 +269,7 @@ fn show_reacted_users_action_loads_all_reaction_emojis() {
     let mut state = state_with_reaction_message();
     state.focus_pane(FocusPane::Messages);
     state.open_selected_message_actions();
-    assert!(state.select_message_action_row(2));
+    assert!(state.select_message_action_row(1));
 
     let command = state.activate_selected_message_action();
 

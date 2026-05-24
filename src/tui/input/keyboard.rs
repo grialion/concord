@@ -4,8 +4,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::discord::MessageAttachmentUpload;
 use crate::tui::keybindings::{
-    ChannelSwitcherAction, ComposerAction, ComposerCompletionAction, DashboardAction,
-    DebugLogPopupAction, EmojiReactionPickerAction, GlobalAction, ImageViewerAction, KeyChord,
+    AttachmentViewerAction, ChannelSwitcherAction, ComposerAction, ComposerCompletionAction,
+    DashboardAction, DebugLogPopupAction, EmojiReactionPickerAction, GlobalAction, KeyChord,
     KeyMapLookup, LeaderActionMenuAction, MessageConfirmationAction, MessageShortcutAction,
     OptionsCategoryShortcut, OptionsPopupAction, PaneFilterAction, PollVotePickerAction,
     PopupListAction, ProfilePopupAction, ReactionUsersPopupAction, ScrollAction, SelectionAction,
@@ -78,8 +78,8 @@ pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppComman
         return handle_message_action_menu_key(state, key);
     }
 
-    if state.is_image_viewer_open() {
-        return handle_image_viewer_key(state, key);
+    if state.is_attachment_viewer_open() {
+        return handle_attachment_viewer_key(state, key);
     }
 
     if state.is_user_profile_popup_open() {
@@ -255,8 +255,8 @@ fn handle_message_shortcut_action(
             None
         }
         MessageShortcutAction::OpenUrl => state.direct_open_selected_message_url(),
-        MessageShortcutAction::ViewImage => {
-            state.direct_open_selected_message_image_viewer();
+        MessageShortcutAction::ViewAttachment => {
+            state.direct_open_selected_message_attachment_viewer();
             None
         }
         MessageShortcutAction::ShowProfile => state.direct_show_selected_message_profile(),
@@ -745,13 +745,13 @@ fn handle_message_pin_confirmation_key(
     }
 }
 
-fn handle_image_viewer_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppCommand> {
-    match state.key_bindings().image_viewer_action(key) {
-        Some(ImageViewerAction::Close) => state.close_image_viewer(),
-        Some(ImageViewerAction::Previous) => state.move_image_viewer_previous(),
-        Some(ImageViewerAction::Next) => state.move_image_viewer_next(),
-        Some(ImageViewerAction::DownloadSelected) => {
-            return state.download_selected_image_viewer_image();
+fn handle_attachment_viewer_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppCommand> {
+    match state.key_bindings().attachment_viewer_action(key) {
+        Some(AttachmentViewerAction::Close) => state.close_attachment_viewer(),
+        Some(AttachmentViewerAction::Previous) => state.move_attachment_viewer_previous(),
+        Some(AttachmentViewerAction::Next) => state.move_attachment_viewer_next(),
+        Some(AttachmentViewerAction::DownloadSelected) => {
+            return state.download_selected_attachment_viewer_attachment();
         }
         None => {}
     }

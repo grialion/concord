@@ -12,8 +12,8 @@ use unicode_width::UnicodeWidthStr;
 
 use super::model::{ChannelBranch, GuildBranch};
 use super::{
-    ActiveGuildScope, ChannelActionKind, ChannelPaneEntry, DashboardState, FocusPane,
-    GuildPaneEntry, ImageViewerItem, MessageActionKind,
+    ActiveGuildScope, AttachmentViewerItem, ChannelActionKind, ChannelPaneEntry, DashboardState,
+    FocusPane, GuildPaneEntry, MessageActionKind,
 };
 use crate::discord::{
     ActivityInfo, ActivityKind, AppCommand, AppEvent, AttachmentInfo, AttachmentUpdate,

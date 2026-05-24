@@ -100,11 +100,9 @@ pub(in crate::tui) fn visible_image_preview_targets(
     state: &DashboardState,
     layout: ImagePreviewLayout,
 ) -> Vec<ImagePreviewTarget> {
-    if !state.show_images() {
-        return Vec::new();
-    }
-
-    if let Some((message_id, preview_index, preview)) = state.selected_image_viewer_preview() {
+    if let Some((message_id, preview_index, preview)) = state.selected_attachment_viewer_preview()
+        && state.show_images()
+    {
         let quality = state.image_preview_quality();
         let (preview_width, preview_height) = image_preview_size_for_dimensions(
             layout.viewer_preview_width,
@@ -131,6 +129,10 @@ pub(in crate::tui) fn visible_image_preview_targets(
             url: preview_request_url(preview, preview_width, preview_height, quality),
             filename: preview.filename.to_owned(),
         }];
+    }
+
+    if !state.show_images() {
+        return Vec::new();
     }
 
     let mut rendered_rows = 0usize;

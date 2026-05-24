@@ -3,60 +3,61 @@ use crate::discord::AppCommand;
 
 #[test]
 fn message_action_items_reflect_selected_message_capabilities() {
-    let mut state = state_with_image_messages(1, &[1]);
+    let mut state = state_with_messages(1);
     state.focus_pane(FocusPane::Messages);
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 4);
+    assert_eq!(actions.len(), 3);
     assert!(actions.iter().all(|action| !action.enabled));
     assert_eq!(actions[0].label, "Open thread");
-    assert_eq!(actions[1].label, "Download attachment");
-    assert_eq!(actions[2].label, "Show reacted users");
-    assert_eq!(actions[3].label, "Choose poll votes");
+    assert_eq!(actions[1].label, "Show reacted users");
+    assert_eq!(actions[2].label, "Choose poll votes");
 }
 
 #[test]
-fn disabled_image_previews_hide_view_image_action() {
+fn disabled_image_previews_do_not_hide_attachment_view_action() {
     let mut state = state_with_image_messages(1, &[1]);
     state.open_options_popup();
     state.toggle_selected_display_option();
     state.focus_pane(FocusPane::Messages);
 
-    let actions = state.selected_message_action_items();
+    state.direct_open_selected_message_attachment_viewer();
 
-    assert!(!actions.iter().any(|action| action.label == "View image"));
+    assert!(state.is_attachment_viewer_open());
 }
 
 #[test]
-fn direct_image_message_action_opens_image_viewer() {
+fn direct_attachment_message_action_opens_attachment_viewer() {
     let mut state = state_with_messages(1);
     state.push_event(latest_history_loaded(
         Id::new(2),
         vec![MessageInfo {
-            content: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ".to_owned()),
-            embeds: vec![youtube_embed()],
+            content: Some(String::new()),
+            attachments: vec![image_attachment(10)],
             ..message_info(Id::new(2), 1)
         }],
     ));
     state.focus_pane(FocusPane::Messages);
 
-    state.direct_open_selected_message_image_viewer();
+    state.direct_open_selected_message_attachment_viewer();
 
-    assert!(state.is_image_viewer_open());
+    assert!(state.is_attachment_viewer_open());
     assert_eq!(
-        state.selected_image_viewer_item(),
-        Some(super::ImageViewerItem {
+        state.selected_attachment_viewer_item(),
+        Some(super::AttachmentViewerItem {
             index: 1,
             total: 1,
-            filename: "embed-thumbnail".to_owned(),
-            url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg".to_owned(),
+            filename: "image-10.png".to_owned(),
+            url: Some("https://cdn.discordapp.com/image-10.png".to_owned()),
+            size_bytes: 2048,
+            is_image: true,
         })
     );
 }
 
 #[test]
-fn image_viewer_navigation_clamps_and_downloads_current_image() {
+fn attachment_viewer_navigation_clamps_and_downloads_current_attachment() {
     let mut state = state_with_messages(1);
     state.push_event(latest_history_loaded(
         Id::new(2),
@@ -67,40 +68,44 @@ fn image_viewer_navigation_clamps_and_downloads_current_image() {
         }],
     ));
     state.focus_pane(FocusPane::Messages);
-    state.direct_open_selected_message_image_viewer();
+    state.direct_open_selected_message_attachment_viewer();
 
-    state.move_image_viewer_previous();
+    state.move_attachment_viewer_previous();
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(1)
     );
 
-    state.move_image_viewer_next();
-    state.move_image_viewer_next();
+    state.move_attachment_viewer_next();
+    state.move_attachment_viewer_next();
     assert_eq!(
-        state.selected_image_viewer_item().map(|item| item.index),
+        state
+            .selected_attachment_viewer_item()
+            .map(|item| item.index),
         Some(2)
     );
 
-    let command = state.download_selected_image_viewer_image();
+    let command = state.download_selected_attachment_viewer_attachment();
 
     assert_eq!(
         command,
         Some(AppCommand::DownloadAttachment {
             url: "https://cdn.discordapp.com/image-11.png".to_owned(),
             filename: "image-11.png".to_owned(),
-            source: DownloadAttachmentSource::ImageViewer,
+            source: DownloadAttachmentSource::AttachmentViewer,
         })
     );
-    assert!(state.is_image_viewer_open());
+    assert!(state.is_attachment_viewer_open());
     assert_eq!(
-        state.image_viewer_download_message(),
-        Some("Downloading image...")
+        state.attachment_viewer_download_message(),
+        Some("Downloading attachment...")
     );
 }
 
 #[test]
-fn image_viewer_download_uses_original_url_not_preview_proxy() {
+fn attachment_viewer_download_uses_original_url_not_preview_proxy() {
     let mut state = state_with_messages(1);
     let mut attachment = image_attachment(10);
     attachment.url = "https://cdn.discordapp.com/original/photo.png".to_owned();
@@ -118,22 +123,22 @@ fn image_viewer_download_uses_original_url_not_preview_proxy() {
         }],
     ));
     state.focus_pane(FocusPane::Messages);
-    state.direct_open_selected_message_image_viewer();
+    state.direct_open_selected_message_attachment_viewer();
 
-    let command = state.download_selected_image_viewer_image();
+    let command = state.download_selected_attachment_viewer_attachment();
 
     assert_eq!(
         command,
         Some(AppCommand::DownloadAttachment {
             url: "https://cdn.discordapp.com/original/photo.png".to_owned(),
             filename: "image-10.png".to_owned(),
-            source: DownloadAttachmentSource::ImageViewer,
+            source: DownloadAttachmentSource::AttachmentViewer,
         })
     );
 }
 
 #[test]
-fn image_viewer_download_completed_event_updates_viewer_message() {
+fn attachment_viewer_download_completed_event_updates_viewer_message() {
     let mut state = state_with_messages(1);
     state.push_event(latest_history_loaded(
         Id::new(2),
@@ -144,29 +149,17 @@ fn image_viewer_download_completed_event_updates_viewer_message() {
         }],
     ));
     state.focus_pane(FocusPane::Messages);
-    state.direct_open_selected_message_image_viewer();
+    state.direct_open_selected_message_attachment_viewer();
 
     state.push_event(AppEvent::AttachmentDownloadCompleted {
         path: "/tmp/cat.png".to_owned(),
-        source: DownloadAttachmentSource::ImageViewer,
+        source: DownloadAttachmentSource::AttachmentViewer,
     });
 
     assert_eq!(
-        state.image_viewer_download_message(),
+        state.attachment_viewer_download_message(),
         Some("Downloaded to /tmp/cat.png")
     );
-}
-
-#[test]
-fn message_action_download_completed_event_does_not_open_image_feedback() {
-    let mut state = DashboardState::new();
-
-    state.push_event(AppEvent::AttachmentDownloadCompleted {
-        path: "/tmp/clip.mp4".to_owned(),
-        source: DownloadAttachmentSource::MessageAction,
-    });
-
-    assert_eq!(state.image_viewer_download_message(), None);
 }
 
 #[test]
@@ -176,7 +169,7 @@ fn normal_message_actions_show_disabled_dynamic_actions() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 4);
+    assert_eq!(actions.len(), 3);
     assert!(actions.iter().all(|action| !action.enabled));
 }
 
@@ -191,7 +184,7 @@ fn own_regular_message_actions_show_disabled_dynamic_actions() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 4);
+    assert_eq!(actions.len(), 3);
     assert!(actions.iter().all(|action| !action.enabled));
 }
 
@@ -207,7 +200,7 @@ fn own_reply_message_actions_show_disabled_dynamic_actions() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 4);
+    assert_eq!(actions.len(), 3);
     assert!(actions.iter().all(|action| !action.enabled));
 }
 
@@ -401,41 +394,7 @@ fn direct_pin_message_requires_pin_messages_permission() {
 }
 
 #[test]
-fn non_image_attachment_action_downloads_with_proxy_url_fallback() {
-    let mut state = state_with_message_ids([]);
-    let mut attachment = video_attachment(1);
-    attachment.url.clear();
-    state.push_event(message_create_event(MessageCreateFixture {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        content: Some("clip".to_owned()),
-        attachments: vec![attachment],
-        ..MessageCreateFixture::default()
-    }));
-    state.focus_pane(FocusPane::Messages);
-    state.open_selected_message_actions();
-
-    let actions = state.selected_message_action_items();
-    assert!(actions.iter().any(|action| {
-        action.kind == MessageActionKind::DownloadAttachment(0)
-            && action.label == "Download clip-1.mp4"
-    }));
-    assert!(state.select_message_action_row(1));
-
-    assert_eq!(
-        state.activate_selected_message_action(),
-        Some(AppCommand::DownloadAttachment {
-            url: "https://media.discordapp.net/clip-1.mp4".to_owned(),
-            filename: "clip-1.mp4".to_owned(),
-            source: DownloadAttachmentSource::MessageAction,
-        })
-    );
-}
-
-#[test]
-fn reply_image_attachment_action_can_open_image_viewer() {
+fn reply_attachment_action_can_open_attachment_viewer() {
     let mut state = state_with_message_ids([]);
     push_reply_message_with_attachments(
         &mut state,
@@ -446,45 +405,21 @@ fn reply_image_attachment_action_can_open_image_viewer() {
     );
     state.focus_pane(FocusPane::Messages);
     let actions = state.selected_message_action_items();
-    assert_eq!(actions.len(), 4);
+    assert_eq!(actions.len(), 3);
     assert!(actions.iter().all(|action| !action.enabled));
 
-    state.direct_open_selected_message_image_viewer();
+    state.direct_open_selected_message_attachment_viewer();
 
-    assert!(state.is_image_viewer_open());
+    assert!(state.is_attachment_viewer_open());
     assert_eq!(
-        state.selected_image_viewer_item(),
-        Some(super::ImageViewerItem {
+        state.selected_attachment_viewer_item(),
+        Some(super::AttachmentViewerItem {
             index: 1,
             total: 1,
             filename: "image-1.png".to_owned(),
-            url: "https://cdn.discordapp.com/image-1.png".to_owned(),
-        })
-    );
-}
-
-#[test]
-fn reply_non_image_attachment_action_downloads_with_proxy_url_fallback() {
-    let mut state = state_with_message_ids([]);
-    let mut attachment = video_attachment(1);
-    attachment.url.clear();
-    push_reply_message_with_attachments(&mut state, 1, 99, Some("reply clip"), vec![attachment]);
-    state.focus_pane(FocusPane::Messages);
-    state.open_selected_message_actions();
-
-    let actions = state.selected_message_action_items();
-    assert!(actions.iter().any(|action| {
-        action.kind == MessageActionKind::DownloadAttachment(0)
-            && action.label == "Download clip-1.mp4"
-    }));
-    assert!(state.select_message_action_row(1));
-
-    assert_eq!(
-        state.activate_selected_message_action(),
-        Some(AppCommand::DownloadAttachment {
-            url: "https://media.discordapp.net/clip-1.mp4".to_owned(),
-            filename: "clip-1.mp4".to_owned(),
-            source: DownloadAttachmentSource::MessageAction,
+            url: Some("https://cdn.discordapp.com/image-1.png".to_owned()),
+            size_bytes: 2048,
+            is_image: true,
         })
     );
 }
@@ -652,7 +587,7 @@ fn message_action_detects_urls_in_reply_quote_and_forwarded_snapshot() {
 }
 
 #[test]
-fn non_regular_message_actions_do_not_include_attachment_downloads() {
+fn non_regular_message_actions_only_show_supported_actions() {
     let mut state = state_with_message_ids([]);
     state.push_event(message_create_event(MessageCreateFixture {
         guild_id: Some(Id::new(1)),
@@ -666,17 +601,14 @@ fn non_regular_message_actions_do_not_include_attachment_downloads() {
     }));
     state.focus_pane(FocusPane::Messages);
 
-    let action = state
-        .selected_message_action_items()
-        .into_iter()
-        .find(|action| matches!(action.kind, MessageActionKind::DownloadAttachment(_)))
-        .expect("download action placeholder should be visible");
-    assert_eq!(action.label, "Download attachment");
-    assert!(!action.enabled);
+    let actions = state.selected_message_action_items();
+
+    assert_eq!(actions.len(), 3);
+    assert!(actions.iter().all(|action| !action.enabled));
 }
 
 #[test]
-fn message_action_items_keep_poll_actions_for_image_messages() {
+fn message_action_items_keep_poll_actions_for_attachment_messages() {
     let mut state = state_with_image_messages(1, &[1]);
     state.focus_pane(FocusPane::Messages);
     state.push_event(message_create_event(MessageCreateFixture {
@@ -696,15 +628,13 @@ fn message_action_items_keep_poll_actions_for_image_messages() {
         actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
         vec![
             MessageActionKind::OpenThread,
-            MessageActionKind::DownloadAttachment(0),
             MessageActionKind::ShowReactionUsers,
             MessageActionKind::OpenPollVotePicker,
         ]
     );
     assert!(!actions[0].enabled);
     assert!(!actions[1].enabled);
-    assert!(!actions[2].enabled);
-    assert!(actions[3].enabled);
+    assert!(actions[2].enabled);
 }
 
 #[test]
@@ -722,7 +652,7 @@ fn single_select_poll_action_opens_picker_and_submits_one_answer() {
     }));
     state.open_selected_message_actions();
 
-    assert!(state.select_message_action_row(3));
+    assert!(state.select_message_action_row(2));
     assert_eq!(state.activate_selected_message_action(), None);
     assert!(state.is_poll_vote_picker_open());
 
@@ -756,7 +686,7 @@ fn single_select_poll_picker_normalizes_multiple_initial_votes() {
         ..MessageCreateFixture::default()
     }));
     state.open_selected_message_actions();
-    assert!(state.select_message_action_row(3));
+    assert!(state.select_message_action_row(2));
     assert_eq!(state.activate_selected_message_action(), None);
 
     assert_eq!(
@@ -793,11 +723,11 @@ fn multi_select_poll_action_opens_picker_and_submits_selected_answers() {
     }));
 
     let actions = state.selected_message_action_items();
-    assert_eq!(actions[3].kind, MessageActionKind::OpenPollVotePicker);
-    assert_eq!(actions[3].label, "Choose poll votes");
+    assert_eq!(actions[2].kind, MessageActionKind::OpenPollVotePicker);
+    assert_eq!(actions[2].label, "Choose poll votes");
 
     state.open_selected_message_actions();
-    assert!(state.select_message_action_row(3));
+    assert!(state.select_message_action_row(2));
     assert_eq!(state.activate_selected_message_action(), None);
     assert!(state.is_poll_vote_picker_open());
     assert_eq!(

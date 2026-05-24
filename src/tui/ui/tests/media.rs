@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn image_viewer_preview_area_centers_rendered_image() {
+fn attachment_viewer_preview_area_centers_rendered_image() {
     let area = Rect::new(21, 10, 78, 29);
 
     let preview = centered_viewer_preview_area(area, 52, 13);

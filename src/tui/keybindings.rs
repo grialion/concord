@@ -79,7 +79,6 @@ struct ComposerKeyBinding {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum MessageActionShortcutKind {
     OpenThread,
-    DownloadAttachment,
     ShowReactionUsers,
     OpenPollVotePicker,
 }
@@ -129,7 +128,7 @@ pub(in crate::tui) enum UiAction {
     DeleteMessage,
     EditMessage,
     OpenMessageUrl,
-    ViewMessageImage,
+    ViewMessageAttachment,
     ShowMessageProfile,
     PinMessage,
     ToggleGuildPane,
@@ -201,7 +200,7 @@ pub(in crate::tui) enum MessageShortcutAction {
     OpenDeleteConfirmation,
     Edit,
     OpenUrl,
-    ViewImage,
+    ViewAttachment,
     ShowProfile,
     OpenPinConfirmation,
 }
@@ -240,7 +239,7 @@ pub(in crate::tui) enum MessageConfirmationAction {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(in crate::tui) enum ImageViewerAction {
+pub(in crate::tui) enum AttachmentViewerAction {
     Close,
     Previous,
     Next,
@@ -1169,7 +1168,7 @@ impl UiAction {
             UiAction::DeleteMessage => "DeleteMessage",
             UiAction::EditMessage => "EditMessage",
             UiAction::OpenMessageUrl => "OpenMessageUrl",
-            UiAction::ViewMessageImage => "ViewMessageImage",
+            UiAction::ViewMessageAttachment => "ViewMessageAttachment",
             UiAction::ShowMessageProfile => "ShowMessageProfile",
             UiAction::PinMessage => "PinMessage",
             UiAction::ToggleGuildPane => "ToggleGuildPane",
@@ -1210,7 +1209,7 @@ impl UiAction {
             UiAction::DeleteMessage => "delete message",
             UiAction::EditMessage => "edit message",
             UiAction::OpenMessageUrl => "open URL",
-            UiAction::ViewMessageImage => "view image",
+            UiAction::ViewMessageAttachment => "view attachment",
             UiAction::ShowMessageProfile => "show profile",
             UiAction::PinMessage => "pin message",
             UiAction::ToggleGuildPane => "toggle Servers",
@@ -1266,7 +1265,6 @@ impl MessageActionShortcutKind {
     fn from_keymap_name(name: &str) -> Option<Self> {
         match name {
             "OpenThread" => Some(Self::OpenThread),
-            "DownloadAttachment" => Some(Self::DownloadAttachment),
             "ShowReactionUsers" => Some(Self::ShowReactionUsers),
             "OpenPollVotePicker" => Some(Self::OpenPollVotePicker),
             _ => None,
@@ -1278,7 +1276,6 @@ impl From<MessageActionKind> for MessageActionShortcutKind {
     fn from(kind: MessageActionKind) -> Self {
         match kind {
             MessageActionKind::OpenThread => Self::OpenThread,
-            MessageActionKind::DownloadAttachment(_) => Self::DownloadAttachment,
             MessageActionKind::ShowReactionUsers => Self::ShowReactionUsers,
             MessageActionKind::OpenPollVotePicker => Self::OpenPollVotePicker,
         }
@@ -1355,7 +1352,7 @@ fn all_ui_actions() -> &'static [UiAction] {
         UiAction::DeleteMessage,
         UiAction::EditMessage,
         UiAction::OpenMessageUrl,
-        UiAction::ViewMessageImage,
+        UiAction::ViewMessageAttachment,
         UiAction::ShowMessageProfile,
         UiAction::PinMessage,
         UiAction::ToggleGuildPane,
@@ -1735,7 +1732,7 @@ fn default_keymap_specs(leader: KeyChord) -> BTreeMap<UiAction, KeyMapActionSpec
             UiAction::DeleteMessage => vec![vec![char_chord('d')]],
             UiAction::EditMessage => vec![vec![char_chord('e')]],
             UiAction::OpenMessageUrl => vec![vec![char_chord('o')]],
-            UiAction::ViewMessageImage => vec![vec![char_chord('v')]],
+            UiAction::ViewMessageAttachment => vec![vec![char_chord('v')]],
             UiAction::ShowMessageProfile => vec![vec![char_chord('p')]],
             UiAction::PinMessage => vec![vec![char_chord('P')]],
             UiAction::ToggleGuildPane => vec![vec![leader, char_chord('1')]],
@@ -1950,8 +1947,8 @@ impl KeyBindings {
             UiAction::OpenMessageUrl if focus == FocusPane::Messages => Some(
                 DashboardAction::MessageShortcut(MessageShortcutAction::OpenUrl),
             ),
-            UiAction::ViewMessageImage if focus == FocusPane::Messages => Some(
-                DashboardAction::MessageShortcut(MessageShortcutAction::ViewImage),
+            UiAction::ViewMessageAttachment if focus == FocusPane::Messages => Some(
+                DashboardAction::MessageShortcut(MessageShortcutAction::ViewAttachment),
             ),
             UiAction::ShowMessageProfile if focus == FocusPane::Messages => Some(
                 DashboardAction::MessageShortcut(MessageShortcutAction::ShowProfile),
@@ -2071,12 +2068,17 @@ impl KeyBindings {
         }
     }
 
-    pub(in crate::tui) fn image_viewer_action(&self, key: KeyEvent) -> Option<ImageViewerAction> {
+    pub(in crate::tui) fn attachment_viewer_action(
+        &self,
+        key: KeyEvent,
+    ) -> Option<AttachmentViewerAction> {
         match key.code {
-            KeyCode::Esc => Some(ImageViewerAction::Close),
-            code if is_left_key(code) => Some(ImageViewerAction::Previous),
-            code if is_right_key(code) => Some(ImageViewerAction::Next),
-            KeyCode::Char('d') if is_shortcut_key(key) => Some(ImageViewerAction::DownloadSelected),
+            KeyCode::Esc => Some(AttachmentViewerAction::Close),
+            code if is_left_key(code) => Some(AttachmentViewerAction::Previous),
+            code if is_right_key(code) => Some(AttachmentViewerAction::Next),
+            KeyCode::Char('d') if is_shortcut_key(key) => {
+                Some(AttachmentViewerAction::DownloadSelected)
+            }
             _ => None,
         }
     }
@@ -2368,8 +2370,8 @@ impl KeyBindings {
         "Esc/n"
     }
 
-    pub fn image_viewer_download_hint(&self) -> &'static str {
-        "[d] download image"
+    pub fn attachment_viewer_download_hint(&self) -> &'static str {
+        "[d] download attachment"
     }
 
     pub fn unread_mark_as_read_hint(&self) -> &'static str {
@@ -2551,7 +2553,6 @@ impl KeyBindings {
     fn default_message_action_shortcut(&self, kind: MessageActionShortcutKind) -> Vec<KeyChord> {
         match kind {
             MessageActionShortcutKind::OpenThread => vec![char_chord('t')],
-            MessageActionShortcutKind::DownloadAttachment => vec![char_chord('f')],
             MessageActionShortcutKind::ShowReactionUsers => vec![char_chord('u')],
             MessageActionShortcutKind::OpenPollVotePicker => vec![char_chord('c')],
         }

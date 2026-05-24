@@ -35,7 +35,6 @@ pub enum FocusPane {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MessageActionKind {
     OpenThread,
-    DownloadAttachment(usize),
     ShowReactionUsers,
     OpenPollVotePicker,
 }
@@ -54,11 +53,13 @@ pub struct MessageUrlItem {
     pub label: String,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ImageViewerItem {
+pub struct AttachmentViewerItem {
     pub index: usize,
     pub total: usize,
     pub filename: String,
-    pub url: String,
+    pub url: Option<String>,
+    pub size_bytes: u64,
+    pub is_image: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
