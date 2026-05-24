@@ -216,6 +216,49 @@ fn ctrl_backspace_deletes_previous_composer_word() {
 }
 
 #[test]
+fn composer_keymap_can_remap_editor_and_delete_word() {
+    let state = state_with_keymap(KeymapOptions {
+        composer: [
+            ("OpenEditor".to_owned(), KeymapBinding::one("ctrl+o")),
+            (
+                "DeletePreviousWord".to_owned(),
+                KeymapBinding::one("alt+backspace"),
+            ),
+        ]
+        .into_iter()
+        .collect(),
+        ..Default::default()
+    });
+    let mut state = state_with_messages_from_state(state, 1);
+    state.start_composer();
+    assert!(state.is_composing());
+    for value in "hello brave world".chars() {
+        state.push_composer_char(value);
+    }
+
+    handle_key(
+        &mut state,
+        KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL),
+    );
+    assert!(!state.take_open_composer_in_editor_request());
+
+    handle_key(
+        &mut state,
+        KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
+    );
+    assert!(state.take_open_composer_in_editor_request());
+
+    handle_key(&mut state, ctrl_key('w'));
+    assert_eq!(state.composer_input(), "hello brave world");
+
+    handle_key(
+        &mut state,
+        KeyEvent::new(KeyCode::Backspace, KeyModifiers::ALT),
+    );
+    assert_eq!(state.composer_input(), "hello brave ");
+}
+
+#[test]
 fn composer_up_down_moves_cursor_between_lines() {
     let mut state = state_with_channel_tree();
     state.focus_pane(FocusPane::Channels);

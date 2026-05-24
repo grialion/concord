@@ -436,9 +436,13 @@ ReplyMessage = "<leader>m r"
 
 [keymap.channel_actions]
 MuteChannel = { keys = ["x"], description = "mute channel" }
+
+[keymap.composer]
+OpenEditor = "ctrl+o"
+DeletePreviousWord = "alt+backspace"
 ```
 
-There are four kinds of keymap settings:
+There are five kinds of keymap settings:
 
 | Config path                                                                     | What it controls                                                                            |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -446,6 +450,7 @@ There are four kinds of keymap settings:
 | `[keymap] <ActionName>`                                                         | Directly assignable UI actions such as `StartComposer`, `ChannelSwitcher`, and `VoiceMute`. |
 | `[keymap.groups]`                                                               | Optional titles for prefix popups, such as naming `<leader>v` as `Voice`.                   |
 | `[keymap.guild_actions]`, `[keymap.channel_actions]`, `[keymap.member_actions]` | Shortcuts shown inside focused-pane action menus opened by `OpenFocusedPaneAction`.         |
+| `[keymap.composer]`                                                             | Shortcuts used while the message composer is open, such as editor and cursor commands.      |
 
 `[keymap]` action values can be either a string or an object with `keys` and an
 optional `description`:
@@ -471,11 +476,23 @@ menu:
 MuteChannel = { keys = ["x", "u"], description = "mute channel" }
 ```
 
-Reserved keys cannot be configured. Reserved keys include `Enter`, `Esc`,
-`Backspace`, `Delete`, and `Ctrl+c`. These stay fixed because they are used for
-submit, cancel, text editing, or terminal-safe modal behavior. Invalid,
-reserved, or conflicting values are ignored for that action, so the action keeps
-its default key and other valid mappings still work.
+Composer action values under `[keymap.composer]` use the same string or object
+shape, but each `keys` entry must be one key chord because composer commands run
+immediately while text is being typed:
+
+```toml
+[keymap.composer]
+OpenEditor = { keys = ["ctrl+o"], description = "open editor" }
+DeletePreviousWord = "alt+backspace"
+```
+
+For directly assignable `[keymap]` actions, reserved keys cannot be configured.
+Reserved keys include `Enter`, `Esc`, `Backspace`, `Delete`, and `Ctrl+c`.
+These stay fixed outside composer because they are used for submit, cancel, text
+editing, or terminal-safe modal behavior. Invalid, reserved, or conflicting
+values are ignored for that action, so the action keeps its default key and other
+valid mappings still work. Composer shortcuts can remap composer editing keys,
+including `Enter`, `Esc`, `Backspace`, `Delete`, and `Ctrl+c`.
 
 ##### Directly assignable actions
 
@@ -522,6 +539,32 @@ sequence if you want direct keys for them.
 | `VoiceDeafen`             | `"<leader>v d"`                    | Toggle voice deafen.                         |
 | `VoiceMute`               | `"<leader>v m"`                    | Toggle voice mute.                           |
 | `VoiceLeave`              | `"<leader>v l"`                    | Leave the current Concord voice channel.     |
+
+##### Composer actions
+
+These action names can be assigned under `[keymap.composer]`. Configured keys
+replace that action's defaults. Any printable single character can be configured,
+but that key will run the composer action instead of inserting text.
+
+| Composer action        | Default config                                  | Action                                  |
+| ---------------------- | ----------------------------------------------- | --------------------------------------- |
+| `OpenEditor`           | `"ctrl+e"`                                     | Open the current draft in `$EDITOR`.    |
+| `PasteClipboard`       | `"ctrl+v"`                                     | Request clipboard paste.                |
+| `InsertNewline`        | `["shift+enter", "ctrl+enter", "alt+enter"]` | Insert a newline.                       |
+| `Submit`               | `"enter"`                                      | Submit the composer.                    |
+| `Close`                | `"esc"`                                        | Close the composer.                     |
+| `ClearInput`           | `"ctrl+c"`                                     | Clear the composer input.               |
+| `RemoveLastAttachment` | `"delete"`                                     | Remove the last pending attachment.     |
+| `DeletePreviousChar`   | `"backspace"`                                  | Delete the previous character.          |
+| `DeletePreviousWord`   | `["ctrl+backspace", "ctrl+w"]`               | Delete the word before the cursor.      |
+| `MoveCursorUp`         | `"up"`                                         | Move the cursor up.                     |
+| `MoveCursorDown`       | `"down"`                                       | Move the cursor down.                   |
+| `MoveCursorWordLeft`   | `"ctrl+left"`                                  | Move the cursor one word left.          |
+| `MoveCursorLeft`       | `"left"`                                       | Move the cursor left.                   |
+| `MoveCursorWordRight`  | `"ctrl+right"`                                 | Move the cursor one word right.         |
+| `MoveCursorRight`      | `"right"`                                      | Move the cursor right.                  |
+| `MoveCursorHome`       | `"home"`                                       | Move the cursor to the start.           |
+| `MoveCursorEnd`        | `"end"`                                        | Move the cursor to the end.             |
 
 ##### Focused pane actions
 
@@ -657,6 +700,25 @@ MuteChannel = "u"
 
 [keymap.member_actions]
 ShowProfile = "p"
+
+[keymap.composer]
+OpenEditor = "ctrl+e"
+PasteClipboard = "ctrl+v"
+InsertNewline = { keys = ["shift+enter", "ctrl+enter", "alt+enter"] }
+Submit = "enter"
+Close = "esc"
+ClearInput = "ctrl+c"
+RemoveLastAttachment = "delete"
+DeletePreviousChar = "backspace"
+DeletePreviousWord = { keys = ["ctrl+backspace", "ctrl+w"] }
+MoveCursorUp = "up"
+MoveCursorDown = "down"
+MoveCursorWordLeft = "ctrl+left"
+MoveCursorLeft = "left"
+MoveCursorWordRight = "ctrl+right"
+MoveCursorRight = "right"
+MoveCursorHome = "home"
+MoveCursorEnd = "end"
 ```
 
 </details>

@@ -15,6 +15,7 @@ use crate::{
 pub struct KeyBindings {
     keymap: KeyMap,
     action_shortcuts: ActionShortcutBindings,
+    composer: ComposerKeyBindings,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -61,6 +62,17 @@ struct ActionShortcutBinding<K> {
     kind: K,
     shortcuts: Vec<char>,
     description: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ComposerKeyBindings {
+    bindings: Vec<ComposerKeyBinding>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ComposerKeyBinding {
+    action: ComposerShortcutAction,
+    shortcuts: Vec<KeyChord>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -309,6 +321,27 @@ pub(in crate::tui) enum ComposerAction {
     Ignore,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+enum ComposerShortcutAction {
+    OpenEditor,
+    PasteClipboard,
+    InsertNewline,
+    Submit,
+    Close,
+    ClearInput,
+    RemoveLastAttachment,
+    DeletePreviousChar,
+    DeletePreviousWord,
+    MoveCursorUp,
+    MoveCursorDown,
+    MoveCursorWordLeft,
+    MoveCursorLeft,
+    MoveCursorWordRight,
+    MoveCursorRight,
+    MoveCursorHome,
+    MoveCursorEnd,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(in crate::tui) enum ComposerCompletionAction {
     Select(SelectionAction),
@@ -367,6 +400,7 @@ impl KeyBindings {
         Self {
             keymap: KeyMap::from_options_lossy(keymap_options),
             action_shortcuts: ActionShortcutBindings::from_options_lossy(keymap_options),
+            composer: ComposerKeyBindings::from_options_lossy(keymap_options),
         }
     }
 
@@ -374,9 +408,11 @@ impl KeyBindings {
     fn try_from_options(keymap_options: &KeymapOptions) -> std::result::Result<Self, String> {
         let keymap = KeyMap::try_from_options(keymap_options)?;
         let action_shortcuts = ActionShortcutBindings::try_from_options(keymap_options)?;
+        let composer = ComposerKeyBindings::try_from_options(keymap_options)?;
         Ok(Self {
             keymap,
             action_shortcuts,
+            composer,
         })
     }
 }
@@ -417,6 +453,84 @@ impl ActionShortcutBindings {
                 &options.member_actions,
                 MemberActionKind::from_keymap_name,
             )?,
+        })
+    }
+}
+
+impl Default for ComposerKeyBindings {
+    fn default() -> Self {
+        Self::from_specs(default_composer_key_bindings())
+    }
+}
+
+impl ComposerKeyBindings {
+    fn from_options_lossy(options: &KeymapOptions) -> Self {
+        let mut configured = BTreeMap::new();
+        for (action_name, binding) in options.composer.iter().take(MAX_KEYMAP_MAPPINGS) {
+            let Some(action) = ComposerShortcutAction::from_keymap_name(action_name) else {
+                continue;
+            };
+            let Some(shortcuts) = parse_composer_binding_lossy(binding) else {
+                continue;
+            };
+            let previous = configured.insert(action, shortcuts);
+            if composer_shortcuts_have_conflicts(&configured) {
+                if let Some(previous) = previous {
+                    configured.insert(action, previous);
+                } else {
+                    configured.remove(&action);
+                }
+            }
+        }
+
+        let mut specs = default_composer_key_bindings();
+        remove_default_composer_conflicts(&mut specs, &configured);
+        specs.extend(configured);
+        Self::from_specs(specs)
+    }
+
+    #[cfg(test)]
+    fn try_from_options(options: &KeymapOptions) -> std::result::Result<Self, String> {
+        if options.composer.len() > MAX_KEYMAP_MAPPINGS {
+            return Err(format!(
+                "keymap.composer supports at most {MAX_KEYMAP_MAPPINGS} mappings"
+            ));
+        }
+
+        let mut configured = BTreeMap::new();
+        for (action_name, binding) in &options.composer {
+            let action = ComposerShortcutAction::from_keymap_name(action_name)
+                .ok_or_else(|| format!("unknown keymap.composer action `{action_name}`"))?;
+            let shortcuts = parse_composer_binding(action_name, binding)?;
+            configured.insert(action, shortcuts);
+        }
+        if composer_shortcuts_have_conflicts(&configured) {
+            return Err("keymap.composer contains conflicting shortcuts".to_owned());
+        }
+
+        let mut specs = default_composer_key_bindings();
+        remove_default_composer_conflicts(&mut specs, &configured);
+        specs.extend(configured);
+        Ok(Self::from_specs(specs))
+    }
+
+    fn from_specs(specs: BTreeMap<ComposerShortcutAction, Vec<KeyChord>>) -> Self {
+        Self {
+            bindings: specs
+                .into_iter()
+                .filter(|(_, shortcuts)| !shortcuts.is_empty())
+                .map(|(action, shortcuts)| ComposerKeyBinding { action, shortcuts })
+                .collect(),
+        }
+    }
+
+    fn action_for_key(&self, key: KeyEvent) -> Option<ComposerAction> {
+        self.bindings.iter().find_map(|binding| {
+            binding
+                .shortcuts
+                .iter()
+                .any(|shortcut| shortcut.matches(key))
+                .then(|| binding.action.to_composer_action())
         })
     }
 }
@@ -1081,6 +1195,53 @@ impl MemberActionKind {
     }
 }
 
+impl ComposerShortcutAction {
+    fn from_keymap_name(name: &str) -> Option<Self> {
+        match name {
+            "OpenEditor" | "OpenInEditor" => Some(Self::OpenEditor),
+            "PasteClipboard" => Some(Self::PasteClipboard),
+            "InsertNewline" => Some(Self::InsertNewline),
+            "Submit" => Some(Self::Submit),
+            "Close" => Some(Self::Close),
+            "ClearInput" => Some(Self::ClearInput),
+            "RemoveLastAttachment" => Some(Self::RemoveLastAttachment),
+            "DeletePreviousChar" => Some(Self::DeletePreviousChar),
+            "DeletePreviousWord" => Some(Self::DeletePreviousWord),
+            "MoveCursorUp" => Some(Self::MoveCursorUp),
+            "MoveCursorDown" => Some(Self::MoveCursorDown),
+            "MoveCursorWordLeft" => Some(Self::MoveCursorWordLeft),
+            "MoveCursorLeft" => Some(Self::MoveCursorLeft),
+            "MoveCursorWordRight" => Some(Self::MoveCursorWordRight),
+            "MoveCursorRight" => Some(Self::MoveCursorRight),
+            "MoveCursorHome" => Some(Self::MoveCursorHome),
+            "MoveCursorEnd" => Some(Self::MoveCursorEnd),
+            _ => None,
+        }
+    }
+
+    fn to_composer_action(self) -> ComposerAction {
+        match self {
+            Self::OpenEditor => ComposerAction::OpenInEditor,
+            Self::PasteClipboard => ComposerAction::PasteClipboard,
+            Self::InsertNewline => ComposerAction::InsertNewline,
+            Self::Submit => ComposerAction::Submit,
+            Self::Close => ComposerAction::Close,
+            Self::ClearInput => ComposerAction::ClearInput,
+            Self::RemoveLastAttachment => ComposerAction::RemoveLastAttachment,
+            Self::DeletePreviousChar => ComposerAction::DeletePreviousChar,
+            Self::DeletePreviousWord => ComposerAction::DeletePreviousWord,
+            Self::MoveCursorUp => ComposerAction::MoveCursorUp,
+            Self::MoveCursorDown => ComposerAction::MoveCursorDown,
+            Self::MoveCursorWordLeft => ComposerAction::MoveCursorWordLeft,
+            Self::MoveCursorLeft => ComposerAction::MoveCursorLeft,
+            Self::MoveCursorWordRight => ComposerAction::MoveCursorWordRight,
+            Self::MoveCursorRight => ComposerAction::MoveCursorRight,
+            Self::MoveCursorHome => ComposerAction::MoveCursorHome,
+            Self::MoveCursorEnd => ComposerAction::MoveCursorEnd,
+        }
+    }
+}
+
 fn all_ui_actions() -> &'static [UiAction] {
     &[
         UiAction::StartComposer,
@@ -1227,6 +1388,173 @@ impl FromStr for KeyChord {
             modifiers: normalized_modifiers(modifiers),
         })
     }
+}
+
+fn parse_composer_binding_lossy(binding: &KeymapBinding) -> Option<Vec<KeyChord>> {
+    let shortcuts = binding
+        .keys
+        .iter()
+        .filter_map(|key| parse_composer_shortcut_key(key).ok())
+        .collect::<Vec<_>>();
+    (!shortcuts.is_empty()).then_some(shortcuts)
+}
+
+#[cfg(test)]
+fn parse_composer_binding(
+    action_name: &str,
+    binding: &KeymapBinding,
+) -> std::result::Result<Vec<KeyChord>, String> {
+    let mut shortcuts = Vec::new();
+    for key in &binding.keys {
+        shortcuts.push(
+            parse_composer_shortcut_key(key).map_err(|error| format!("{action_name}: {error}"))?,
+        );
+    }
+    if shortcuts.is_empty() {
+        return Err(format!(
+            "{action_name}: composer keymap entry must include at least one key"
+        ));
+    }
+    Ok(shortcuts)
+}
+
+fn parse_composer_shortcut_key(value: &str) -> std::result::Result<KeyChord, String> {
+    let mut keys = Vec::new();
+    for token in value.split_whitespace() {
+        keys.extend(parse_sequence_token(token, char_chord(' '))?);
+    }
+    let [key] = keys.as_slice() else {
+        return Err("composer shortcut must be a single key".to_owned());
+    };
+    Ok(key.canonical())
+}
+
+fn default_composer_key_bindings() -> BTreeMap<ComposerShortcutAction, Vec<KeyChord>> {
+    BTreeMap::from([
+        (ComposerShortcutAction::OpenEditor, vec![ctrl_chord('e')]),
+        (
+            ComposerShortcutAction::PasteClipboard,
+            vec![ctrl_chord('v')],
+        ),
+        (
+            ComposerShortcutAction::InsertNewline,
+            vec![
+                modified_key_chord(KeyCode::Enter, KeyModifiers::SHIFT),
+                modified_key_chord(KeyCode::Enter, KeyModifiers::CONTROL),
+                modified_key_chord(KeyCode::Enter, KeyModifiers::ALT),
+            ],
+        ),
+        (
+            ComposerShortcutAction::Submit,
+            vec![key_chord(KeyCode::Enter)],
+        ),
+        (ComposerShortcutAction::Close, vec![key_chord(KeyCode::Esc)]),
+        (ComposerShortcutAction::ClearInput, vec![ctrl_chord('c')]),
+        (
+            ComposerShortcutAction::RemoveLastAttachment,
+            vec![key_chord(KeyCode::Delete)],
+        ),
+        (
+            ComposerShortcutAction::DeletePreviousChar,
+            vec![key_chord(KeyCode::Backspace)],
+        ),
+        (
+            ComposerShortcutAction::DeletePreviousWord,
+            vec![
+                modified_key_chord(KeyCode::Backspace, KeyModifiers::CONTROL),
+                ctrl_chord('w'),
+            ],
+        ),
+        (
+            ComposerShortcutAction::MoveCursorUp,
+            vec![key_chord(KeyCode::Up)],
+        ),
+        (
+            ComposerShortcutAction::MoveCursorDown,
+            vec![key_chord(KeyCode::Down)],
+        ),
+        (
+            ComposerShortcutAction::MoveCursorWordLeft,
+            vec![modified_key_chord(KeyCode::Left, KeyModifiers::CONTROL)],
+        ),
+        (
+            ComposerShortcutAction::MoveCursorLeft,
+            vec![key_chord(KeyCode::Left)],
+        ),
+        (
+            ComposerShortcutAction::MoveCursorWordRight,
+            vec![modified_key_chord(KeyCode::Right, KeyModifiers::CONTROL)],
+        ),
+        (
+            ComposerShortcutAction::MoveCursorRight,
+            vec![key_chord(KeyCode::Right)],
+        ),
+        (
+            ComposerShortcutAction::MoveCursorHome,
+            vec![key_chord(KeyCode::Home)],
+        ),
+        (
+            ComposerShortcutAction::MoveCursorEnd,
+            vec![key_chord(KeyCode::End)],
+        ),
+    ])
+}
+
+fn remove_default_composer_conflicts(
+    defaults: &mut BTreeMap<ComposerShortcutAction, Vec<KeyChord>>,
+    configured: &BTreeMap<ComposerShortcutAction, Vec<KeyChord>>,
+) {
+    defaults.retain(|default_action, default_shortcuts| {
+        if configured.contains_key(default_action) {
+            return false;
+        }
+        default_shortcuts.retain(|default_shortcut| {
+            !configured.values().any(|configured_shortcuts| {
+                configured_shortcuts.iter().any(|configured_shortcut| {
+                    key_chords_match_same_event(*default_shortcut, *configured_shortcut)
+                })
+            })
+        });
+        !default_shortcuts.is_empty()
+    });
+}
+
+fn composer_shortcuts_have_conflicts(
+    bindings: &BTreeMap<ComposerShortcutAction, Vec<KeyChord>>,
+) -> bool {
+    let shortcuts = bindings
+        .values()
+        .flat_map(|binding| binding.iter().copied())
+        .collect::<Vec<_>>();
+    shortcuts.iter().enumerate().any(|(index, shortcut)| {
+        shortcuts
+            .iter()
+            .skip(index + 1)
+            .any(|other| key_chords_match_same_event(*shortcut, *other))
+    })
+}
+
+fn key_chords_match_same_event(left: KeyChord, right: KeyChord) -> bool {
+    candidate_key_events(left)
+        .into_iter()
+        .chain(candidate_key_events(right))
+        .any(|event| left.matches(event) && right.matches(event))
+}
+
+fn candidate_key_events(chord: KeyChord) -> Vec<KeyEvent> {
+    let chord = chord.canonical();
+    let mut events = vec![KeyEvent::new(chord.code, chord.modifiers)];
+    if let KeyCode::Char(value) = chord.code {
+        events.push(KeyEvent::new(
+            KeyCode::Char(value.to_ascii_uppercase()),
+            KeyModifiers::SHIFT,
+        ));
+        events.push(KeyEvent::new(
+            KeyCode::Char(value.to_ascii_lowercase()),
+            KeyModifiers::NONE,
+        ));
+    }
+    events
 }
 
 fn parse_key_code(value: &str) -> std::result::Result<KeyCode, String> {
@@ -1378,9 +1706,13 @@ fn char_chord(value: char) -> KeyChord {
 }
 
 fn ctrl_chord(value: char) -> KeyChord {
+    modified_key_chord(KeyCode::Char(value), KeyModifiers::CONTROL)
+}
+
+fn modified_key_chord(code: KeyCode, modifiers: KeyModifiers) -> KeyChord {
     KeyChord {
-        code: KeyCode::Char(value),
-        modifiers: KeyModifiers::CONTROL,
+        code,
+        modifiers: normalized_modifiers(modifiers),
     }
 }
 
@@ -1799,39 +2131,11 @@ impl KeyBindings {
     }
 
     pub(in crate::tui) fn composer_action(&self, key: KeyEvent) -> ComposerAction {
+        if let Some(action) = self.composer.action_for_key(key) {
+            return action;
+        }
+
         match key.code {
-            KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                ComposerAction::OpenInEditor
-            }
-            KeyCode::Char('v') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                ComposerAction::PasteClipboard
-            }
-            _ if is_composer_newline_key(key) => ComposerAction::InsertNewline,
-            KeyCode::Enter => ComposerAction::Submit,
-            KeyCode::Esc => ComposerAction::Close,
-            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                ComposerAction::ClearInput
-            }
-            KeyCode::Backspace if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                ComposerAction::DeletePreviousWord
-            }
-            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                ComposerAction::DeletePreviousWord
-            }
-            KeyCode::Backspace => ComposerAction::DeletePreviousChar,
-            KeyCode::Delete => ComposerAction::RemoveLastAttachment,
-            KeyCode::Up => ComposerAction::MoveCursorUp,
-            KeyCode::Down => ComposerAction::MoveCursorDown,
-            KeyCode::Left if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                ComposerAction::MoveCursorWordLeft
-            }
-            KeyCode::Left => ComposerAction::MoveCursorLeft,
-            KeyCode::Right if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                ComposerAction::MoveCursorWordRight
-            }
-            KeyCode::Right => ComposerAction::MoveCursorRight,
-            KeyCode::Home => ComposerAction::MoveCursorHome,
-            KeyCode::End => ComposerAction::MoveCursorEnd,
             KeyCode::Char(value) if is_shortcut_key(key) => ComposerAction::InsertChar(value),
             _ => ComposerAction::Ignore,
         }
@@ -2633,6 +2937,76 @@ mod tests {
             key_bindings.channel_action_shortcuts(&actions, 1),
             vec!['3']
         );
+    }
+
+    #[test]
+    fn composer_keymaps_override_default_composer_shortcuts() {
+        let keymap = KeymapOptions {
+            composer: [
+                ("OpenEditor".to_owned(), KeymapBinding::one("ctrl+o")),
+                (
+                    "DeletePreviousWord".to_owned(),
+                    KeymapBinding {
+                        keys: vec!["alt+backspace".to_owned()],
+                        description: None,
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        let key_bindings = KeyBindings::try_from_options(&keymap).expect("composer keymap parses");
+
+        assert_eq!(
+            key_bindings.composer_action(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
+            ComposerAction::OpenInEditor
+        );
+        assert_eq!(
+            key_bindings.composer_action(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL)),
+            ComposerAction::Ignore
+        );
+        assert_eq!(
+            key_bindings.composer_action(KeyEvent::new(KeyCode::Backspace, KeyModifiers::ALT)),
+            ComposerAction::DeletePreviousWord
+        );
+        assert_eq!(
+            key_bindings.composer_action(KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL)),
+            ComposerAction::Ignore
+        );
+    }
+
+    #[test]
+    fn composer_keymaps_reject_unknown_actions_and_conflicts() {
+        let unknown = KeymapOptions {
+            composer: [("MuteChannel".to_owned(), KeymapBinding::one("ctrl+m"))]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        assert!(KeyBindings::try_from_options(&unknown).is_err());
+
+        let conflicting = KeymapOptions {
+            composer: [
+                ("OpenEditor".to_owned(), KeymapBinding::one("ctrl+o")),
+                ("ClearInput".to_owned(), KeymapBinding::one("ctrl+o")),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        assert!(KeyBindings::try_from_options(&conflicting).is_err());
+
+        let shifted_printable_conflict = KeymapOptions {
+            composer: [
+                ("OpenEditor".to_owned(), KeymapBinding::one("A")),
+                ("ClearInput".to_owned(), KeymapBinding::one("shift+a")),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        assert!(KeyBindings::try_from_options(&shifted_printable_conflict).is_err());
     }
 
     #[test]
