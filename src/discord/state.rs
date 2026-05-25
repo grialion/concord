@@ -552,6 +552,7 @@ impl DiscordState {
             | AppEvent::MessageReactionRemoveAll { .. }
             | AppEvent::MessageReactionRemoveEmoji { .. }
             | AppEvent::MessagePinnedUpdate { .. }
+            | AppEvent::ChannelPinsUpdate { .. }
             | AppEvent::PinnedMessagesLoaded { .. }
             | AppEvent::CurrentUserPollVoteUpdate { .. }
             | AppEvent::MessageDelete { .. }
@@ -1005,6 +1006,9 @@ impl DiscordState {
                 message_id,
                 pinned,
             } => self.set_cached_message_pinned(*channel_id, *message_id, *pinned),
+            AppEvent::ChannelPinsUpdate { channel_id, .. } => {
+                self.invalidate_pinned_messages(*channel_id);
+            }
             AppEvent::PinnedMessagesLoaded {
                 channel_id,
                 messages,

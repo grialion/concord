@@ -765,6 +765,13 @@ impl DiscordState {
             by_id.insert(pinned.id, pinned);
         }
 
+        let loaded_pin_ids = by_id.keys().copied().collect::<Vec<_>>();
+        if let Some(messages) = self.message_cache.messages.get_mut(&channel_id) {
+            for message in messages {
+                message.pinned = loaded_pin_ids.contains(&message.id);
+            }
+        }
+
         self.message_cache
             .pinned_messages
             .insert(channel_id, by_id.into_values().collect());
@@ -874,6 +881,23 @@ impl DiscordState {
             if removed_from_pins {
                 self.prune_message_author_role_ids_if_unreferenced(channel_id, message_id);
             }
+        }
+    }
+
+    pub(in crate::discord) fn invalidate_pinned_messages(&mut self, channel_id: Id<ChannelMarker>) {
+        let previous_pin_ids = self
+            .message_cache
+            .pinned_messages
+            .remove(&channel_id)
+            .map(|messages| {
+                messages
+                    .into_iter()
+                    .map(|message| message.id)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        for previous_pin_id in previous_pin_ids {
+            self.prune_message_author_role_ids_if_unreferenced(channel_id, previous_pin_id);
         }
     }
 

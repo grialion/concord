@@ -26,9 +26,9 @@ use members::{
 };
 pub(crate) use messages::parse_message_info;
 use messages::{
-    parse_message_ack, parse_message_create, parse_message_delete, parse_message_delete_bulk,
-    parse_message_reaction_add, parse_message_reaction_remove, parse_message_reaction_remove_all,
-    parse_message_reaction_remove_emoji, parse_message_update,
+    parse_channel_pins_update, parse_message_ack, parse_message_create, parse_message_delete,
+    parse_message_delete_bulk, parse_message_reaction_add, parse_message_reaction_remove,
+    parse_message_reaction_remove_all, parse_message_reaction_remove_emoji, parse_message_update,
 };
 use presence::{parse_presence_update, parse_typing_start};
 use ready::{parse_ready, parse_ready_supplemental};
@@ -83,6 +83,7 @@ pub(super) fn parse_user_account_event(raw: &str) -> Vec<AppEvent> {
         "MESSAGE_REACTION_REMOVE_EMOJI" => parse_message_reaction_remove_emoji(data)
             .into_iter()
             .collect(),
+        "CHANNEL_PINS_UPDATE" => parse_channel_pins_update(data).into_iter().collect(),
         "MESSAGE_ACK" => parse_message_ack(data).into_iter().collect(),
         "USER_GUILD_SETTINGS_UPDATE" => {
             parse_user_guild_settings_update(data).into_iter().collect()

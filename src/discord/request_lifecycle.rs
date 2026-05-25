@@ -484,6 +484,9 @@ impl PinnedMessageRequests {
             AppEvent::PinnedMessagesLoadFailed { channel_id, .. } => {
                 self.mark_failed(*channel_id);
             }
+            AppEvent::ChannelPinsUpdate { channel_id, .. } => {
+                self.requests.remove(channel_id);
+            }
             _ => {}
         }
     }
@@ -1214,6 +1217,27 @@ mod tests {
         assert_eq!(requests.next(Some(first)), None);
         assert_eq!(requests.next(Some(second)), Some(second));
         assert_eq!(requests.next(Some(first)), Some(first));
+    }
+
+    #[test]
+    fn pinned_message_request_reloads_after_channel_pins_update() {
+        let mut requests = PinnedMessageRequests::default();
+        let channel_id = Id::new(1);
+
+        assert_eq!(requests.next(Some(channel_id)), Some(channel_id));
+        requests.record_event(&AppEvent::PinnedMessagesLoaded {
+            channel_id,
+            messages: Vec::new(),
+        });
+        assert_eq!(requests.next(Some(channel_id)), None);
+
+        requests.record_event(&AppEvent::ChannelPinsUpdate {
+            guild_id: None,
+            channel_id,
+            last_pin_timestamp: None,
+        });
+
+        assert_eq!(requests.next(Some(channel_id)), Some(channel_id));
     }
 
     #[test]

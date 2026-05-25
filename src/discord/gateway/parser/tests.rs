@@ -1362,6 +1362,64 @@ fn raw_guild_role_events_patch_single_roles() {
 }
 
 #[test]
+fn raw_channel_pins_update_invalidates_channel_pins() {
+    let events = parse_user_account_event(
+        &json!({
+            "t": "CHANNEL_PINS_UPDATE",
+            "d": {
+                "guild_id": "1",
+                "channel_id": "10",
+                "last_pin_timestamp": "2026-05-25T12:34:56.000000+00:00"
+            }
+        })
+        .to_string(),
+    );
+
+    assert!(matches!(
+        events.as_slice(),
+        [AppEvent::ChannelPinsUpdate { guild_id, channel_id, last_pin_timestamp }]
+            if *guild_id == Some(Id::new(1))
+                && *channel_id == Id::new(10)
+                && last_pin_timestamp.as_deref() == Some("2026-05-25T12:34:56.000000+00:00")
+    ));
+}
+
+#[test]
+fn raw_channel_pins_update_accepts_missing_timestamp() {
+    let events = parse_user_account_event(
+        &json!({
+            "t": "CHANNEL_PINS_UPDATE",
+            "d": {
+                "channel_id": "10"
+            }
+        })
+        .to_string(),
+    );
+
+    assert!(matches!(
+        events.as_slice(),
+        [AppEvent::ChannelPinsUpdate { guild_id, channel_id, last_pin_timestamp }]
+            if guild_id.is_none() && *channel_id == Id::new(10) && last_pin_timestamp.is_none()
+    ));
+}
+
+#[test]
+fn raw_channel_pins_update_skips_missing_channel_id() {
+    let events = parse_user_account_event(
+        &json!({
+            "t": "CHANNEL_PINS_UPDATE",
+            "d": {
+                "guild_id": "1",
+                "last_pin_timestamp": null
+            }
+        })
+        .to_string(),
+    );
+
+    assert!(events.is_empty());
+}
+
+#[test]
 fn guild_create_parser_accepts_member_user_id_without_nested_user() {
     let event = parse_guild_create(&json!({
         "id": "1",

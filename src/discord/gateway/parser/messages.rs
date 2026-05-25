@@ -727,6 +727,17 @@ pub(super) fn parse_message_ack(data: &Value) -> Option<AppEvent> {
     })
 }
 
+pub(super) fn parse_channel_pins_update(data: &Value) -> Option<AppEvent> {
+    Some(AppEvent::ChannelPinsUpdate {
+        guild_id: data.get("guild_id").and_then(parse_id::<GuildMarker>),
+        channel_id: parse_id::<ChannelMarker>(data.get("channel_id")?)?,
+        last_pin_timestamp: data
+            .get("last_pin_timestamp")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+    })
+}
+
 pub(super) fn parse_message_reaction_add(data: &Value) -> Option<AppEvent> {
     Some(AppEvent::MessageReactionAdd {
         guild_id: data.get("guild_id").and_then(parse_id::<GuildMarker>),

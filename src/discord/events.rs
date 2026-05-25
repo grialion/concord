@@ -255,6 +255,11 @@ pub enum AppEvent {
         message_id: Id<MessageMarker>,
         pinned: bool,
     },
+    ChannelPinsUpdate {
+        guild_id: Option<Id<GuildMarker>>,
+        channel_id: Id<ChannelMarker>,
+        last_pin_timestamp: Option<String>,
+    },
     PinnedMessagesLoaded {
         channel_id: Id<ChannelMarker>,
         messages: Vec<MessageInfo>,

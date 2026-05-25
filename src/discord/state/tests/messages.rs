@@ -702,6 +702,35 @@ fn later_history_preserves_pin_state_from_pinned_cache() {
 }
 
 #[test]
+fn pinned_messages_loaded_reconciles_normal_message_pin_flags() {
+    let channel_id: Id<ChannelMarker> = Id::new(10);
+    let mut state = DiscordState::default();
+
+    state.apply_event(&latest_history_loaded(
+        channel_id,
+        vec![
+            MessageInfo {
+                pinned: true,
+                ..message_info(channel_id, 20, "old pin")
+            },
+            MessageInfo {
+                pinned: true,
+                ..message_info(channel_id, 30, "current pin")
+            },
+        ],
+    ));
+
+    state.apply_event(&AppEvent::PinnedMessagesLoaded {
+        channel_id,
+        messages: vec![message_info(channel_id, 30, "current pin")],
+    });
+
+    let messages = state.messages_for_channel(channel_id);
+    assert!(!messages[0].pinned);
+    assert!(messages[1].pinned);
+}
+
+#[test]
 fn message_pinned_update_updates_pinned_cache() {
     let channel_id: Id<ChannelMarker> = Id::new(10);
     let mut state = DiscordState::default();
@@ -724,6 +753,26 @@ fn message_pinned_update_updates_pinned_cache() {
         pinned: false,
     });
     assert!(!state.messages_for_channel(channel_id)[0].pinned);
+    assert!(state.pinned_messages_for_channel(channel_id).is_empty());
+}
+
+#[test]
+fn channel_pins_update_invalidates_loaded_pinned_cache() {
+    let channel_id: Id<ChannelMarker> = Id::new(10);
+    let mut state = DiscordState::default();
+
+    state.apply_event(&AppEvent::PinnedMessagesLoaded {
+        channel_id,
+        messages: vec![message_info(channel_id, 20, "old pin")],
+    });
+    assert_eq!(state.pinned_messages_for_channel(channel_id).len(), 1);
+
+    state.apply_event(&AppEvent::ChannelPinsUpdate {
+        guild_id: None,
+        channel_id,
+        last_pin_timestamp: Some("2026-05-25T12:34:56.000000+00:00".to_owned()),
+    });
+
     assert!(state.pinned_messages_for_channel(channel_id).is_empty());
 }
 
