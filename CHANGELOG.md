@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-05-25
+
+### Bug Fixes
+
+- Fix expensive channel sidebar build by grouping joined threads once by @chojs23
+
+### Documentation
+
+- Update readme for keymap example by @chojs23
+- Update readme for powershell installer by @chojs23
+
+### Refactor
+
+- Fixture builders by @chojs23
+
 ## [2.1.0] - 2026-05-24
 
 ### Bug Fixes
