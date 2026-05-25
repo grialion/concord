@@ -777,6 +777,25 @@ impl DashboardState {
             ActiveGuildScope::Unset | ActiveGuildScope::DirectMessages => BTreeMap::new(),
         };
 
+        // Group joined threads by parent channel once. Looking them up per entry
+        // avoids rescanning every channel for each row, which made sidebar
+        // building O(N^2) and stuttered navigation on large guilds.
+        let mut joined_threads_by_parent: BTreeMap<Id<ChannelMarker>, Vec<&ChannelState>> =
+            BTreeMap::new();
+        for channel in &channels {
+            if channel.is_thread() && channel.current_user_joined_thread {
+                if let Some(parent_id) = channel.parent_id {
+                    joined_threads_by_parent
+                        .entry(parent_id)
+                        .or_default()
+                        .push(*channel);
+                }
+            }
+        }
+        for threads in joined_threads_by_parent.values_mut() {
+            sort_thread_channels(threads);
+        }
+
         let category_ids: HashSet<Id<ChannelMarker>> = channels
             .iter()
             .filter(|channel| channel.is_category())
@@ -804,6 +823,7 @@ impl DashboardState {
                     root,
                     ChannelBranch::None,
                     &voice_participants_by_channel,
+                    &joined_threads_by_parent,
                 );
                 continue;
             }
@@ -842,6 +862,7 @@ impl DashboardState {
                     child,
                     branch,
                     &voice_participants_by_channel,
+                    &joined_threads_by_parent,
                 );
             }
         }
@@ -860,9 +881,12 @@ impl DashboardState {
         state: &'a ChannelState,
         branch: ChannelBranch,
         voice_participants_by_channel: &BTreeMap<Id<ChannelMarker>, Vec<VoiceParticipantState>>,
+        joined_threads_by_parent: &BTreeMap<Id<ChannelMarker>, Vec<&'a ChannelState>>,
     ) {
         entries.push(ChannelPaneEntry::Channel { state, branch });
-        self.push_joined_thread_entries(entries, state.id, branch);
+        if let Some(threads) = joined_threads_by_parent.get(&state.id) {
+            Self::push_joined_thread_entries(entries, threads, branch);
+        }
         if !state.is_voice() {
             return;
         }
@@ -878,23 +902,12 @@ impl DashboardState {
     }
 
     fn push_joined_thread_entries<'a>(
-        &'a self,
         entries: &mut Vec<ChannelPaneEntry<'a>>,
-        parent_id: Id<ChannelMarker>,
+        threads: &[&'a ChannelState],
         parent_branch: ChannelBranch,
     ) {
-        let mut threads: Vec<&ChannelState> = self
-            .channels()
-            .into_iter()
-            .filter(|channel| {
-                channel.is_thread()
-                    && channel.parent_id == Some(parent_id)
-                    && channel.current_user_joined_thread
-            })
-            .collect();
-        sort_thread_channels(&mut threads);
         let last_child_index = threads.len().saturating_sub(1);
-        entries.extend(threads.into_iter().enumerate().map(|(index, state)| {
+        entries.extend(threads.iter().enumerate().map(|(index, &state)| {
             let branch = if index == last_child_index {
                 ChannelBranch::Last
             } else {
