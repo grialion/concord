@@ -64,9 +64,14 @@ Install the latest release with the cargo-dist shell installer:
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/chojs23/concord/releases/latest/download/concord-installer.sh | sh
 ```
 
+On Windows, use the PowerShell installer instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/chojs23/concord/releases/latest/download/concord-installer.ps1 | iex"
+```
+
 The installer places `concord` under `$CARGO_HOME/bin`, which is usually
-`~/.cargo/bin`. Make sure that directory is on your `PATH` before running
-`concord`.
+`~/.cargo/bin` on Unix and `%USERPROFILE%\.cargo\bin` on Windows.
 
 ### Build from source
 
