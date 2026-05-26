@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.4] - 2026-05-27
+
+### Bug Fixes
+
+- Add dependencies for cargo publish by @chojs23
+
+### Features
+
+- Update keymaps by @chojs23
+- Show keymap help with active shortcut labels by @chojs23
+
 ## [2.1.3] - 2026-05-26
 
 ### Bug Fixes
