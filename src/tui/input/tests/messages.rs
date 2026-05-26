@@ -74,6 +74,50 @@ fn message_viewport_scroll_keys_do_not_change_selection_or_request_history() {
 }
 
 #[test]
+fn message_viewport_scroll_uses_configured_keys() {
+    let mut state = state_with_messages_from_state(
+        state_with_keymap(KeymapOptions {
+            mappings: [
+                (
+                    "ScrollMessageViewportDown".to_owned(),
+                    KeymapBinding::one("N"),
+                ),
+                (
+                    "ScrollMessageViewportUp".to_owned(),
+                    KeymapBinding::one("P"),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        }),
+        0,
+    );
+    state.push_event(message_create_event(MessageCreateFixture {
+        channel_id: Id::new(2),
+        message_id: Id::new(1),
+        content: Some("abcdefghijkl".to_owned()),
+        ..guild_message_create_fixture()
+    }));
+    state.focus_pane(FocusPane::Messages);
+    state.set_message_view_height(3);
+    state.scroll_message_viewport_top();
+    state.clamp_message_viewport_for_image_previews(5, 16, 3);
+
+    handle_key(&mut state, char_key('J'));
+    state.clamp_message_viewport_for_image_previews(5, 16, 3);
+    assert_eq!(state.message_line_scroll(), 0);
+
+    handle_key(&mut state, char_key('N'));
+    state.clamp_message_viewport_for_image_previews(5, 16, 3);
+    assert_eq!(state.message_line_scroll(), 1);
+
+    handle_key(&mut state, char_key('P'));
+    state.clamp_message_viewport_for_image_previews(5, 16, 3);
+    assert_eq!(state.message_line_scroll(), 0);
+}
+
+#[test]
 fn backtick_toggles_debug_log_popup() {
     let mut state = DashboardState::new();
 
@@ -159,8 +203,7 @@ fn message_action_menu_selection_aliases_move_disabled_selection() {
 fn esc_returns_from_message_opened_thread() {
     let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
-    handle_key(&mut state, key(KeyCode::Enter));
-    handle_key(&mut state, key(KeyCode::Enter));
+    handle_key(&mut state, char_key('t'));
     assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
 
     handle_key(&mut state, key(KeyCode::Esc));

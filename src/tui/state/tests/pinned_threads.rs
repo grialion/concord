@@ -304,8 +304,7 @@ fn return_from_opened_thread_restores_scrolled_parent_message_window() {
     let expected_message_scroll = state.message_scroll();
     let expected_line_scroll = state.message_line_scroll();
 
-    state.open_selected_message_actions();
-    state.activate_selected_message_action();
+    state.activate_message_action_kind(MessageActionKind::OpenThread);
     assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
 
     assert!(state.return_from_opened_thread());
@@ -344,8 +343,7 @@ fn history_loaded_thread_created_message_opens_reference_thread_after_rename() {
             .any(|action| action.kind == MessageActionKind::OpenThread)
     );
 
-    state.open_selected_message_actions();
-    state.activate_selected_message_action();
+    state.activate_message_action_kind(MessageActionKind::OpenThread);
 
     assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
 }

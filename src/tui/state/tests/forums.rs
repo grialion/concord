@@ -1028,15 +1028,11 @@ fn poll_vote_actions_are_available_by_default() {
     }));
 
     let actions = state.selected_message_action_items();
+    let poll_action = actions
+        .iter()
+        .find(|action| action.kind == MessageActionKind::OpenPollVotePicker)
+        .expect("poll action should exist");
 
-    assert_eq!(
-        actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
-        vec![
-            MessageActionKind::OpenThread,
-            MessageActionKind::ShowReactionUsers,
-            MessageActionKind::OpenPollVotePicker,
-        ]
-    );
-    assert_eq!(actions[2].label, "Choose poll votes");
-    assert!(actions[2].enabled);
+    assert_eq!(poll_action.label, "choose poll votes");
+    assert!(poll_action.enabled);
 }

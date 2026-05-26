@@ -326,6 +326,35 @@ fn navigation_selection_ignores_modified_j_and_k() {
 }
 
 #[test]
+fn navigation_selection_uses_configured_row_movement_keys() {
+    let mut state = state_with_keymap(KeymapOptions {
+        mappings: [
+            ("SelectNext".to_owned(), KeymapBinding::one("n")),
+            ("SelectPrevious".to_owned(), KeymapBinding::one("p")),
+        ]
+        .into_iter()
+        .collect(),
+        ..Default::default()
+    });
+    state.open_options_popup();
+
+    handle_key(&mut state, char_key('j'));
+    assert_eq!(state.selected_option_index(), Some(0));
+
+    handle_key(&mut state, char_key('n'));
+    assert_eq!(state.selected_option_index(), Some(1));
+
+    handle_key(&mut state, char_key('p'));
+    assert_eq!(state.selected_option_index(), Some(0));
+
+    handle_key(&mut state, ctrl_key('n'));
+    assert_eq!(state.selected_option_index(), Some(1));
+
+    handle_key(&mut state, ctrl_key('p'));
+    assert_eq!(state.selected_option_index(), Some(0));
+}
+
+#[test]
 fn uppercase_h_l_scroll_focused_side_panes_horizontally() {
     let mut state = state_with_messages(1);
 
@@ -348,6 +377,18 @@ fn uppercase_h_l_scroll_focused_side_panes_horizontally() {
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, char_key('L'));
     assert_eq!(state.member_horizontal_scroll(), 1);
+}
+
+#[test]
+fn enter_opens_member_actions_from_member_pane() {
+    let mut state = state_with_members(1);
+    state.focus_pane(FocusPane::Members);
+
+    let command = handle_key(&mut state, key(KeyCode::Enter));
+
+    assert_eq!(command, None);
+    assert!(state.is_member_leader_action_active());
+    assert!(!state.is_user_profile_popup_open());
 }
 
 #[test]

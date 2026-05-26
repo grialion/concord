@@ -1,6 +1,23 @@
 use super::*;
 use crate::discord::AppCommand;
 
+fn message_action<'a>(
+    actions: &'a [MessageActionItem],
+    kind: MessageActionKind,
+) -> &'a MessageActionItem {
+    actions
+        .iter()
+        .find(|action| action.kind == kind)
+        .expect("message action should exist")
+}
+
+fn message_action_index(actions: &[MessageActionItem], kind: MessageActionKind) -> usize {
+    actions
+        .iter()
+        .position(|action| action.kind == kind)
+        .expect("message action should exist")
+}
+
 #[test]
 fn message_action_items_reflect_selected_message_capabilities() {
     let mut state = state_with_messages(1);
@@ -8,11 +25,29 @@ fn message_action_items_reflect_selected_message_capabilities() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 3);
-    assert!(actions.iter().all(|action| !action.enabled));
-    assert_eq!(actions[0].label, "Open thread");
-    assert_eq!(actions[1].label, "Show reacted users");
-    assert_eq!(actions[2].label, "Choose poll votes");
+    assert_eq!(
+        actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
+        vec![
+            MessageActionKind::CopyContent,
+            MessageActionKind::OpenReactionPicker,
+            MessageActionKind::Reply,
+            MessageActionKind::OpenDeleteConfirmation,
+            MessageActionKind::Edit,
+            MessageActionKind::OpenUrl,
+            MessageActionKind::ViewAttachment,
+            MessageActionKind::ShowProfile,
+            MessageActionKind::OpenPinConfirmation,
+            MessageActionKind::OpenThread,
+            MessageActionKind::ShowReactionUsers,
+            MessageActionKind::OpenPollVotePicker,
+        ]
+    );
+    assert!(message_action(&actions, MessageActionKind::CopyContent).enabled);
+    assert!(message_action(&actions, MessageActionKind::Reply).enabled);
+    assert!(message_action(&actions, MessageActionKind::ShowProfile).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenThread).enabled);
+    assert!(!message_action(&actions, MessageActionKind::ShowReactionUsers).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenPollVotePicker).enabled);
 }
 
 #[test]
@@ -169,8 +204,9 @@ fn normal_message_actions_show_disabled_dynamic_actions() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 3);
-    assert!(actions.iter().all(|action| !action.enabled));
+    assert!(!message_action(&actions, MessageActionKind::OpenThread).enabled);
+    assert!(!message_action(&actions, MessageActionKind::ShowReactionUsers).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenPollVotePicker).enabled);
 }
 
 #[test]
@@ -184,8 +220,9 @@ fn own_regular_message_actions_show_disabled_dynamic_actions() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 3);
-    assert!(actions.iter().all(|action| !action.enabled));
+    assert!(!message_action(&actions, MessageActionKind::OpenThread).enabled);
+    assert!(!message_action(&actions, MessageActionKind::ShowReactionUsers).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenPollVotePicker).enabled);
 }
 
 #[test]
@@ -200,8 +237,9 @@ fn own_reply_message_actions_show_disabled_dynamic_actions() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 3);
-    assert!(actions.iter().all(|action| !action.enabled));
+    assert!(!message_action(&actions, MessageActionKind::OpenThread).enabled);
+    assert!(!message_action(&actions, MessageActionKind::ShowReactionUsers).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenPollVotePicker).enabled);
 }
 
 #[test]
@@ -405,8 +443,10 @@ fn reply_attachment_action_can_open_attachment_viewer() {
     );
     state.focus_pane(FocusPane::Messages);
     let actions = state.selected_message_action_items();
-    assert_eq!(actions.len(), 3);
-    assert!(actions.iter().all(|action| !action.enabled));
+    assert!(message_action(&actions, MessageActionKind::ViewAttachment).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenThread).enabled);
+    assert!(!message_action(&actions, MessageActionKind::ShowReactionUsers).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenPollVotePicker).enabled);
 
     state.direct_open_selected_message_attachment_viewer();
 
@@ -599,8 +639,11 @@ fn non_regular_message_actions_only_show_supported_actions() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(actions.len(), 3);
-    assert!(actions.iter().all(|action| !action.enabled));
+    assert!(!message_action(&actions, MessageActionKind::Edit).enabled);
+    assert!(message_action(&actions, MessageActionKind::ViewAttachment).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenThread).enabled);
+    assert!(!message_action(&actions, MessageActionKind::ShowReactionUsers).enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenPollVotePicker).enabled);
 }
 
 #[test]
@@ -620,17 +663,9 @@ fn message_action_items_keep_poll_actions_for_attachment_messages() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(
-        actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
-        vec![
-            MessageActionKind::OpenThread,
-            MessageActionKind::ShowReactionUsers,
-            MessageActionKind::OpenPollVotePicker,
-        ]
-    );
-    assert!(!actions[0].enabled);
-    assert!(!actions[1].enabled);
-    assert!(actions[2].enabled);
+    assert!(!message_action(&actions, MessageActionKind::OpenThread).enabled);
+    assert!(!message_action(&actions, MessageActionKind::ShowReactionUsers).enabled);
+    assert!(message_action(&actions, MessageActionKind::OpenPollVotePicker).enabled);
 }
 
 #[test]
@@ -648,7 +683,11 @@ fn single_select_poll_action_opens_picker_and_submits_one_answer() {
     }));
     state.open_selected_message_actions();
 
-    assert!(state.select_message_action_row(2));
+    let poll_index = message_action_index(
+        &state.selected_message_action_items(),
+        MessageActionKind::OpenPollVotePicker,
+    );
+    assert!(state.select_message_action_row(poll_index));
     assert_eq!(state.activate_selected_message_action(), None);
     assert!(state.is_poll_vote_picker_open());
 
@@ -682,7 +721,11 @@ fn single_select_poll_picker_normalizes_multiple_initial_votes() {
         ..guild_message_create_fixture()
     }));
     state.open_selected_message_actions();
-    assert!(state.select_message_action_row(2));
+    let poll_index = message_action_index(
+        &state.selected_message_action_items(),
+        MessageActionKind::OpenPollVotePicker,
+    );
+    assert!(state.select_message_action_row(poll_index));
     assert_eq!(state.activate_selected_message_action(), None);
 
     assert_eq!(
@@ -719,11 +762,17 @@ fn multi_select_poll_action_opens_picker_and_submits_selected_answers() {
     }));
 
     let actions = state.selected_message_action_items();
-    assert_eq!(actions[2].kind, MessageActionKind::OpenPollVotePicker);
-    assert_eq!(actions[2].label, "Choose poll votes");
+    assert_eq!(
+        message_action(&actions, MessageActionKind::OpenPollVotePicker).label,
+        "choose poll votes"
+    );
 
     state.open_selected_message_actions();
-    assert!(state.select_message_action_row(2));
+    let poll_index = message_action_index(
+        &state.selected_message_action_items(),
+        MessageActionKind::OpenPollVotePicker,
+    );
+    assert!(state.select_message_action_row(poll_index));
     assert_eq!(state.activate_selected_message_action(), None);
     assert!(state.is_poll_vote_picker_open());
     assert_eq!(

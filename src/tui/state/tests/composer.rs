@@ -1295,8 +1295,7 @@ fn picker_ranks_alias_prefix_above_username_prefix() {
 fn composer_sends_to_opened_thread_channel() {
     let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
-    state.open_selected_message_actions();
-    state.activate_selected_message_action();
+    state.activate_message_action_kind(MessageActionKind::OpenThread);
 
     state.start_composer();
     state.push_composer_char('h');

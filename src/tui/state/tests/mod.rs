@@ -13,7 +13,7 @@ use unicode_width::UnicodeWidthStr;
 use super::model::{ChannelBranch, GuildBranch};
 use super::{
     ActiveGuildScope, AttachmentViewerItem, ChannelActionKind, ChannelPaneEntry, DashboardState,
-    FocusPane, GuildPaneEntry, MessageActionKind,
+    FocusPane, GuildPaneEntry, MessageActionItem, MessageActionKind,
 };
 use crate::discord::{
     ActivityInfo, ActivityKind, AppCommand, AppEvent, AttachmentInfo, AttachmentUpdate,

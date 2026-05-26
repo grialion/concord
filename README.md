@@ -242,22 +242,26 @@ Concord has a four-pane layout like Discord.
 
 With default vim-style navigation:
 
-| Key                  | Action                                     |
-| -------------------- | ------------------------------------------ |
-| `1` `2` `3` `4`      | Focus pane                                 |
-| `Tab` / `Shift+Tab`  | Cycle focus forward / backward             |
-| `h` / `l`, `←` / `→` | Move focus left / right                    |
-| `j` / `k`, `↑` / `↓` | Move down / up                             |
-| `J`, `K` / `H`, `L`  | Scroll viewport                            |
-| `Ctrl+d` / `Ctrl+u`  | Half-page scroll                           |
-| `Alt+h/l/←/→`        | Resize focused pane width                  |
-| `g` / `G`            | Jump or scroll to top / bottom             |
-| `Enter`              | Open or activate the selected item         |
-| `/`                  | Filter the focused Guilds or Channels pane |
-| `Space`              | Open leader shortcut window                |
-| `i`                  | Text insert mode                           |
-| `Esc`                | Close popup, cancel mode, or go back       |
-| `q`                  | Quit                                       |
+| Key                                       | Action                                     |
+| ----------------------------------------- | ------------------------------------------ |
+| `1` `2` `3` `4`                           | Focus pane                                 |
+| `Tab` / `Shift+Tab`                       | Cycle focus forward / backward             |
+| `h` / `l`, `←` / `→`                      | Move focus left / right                    |
+| `j` / `k`, `↑` / `↓`, `Ctrl+n` / `Ctrl+p` | Move down / up                             |
+| `J`, `K` / `H`, `L`                       | Scroll viewport                            |
+| `Ctrl+d` / `Ctrl+u`                       | Half-page scroll                           |
+| `Alt+h/l/←/→`                             | Resize focused pane width                  |
+| `g` / `G`                                 | Jump or scroll to top / bottom             |
+| `Enter`                                   | Open or activate the selected item         |
+| `/`                                       | Filter the focused Guilds or Channels pane |
+| `Space`                                   | Open leader shortcut window                |
+| `i`                                       | Text insert mode                           |
+| `Esc`                                     | Close popup, cancel mode, or go back       |
+| `q`                                       | Quit Concord                               |
+
+`Ctrl+n` and `Ctrl+p` are fixed row movement keys. The default `j` and `k`
+row movement keys are `SelectNext` and `SelectPrevious` and can be changed in
+`keymap.toml`.
 
 #### Leader key
 
@@ -461,6 +465,7 @@ Example `keymap.toml`:
 [keymap]
 StartComposer = { keys = ["c"] }
 ReplyMessage = "<leader>mr"
+OpenThread = { keys = ["t"], description = "open thread" }
 VoiceDeafen = "<leader>vd"
 VoiceMute = "<leader>vm"
 VoiceLeave = "<leader>vl"
@@ -471,9 +476,6 @@ VoiceLeave = "<leader>vl"
 [keymap.channel_actions]
 MuteChannel = { keys = ["x"], description = "mute channel" }
 
-[keymap.message_actions]
-OpenThread = { keys = ["t"], description = "open thread" }
-
 [keymap.composer]
 OpenEditor = "<C-o>"
 DeletePreviousWord = "<A-backspace>"
@@ -481,13 +483,13 @@ DeletePreviousWord = "<A-backspace>"
 
 There are five kinds of keymap settings:
 
-| Config path                                                                                                 | What it controls                                                                            |
-| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `[keymap] leader`                                                                                           | The key that opens the leader popup. Defaults to `Space`.                                   |
-| `[keymap] <ActionName>`                                                                                     | Directly assignable UI actions such as `StartComposer`, `ChannelSwitcher`, and `VoiceMute`. |
-| `[keymap.groups]`                                                                                           | Optional titles for prefix popups, such as naming `<leader>v` as `Voice`.                   |
-| `[keymap.guild_actions]`, `[keymap.channel_actions]`, `[keymap.member_actions]`, `[keymap.message_actions]` | Shortcuts shown inside focused-pane action menus opened by `OpenFocusedPaneAction`.         |
-| `[keymap.composer]`                                                                                         | Shortcuts used while the message composer is open, such as editor and cursor commands.      |
+| Config path                                                                     | What it controls                                                                          |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `[keymap] leader`                                                               | The key that opens the leader popup. Defaults to `Space`.                                 |
+| `[keymap] <ActionName>`                                                         | Directly assignable UI actions such as `StartComposer`, `ReplyMessage`, and `OpenThread`. |
+| `[keymap.groups]`                                                               | Optional titles for prefix popups, such as naming `<leader>v` as `Voice`.                 |
+| `[keymap.guild_actions]`, `[keymap.channel_actions]`, `[keymap.member_actions]` | Shortcuts shown inside focused-pane action menus opened by `OpenFocusedPaneAction`.       |
+| `[keymap.composer]`                                                             | Shortcuts used while the message composer is open, such as editor and cursor commands.    |
 
 `[keymap]` action values can be either a string or an object with `keys` and an
 optional `description`:
@@ -521,9 +523,10 @@ DeletePreviousWord = "<A-backspace>"
 ```
 
 Direct `[keymap]` actions and `leader` cannot use reserved keys: `Enter`, `Esc`,
-`Backspace`, `Delete`, or `Ctrl+c`. Invalid, reserved, or conflicting bindings
-are ignored for that action. `[keymap.composer]` is separate and can remap those
-editing keys.
+`Backspace`, `Delete`, `Ctrl+c`, `Ctrl+n`, or `Ctrl+p`. Invalid, reserved, or
+conflicting bindings are ignored for that action. `[keymap.composer]` is separate
+and can remap those editing keys. `Ctrl+n` and `Ctrl+p` always move row
+selection down and up.
 
 ##### Directly assignable actions
 
@@ -533,34 +536,53 @@ popup. `OpenDisplayOptions`, `OpenNotificationOptions`, and `OpenVoiceOptions`
 have contextual defaults inside the Options popup, so assign your own full
 sequence if you want direct keys for them.
 
+Navigation and app actions:
+
+| Action name                 | Default config             | Action                                   |
+| --------------------------- | -------------------------- | ---------------------------------------- |
+| `StartComposer`             | `"i"`                      | Start the message composer.              |
+| `OpenPaneFilter`            | `"/"`                      | Open the focused pane filter.            |
+| `FocusGuildPane`            | `"1"`                      | Show and focus the Servers pane.         |
+| `FocusChannelPane`          | `"2"`                      | Show and focus the Channels pane.        |
+| `FocusMessagePane`          | `"3"`                      | Focus the Messages pane.                 |
+| `FocusMemberPane`           | `"4"`                      | Show and focus the Members pane.         |
+| `SelectNext`                | `"j"`                      | Move selection down in navigation lists. |
+| `SelectPrevious`            | `"k"`                      | Move selection up in navigation lists.   |
+| `CycleFocusNext`            | `["tab", "l", "right"]`    | Cycle focus forward.                     |
+| `CycleFocusPrevious`        | `["<S-tab>", "h", "left"]` | Cycle focus backward.                    |
+| `HalfPageDown`              | `"<C-d>"`                  | Half-page down.                          |
+| `HalfPageUp`                | `"<C-u>"`                  | Half-page up.                            |
+| `ScrollMessageViewportDown` | `"J"`                      | Scroll the message viewport down.        |
+| `ScrollMessageViewportUp`   | `"K"`                      | Scroll the message viewport up.          |
+| `JumpTop`                   | `"g"`                      | Jump to the top.                         |
+| `JumpBottom`                | `"G"`                      | Jump to the bottom.                      |
+| `ScrollHorizontalLeft`      | `"H"`                      | Scroll focused pane horizontally left.   |
+| `ScrollHorizontalRight`     | `"L"`                      | Scroll focused pane horizontally right.  |
+| `ResizePaneLeft`            | `["<A-h>", "<A-left>"]`    | Shrink the focused pane width.           |
+| `ResizePaneRight`           | `["<A-l>", "<A-right>"]`   | Grow the focused pane width.             |
+| `Quit`                      | `"q"`                      | Quit Concord.                            |
+
+Message actions:
+
+| Action name             | Default config | Action                                          |
+| ----------------------- | -------------- | ----------------------------------------------- |
+| `CopyMessage`           | `"y"`          | Copy selected message content.                  |
+| `ReactMessage`          | `"r"`          | Add or remove a reaction.                       |
+| `ReplyMessage`          | `"R"`          | Start a reply.                                  |
+| `DeleteMessage`         | `"d"`          | Open delete confirmation.                       |
+| `EditMessage`           | `"e"`          | Start editing the selected message.             |
+| `OpenMessageUrl`        | `"o"`          | Open the selected message URL.                  |
+| `ViewMessageAttachment` | `"v"`          | Open the selected message attachment viewer.    |
+| `ShowMessageProfile`    | `"p"`          | Open the selected message author's profile.     |
+| `PinMessage`            | `"P"`          | Open pin or unpin confirmation.                 |
+| `OpenThread`            | `"t"`          | Open the selected message's thread.             |
+| `ShowReactionUsers`     | `"u"`          | Show users who reacted to the selected message. |
+| `OpenPollVotePicker`    | `"c"`          | Choose poll votes for the selected message.     |
+
+Pane, options, and voice actions:
+
 | Action name               | Default config                     | Action                                       |
 | ------------------------- | ---------------------------------- | -------------------------------------------- |
-| `StartComposer`           | `"i"`                              | Start the message composer.                  |
-| `OpenPaneFilter`          | `"/"`                              | Open the focused pane filter.                |
-| `FocusGuildPane`          | `"1"`                              | Show and focus the Servers pane.             |
-| `FocusChannelPane`        | `"2"`                              | Show and focus the Channels pane.            |
-| `FocusMessagePane`        | `"3"`                              | Focus the Messages pane.                     |
-| `FocusMemberPane`         | `"4"`                              | Show and focus the Members pane.             |
-| `CycleFocusNext`          | `["tab", "l", "right"]`            | Cycle focus forward.                         |
-| `CycleFocusPrevious`      | `["<S-tab>", "h", "left"]`         | Cycle focus backward.                        |
-| `HalfPageDown`            | `"<C-d>"`                          | Half-page down.                              |
-| `HalfPageUp`              | `"<C-u>"`                          | Half-page up.                                |
-| `JumpTop`                 | `"g"`                              | Jump to the top.                             |
-| `JumpBottom`              | `"G"`                              | Jump to the bottom.                          |
-| `ScrollHorizontalLeft`    | `"H"`                              | Scroll focused pane horizontally left.       |
-| `ScrollHorizontalRight`   | `"L"`                              | Scroll focused pane horizontally right.      |
-| `ResizePaneLeft`          | `["<A-h>", "<A-left>"]`           | Shrink the focused pane width.               |
-| `ResizePaneRight`         | `["<A-l>", "<A-right>"]`          | Grow the focused pane width.                 |
-| `Quit`                    | `"q"`                              | Quit Concord.                                |
-| `CopyMessage`             | `"y"`                              | Copy selected message content.               |
-| `ReactMessage`            | `"r"`                              | Add or remove a reaction.                    |
-| `ReplyMessage`            | `"R"`                              | Start a reply.                               |
-| `DeleteMessage`           | `"d"`                              | Open delete confirmation.                    |
-| `EditMessage`             | `"e"`                              | Start editing the selected message.          |
-| `OpenMessageUrl`          | `"o"`                              | Open the selected message URL.               |
-| `ViewMessageAttachment`   | `"v"`                              | Open the selected message attachment viewer. |
-| `ShowMessageProfile`      | `"p"`                              | Open the selected message author's profile.  |
-| `PinMessage`              | `"P"`                              | Open pin or unpin confirmation.              |
 | `ToggleGuildPane`         | `"<leader>1"`                      | Toggle the Servers pane.                     |
 | `ToggleChannelPane`       | `"<leader>2"`                      | Toggle the Channels pane.                    |
 | `ToggleMemberPane`        | `"<leader>4"`                      | Toggle the Members pane.                     |
@@ -603,9 +625,11 @@ but that key will run the composer action instead of inserting text.
 ##### Focused pane actions
 
 `OpenFocusedPaneAction` opens the action menu for the pane that currently has
-focus. Server, channel, member, and message pane actions can be configured in
-scoped tables. Focused-pane action menus keep their scoped actions visible, and
-actions that do not apply to the current selection are shown dimmed and disabled.
+focus. Server, channel, and member pane actions can be configured in scoped
+tables. The message action menu lists the direct message actions from
+`[keymap]`, including any configured key overrides. Focused-pane action menus
+keep their actions visible, and actions that do not apply to the current
+selection are shown dimmed and disabled.
 
 Server pane actions:
 
@@ -652,27 +676,15 @@ ShowProfile = { keys = ["p"], description = "show profile" }
 | ------------- | ------- | ----------------------------------- |
 | `ShowProfile` | `p`     | Open the selected member's profile. |
 
-Messages pane actions can be configured under `[keymap.message_actions]`. This
-menu only contains message actions that do not already have a direct message
-shortcut.
+The messages pane action menu uses the message actions listed under directly
+assignable actions. For example, if `ReplyMessage = "n"` is configured under
+`[keymap]`, the message action menu shows `n` for reply.
 
-```toml
-[keymap.message_actions]
-OpenThread = "t"
-ShowReactionUsers = "u"
-OpenPollVotePicker = "c"
-```
-
-| Action label         | Default shortcut | When it appears                                      |
-| -------------------- | ---------------- | ---------------------------------------------------- |
-| `Open thread`        | `t`              | The selected message has a thread. Otherwise dimmed. |
-| `Show reacted users` | `u`              | Reaction users can be shown. Otherwise dimmed.       |
-| `Choose poll votes`  | `c`              | A non-finalized poll is selected. Otherwise dimmed.  |
-
-Scoped action `description` changes the label shown in the action menu. Multiple
-configured `keys` work as aliases when they are unique in the current action
-menu, and the popup shows them together, such as `[x/u]`. If two actions in the
-same menu use the same configured key, that key is ignored for both actions. If
+Scoped action `description` changes the label shown in server, channel, and
+member action menus. Multiple configured `keys` work as aliases when they are
+unique in the current action menu, and the popup shows them together, such as
+`[x/u]`. If two actions in the same menu use the same configured key, that key
+is ignored for both actions. If
 an action has no unique configured key, it falls back to `1` through `9`, then
 `0`.
 
@@ -688,10 +700,14 @@ FocusGuildPane = "1"
 FocusChannelPane = "2"
 FocusMessagePane = "3"
 FocusMemberPane = "4"
+SelectNext = "j"
+SelectPrevious = "k"
 CycleFocusNext = { keys = ["tab", "l", "right"] }
 CycleFocusPrevious = { keys = ["<S-tab>", "h", "left"] }
 HalfPageDown = "<C-d>"
 HalfPageUp = "<C-u>"
+ScrollMessageViewportDown = "J"
+ScrollMessageViewportUp = "K"
 JumpTop = "g"
 JumpBottom = "G"
 ScrollHorizontalLeft = "H"
@@ -708,6 +724,9 @@ OpenMessageUrl = "o"
 ViewMessageAttachment = "v"
 ShowMessageProfile = "p"
 PinMessage = "P"
+OpenThread = "t"
+ShowReactionUsers = "u"
+OpenPollVotePicker = "c"
 ToggleGuildPane = "<leader>1"
 ToggleChannelPane = "<leader>2"
 ToggleMemberPane = "<leader>4"
@@ -735,11 +754,6 @@ MuteChannel = "u"
 
 [keymap.member_actions]
 ShowProfile = "p"
-
-[keymap.message_actions]
-OpenThread = "t"
-ShowReactionUsers = "u"
-OpenPollVotePicker = "c"
 
 [keymap.composer]
 OpenEditor = "<C-e>"

@@ -64,31 +64,73 @@ impl DashboardState {
         let Some(message) = self.selected_message_state() else {
             return Vec::new();
         };
-        let mut actions = Vec::new();
-
-        actions.push(MessageActionItem {
-            kind: MessageActionKind::OpenThread,
-            label: "Open thread".to_owned(),
-            enabled: self.thread_summary_for_message(message).is_some(),
-        });
-
-        actions.push(MessageActionItem {
-            kind: MessageActionKind::ShowReactionUsers,
-            label: "Show reacted users".to_owned(),
-            enabled: !message.reactions.is_empty()
-                && self.can_show_reaction_users_for_message(message),
-        });
-
         let poll_voting_enabled = message
             .poll
             .as_ref()
             .is_some_and(|poll| !poll.results_finalized.unwrap_or(false));
-        actions.push(MessageActionItem {
-            kind: MessageActionKind::OpenPollVotePicker,
-            label: "Choose poll votes".to_owned(),
-            enabled: poll_voting_enabled,
-        });
-        actions
+        vec![
+            MessageActionItem {
+                kind: MessageActionKind::CopyContent,
+                label: "copy message".to_owned(),
+                enabled: message.content.is_some(),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::OpenReactionPicker,
+                label: "react".to_owned(),
+                enabled: self.can_open_reaction_picker(message),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::Reply,
+                label: "reply".to_owned(),
+                enabled: self.can_send_in_selected_channel(),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::OpenDeleteConfirmation,
+                label: "delete message".to_owned(),
+                enabled: self.can_delete_message(message),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::Edit,
+                label: "edit message".to_owned(),
+                enabled: self.can_edit_message(message),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::OpenUrl,
+                label: "open URL".to_owned(),
+                enabled: !message_url_items(message).is_empty(),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::ViewAttachment,
+                label: "view attachment".to_owned(),
+                enabled: message.attachments_in_display_order().next().is_some(),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::ShowProfile,
+                label: "show profile".to_owned(),
+                enabled: true,
+            },
+            MessageActionItem {
+                kind: MessageActionKind::OpenPinConfirmation,
+                label: "pin message".to_owned(),
+                enabled: self.can_pin_messages_for_message(message),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::OpenThread,
+                label: "open thread".to_owned(),
+                enabled: self.thread_summary_for_message(message).is_some(),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::ShowReactionUsers,
+                label: "show reacted users".to_owned(),
+                enabled: !message.reactions.is_empty()
+                    && self.can_show_reaction_users_for_message(message),
+            },
+            MessageActionItem {
+                kind: MessageActionKind::OpenPollVotePicker,
+                label: "choose poll votes".to_owned(),
+                enabled: poll_voting_enabled,
+            },
+        ]
     }
 
     pub fn selected_message_action_index(&self) -> Option<usize> {
@@ -150,48 +192,8 @@ impl DashboardState {
         if !action.enabled {
             return None;
         }
-
-        match action.kind {
-            MessageActionKind::OpenThread => {
-                let channel_id = self
-                    .selected_message_state()
-                    .and_then(|message| self.thread_summary_for_message(message))?
-                    .channel_id;
-                self.record_thread_return_target(channel_id);
-                self.activate_channel(channel_id);
-                self.close_message_action_menu();
-                None
-            }
-            MessageActionKind::ShowReactionUsers => {
-                let message = self.selected_message_state()?;
-                if !self.can_show_reaction_users_for_message(message) {
-                    self.close_message_action_menu();
-                    return None;
-                }
-                let channel_id = message.channel_id;
-                let message_id = message.id;
-                let reactions = message
-                    .reactions
-                    .iter()
-                    .map(|reaction| reaction.emoji.clone())
-                    .collect::<Vec<_>>();
-                if reactions.is_empty() {
-                    self.close_message_action_menu();
-                    return None;
-                }
-                self.close_message_action_menu();
-                Some(AppCommand::LoadReactionUsers {
-                    channel_id,
-                    message_id,
-                    reactions,
-                })
-            }
-            MessageActionKind::OpenPollVotePicker => {
-                self.open_poll_vote_picker();
-                self.close_message_action_menu();
-                None
-            }
-        }
+        self.close_message_action_menu();
+        self.run_message_action_kind(action.kind)
     }
 
     pub(super) fn can_add_reaction_to_message(
@@ -253,6 +255,12 @@ impl DashboardState {
         self.discord.cache.can_manage_messages_in_channel(channel)
     }
 
+    fn can_edit_message(&self, message: &MessageState) -> bool {
+        Some(message.author_id) == self.discord.current_user_id
+            && message.message_kind.is_regular_or_reply()
+            && message.content.is_some()
+    }
+
     fn can_pin_messages_for_message(&self, message: &MessageState) -> bool {
         let Some(channel) = self.discord.cache.channel(message.channel_id) else {
             return true;
@@ -270,6 +278,86 @@ impl DashboardState {
         )?;
         self.select_message_action_row(index);
         self.activate_selected_message_action()
+    }
+
+    pub fn activate_message_action_kind(&mut self, kind: MessageActionKind) -> Option<AppCommand> {
+        let action = self
+            .selected_message_action_items()
+            .into_iter()
+            .find(|action| action.kind == kind)?;
+        if !action.enabled {
+            return None;
+        }
+        self.run_message_action_kind(kind)
+    }
+
+    fn run_message_action_kind(&mut self, kind: MessageActionKind) -> Option<AppCommand> {
+        match kind {
+            MessageActionKind::CopyContent => {
+                self.direct_copy_selected_message_content();
+                None
+            }
+            MessageActionKind::OpenReactionPicker => {
+                self.direct_open_selected_message_reaction_picker();
+                None
+            }
+            MessageActionKind::Reply => {
+                self.direct_reply_to_selected_message();
+                None
+            }
+            MessageActionKind::OpenDeleteConfirmation => {
+                self.open_selected_message_delete_confirmation();
+                None
+            }
+            MessageActionKind::Edit => {
+                self.direct_edit_selected_message();
+                None
+            }
+            MessageActionKind::OpenUrl => self.direct_open_selected_message_url(),
+            MessageActionKind::ViewAttachment => {
+                self.direct_open_selected_message_attachment_viewer();
+                None
+            }
+            MessageActionKind::ShowProfile => self.direct_show_selected_message_profile(),
+            MessageActionKind::OpenPinConfirmation => {
+                self.direct_open_selected_message_pin_confirmation();
+                None
+            }
+            MessageActionKind::OpenThread => {
+                let channel_id = self
+                    .selected_message_state()
+                    .and_then(|message| self.thread_summary_for_message(message))?
+                    .channel_id;
+                self.record_thread_return_target(channel_id);
+                self.activate_channel(channel_id);
+                None
+            }
+            MessageActionKind::ShowReactionUsers => {
+                let message = self.selected_message_state()?;
+                if !self.can_show_reaction_users_for_message(message) {
+                    return None;
+                }
+                let channel_id = message.channel_id;
+                let message_id = message.id;
+                let reactions = message
+                    .reactions
+                    .iter()
+                    .map(|reaction| reaction.emoji.clone())
+                    .collect::<Vec<_>>();
+                if reactions.is_empty() {
+                    return None;
+                }
+                Some(AppCommand::LoadReactionUsers {
+                    channel_id,
+                    message_id,
+                    reactions,
+                })
+            }
+            MessageActionKind::OpenPollVotePicker => {
+                self.open_poll_vote_picker();
+                None
+            }
+        }
     }
 
     pub fn activate_selected_message_url(&mut self) -> Option<AppCommand> {

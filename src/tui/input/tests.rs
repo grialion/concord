@@ -25,7 +25,7 @@ use crate::{
         MessageReferenceInfo, NotificationLevel, PollAnswerInfo, PollInfo, PresenceStatus,
         ReactionEmoji, ReactionUserInfo, ReactionUsersInfo, VoiceConnectionStatus,
     },
-    tui::state::{ChannelPaneEntry, DashboardState, FocusPane, GuildPaneEntry},
+    tui::state::{ChannelPaneEntry, DashboardState, FocusPane, GuildPaneEntry, MessageActionKind},
 };
 
 mod composer;
@@ -86,7 +86,7 @@ fn message_row_point(row: u16) -> (u16, u16) {
 }
 
 fn message_action_row_point(row: u16) -> (u16, u16) {
-    (46, 8 + row)
+    (46, 4 + row)
 }
 
 fn dashboard_area() -> Rect {

@@ -55,7 +55,6 @@ struct ActionShortcutBindings {
     guild: Vec<ActionShortcutBinding<GuildActionKind>>,
     channel: Vec<ActionShortcutBinding<ChannelActionKind>>,
     member: Vec<ActionShortcutBinding<MemberActionKind>>,
-    message: Vec<ActionShortcutBinding<MessageActionShortcutKind>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -74,13 +73,6 @@ struct ComposerKeyBindings {
 struct ComposerKeyBinding {
     action: ComposerShortcutAction,
     shortcuts: Vec<KeyChord>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum MessageActionShortcutKind {
-    OpenThread,
-    ShowReactionUsers,
-    OpenPollVotePicker,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -113,10 +105,14 @@ pub(in crate::tui) enum UiAction {
     FocusChannelPane,
     FocusMessagePane,
     FocusMemberPane,
+    SelectNext,
+    SelectPrevious,
     CycleFocusNext,
     CycleFocusPrevious,
     HalfPageDown,
     HalfPageUp,
+    ScrollMessageViewportDown,
+    ScrollMessageViewportUp,
     JumpTop,
     JumpBottom,
     ScrollHorizontalLeft,
@@ -133,6 +129,9 @@ pub(in crate::tui) enum UiAction {
     ViewMessageAttachment,
     ShowMessageProfile,
     PinMessage,
+    OpenThread,
+    ShowReactionUsers,
+    OpenPollVotePicker,
     ToggleGuildPane,
     ToggleChannelPane,
     ToggleMemberPane,
@@ -205,6 +204,9 @@ pub(in crate::tui) enum MessageShortcutAction {
     ViewAttachment,
     ShowProfile,
     OpenPinConfirmation,
+    OpenThread,
+    ShowReactionUsers,
+    OpenPollVotePicker,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -444,10 +446,6 @@ impl ActionShortcutBindings {
                 &options.member_actions,
                 MemberActionKind::from_keymap_name,
             ),
-            message: parse_action_scope_lossy(
-                &options.message_actions,
-                MessageActionShortcutKind::from_keymap_name,
-            ),
         }
     }
 
@@ -468,11 +466,6 @@ impl ActionShortcutBindings {
                 "keymap.member_actions",
                 &options.member_actions,
                 MemberActionKind::from_keymap_name,
-            )?,
-            message: parse_action_scope(
-                "keymap.message_actions",
-                &options.message_actions,
-                MessageActionShortcutKind::from_keymap_name,
             )?,
         })
     }
@@ -593,7 +586,6 @@ impl KeyMap {
                 }
             }
         }
-
         let mut specs = default_keymap_specs(leader);
         remove_default_keymap_conflicts(&mut specs, &configured_specs);
         specs.extend(configured_specs);
@@ -1156,10 +1148,14 @@ impl UiAction {
             UiAction::FocusChannelPane => "FocusChannelPane",
             UiAction::FocusMessagePane => "FocusMessagePane",
             UiAction::FocusMemberPane => "FocusMemberPane",
+            UiAction::SelectNext => "SelectNext",
+            UiAction::SelectPrevious => "SelectPrevious",
             UiAction::CycleFocusNext => "CycleFocusNext",
             UiAction::CycleFocusPrevious => "CycleFocusPrevious",
             UiAction::HalfPageDown => "HalfPageDown",
             UiAction::HalfPageUp => "HalfPageUp",
+            UiAction::ScrollMessageViewportDown => "ScrollMessageViewportDown",
+            UiAction::ScrollMessageViewportUp => "ScrollMessageViewportUp",
             UiAction::JumpTop => "JumpTop",
             UiAction::JumpBottom => "JumpBottom",
             UiAction::ScrollHorizontalLeft => "ScrollHorizontalLeft",
@@ -1176,6 +1172,9 @@ impl UiAction {
             UiAction::ViewMessageAttachment => "ViewMessageAttachment",
             UiAction::ShowMessageProfile => "ShowMessageProfile",
             UiAction::PinMessage => "PinMessage",
+            UiAction::OpenThread => "OpenThread",
+            UiAction::ShowReactionUsers => "ShowReactionUsers",
+            UiAction::OpenPollVotePicker => "OpenPollVotePicker",
             UiAction::ToggleGuildPane => "ToggleGuildPane",
             UiAction::ToggleChannelPane => "ToggleChannelPane",
             UiAction::ToggleMemberPane => "ToggleMemberPane",
@@ -1199,10 +1198,14 @@ impl UiAction {
             UiAction::FocusChannelPane => "focus Channels",
             UiAction::FocusMessagePane => "focus Messages",
             UiAction::FocusMemberPane => "focus Members",
+            UiAction::SelectNext => "select next",
+            UiAction::SelectPrevious => "select previous",
             UiAction::CycleFocusNext => "focus next",
             UiAction::CycleFocusPrevious => "focus previous",
             UiAction::HalfPageDown => "half page down",
             UiAction::HalfPageUp => "half page up",
+            UiAction::ScrollMessageViewportDown => "scroll message viewport down",
+            UiAction::ScrollMessageViewportUp => "scroll message viewport up",
             UiAction::JumpTop => "jump top",
             UiAction::JumpBottom => "jump bottom",
             UiAction::ScrollHorizontalLeft => "scroll left",
@@ -1219,6 +1222,9 @@ impl UiAction {
             UiAction::ViewMessageAttachment => "view attachment",
             UiAction::ShowMessageProfile => "show profile",
             UiAction::PinMessage => "pin message",
+            UiAction::OpenThread => "open thread",
+            UiAction::ShowReactionUsers => "show reacted users",
+            UiAction::OpenPollVotePicker => "choose poll votes",
             UiAction::ToggleGuildPane => "toggle Servers",
             UiAction::ToggleChannelPane => "toggle Channels",
             UiAction::ToggleMemberPane => "toggle Members",
@@ -1268,23 +1274,21 @@ impl MemberActionKind {
     }
 }
 
-impl MessageActionShortcutKind {
-    fn from_keymap_name(name: &str) -> Option<Self> {
-        match name {
-            "OpenThread" => Some(Self::OpenThread),
-            "ShowReactionUsers" => Some(Self::ShowReactionUsers),
-            "OpenPollVotePicker" => Some(Self::OpenPollVotePicker),
-            _ => None,
-        }
-    }
-}
-
-impl From<MessageActionKind> for MessageActionShortcutKind {
-    fn from(kind: MessageActionKind) -> Self {
-        match kind {
-            MessageActionKind::OpenThread => Self::OpenThread,
-            MessageActionKind::ShowReactionUsers => Self::ShowReactionUsers,
-            MessageActionKind::OpenPollVotePicker => Self::OpenPollVotePicker,
+impl MessageActionKind {
+    fn ui_action(self) -> UiAction {
+        match self {
+            MessageActionKind::CopyContent => UiAction::CopyMessage,
+            MessageActionKind::OpenReactionPicker => UiAction::ReactMessage,
+            MessageActionKind::Reply => UiAction::ReplyMessage,
+            MessageActionKind::OpenDeleteConfirmation => UiAction::DeleteMessage,
+            MessageActionKind::Edit => UiAction::EditMessage,
+            MessageActionKind::OpenUrl => UiAction::OpenMessageUrl,
+            MessageActionKind::ViewAttachment => UiAction::ViewMessageAttachment,
+            MessageActionKind::ShowProfile => UiAction::ShowMessageProfile,
+            MessageActionKind::OpenPinConfirmation => UiAction::PinMessage,
+            MessageActionKind::OpenThread => UiAction::OpenThread,
+            MessageActionKind::ShowReactionUsers => UiAction::ShowReactionUsers,
+            MessageActionKind::OpenPollVotePicker => UiAction::OpenPollVotePicker,
         }
     }
 }
@@ -1344,10 +1348,14 @@ fn all_ui_actions() -> &'static [UiAction] {
         UiAction::FocusChannelPane,
         UiAction::FocusMessagePane,
         UiAction::FocusMemberPane,
+        UiAction::SelectNext,
+        UiAction::SelectPrevious,
         UiAction::CycleFocusNext,
         UiAction::CycleFocusPrevious,
         UiAction::HalfPageDown,
         UiAction::HalfPageUp,
+        UiAction::ScrollMessageViewportDown,
+        UiAction::ScrollMessageViewportUp,
         UiAction::JumpTop,
         UiAction::JumpBottom,
         UiAction::ScrollHorizontalLeft,
@@ -1364,6 +1372,9 @@ fn all_ui_actions() -> &'static [UiAction] {
         UiAction::ViewMessageAttachment,
         UiAction::ShowMessageProfile,
         UiAction::PinMessage,
+        UiAction::OpenThread,
+        UiAction::ShowReactionUsers,
+        UiAction::OpenPollVotePicker,
         UiAction::ToggleGuildPane,
         UiAction::ToggleChannelPane,
         UiAction::ToggleMemberPane,
@@ -1701,7 +1712,7 @@ fn is_reserved_keymap_chord(chord: KeyChord) -> bool {
         KeyCode::Enter | KeyCode::Esc | KeyCode::Backspace | KeyCode::Delete
     ) || matches!(
         (chord.code, chord.modifiers),
-        (KeyCode::Char('c'), KeyModifiers::CONTROL)
+        (KeyCode::Char('c' | 'n' | 'p'), KeyModifiers::CONTROL)
     )
 }
 
@@ -1715,6 +1726,8 @@ fn default_keymap_specs(leader: KeyChord) -> BTreeMap<UiAction, KeyMapActionSpec
             UiAction::FocusChannelPane => vec![vec![char_chord('2')]],
             UiAction::FocusMessagePane => vec![vec![char_chord('3')]],
             UiAction::FocusMemberPane => vec![vec![char_chord('4')]],
+            UiAction::SelectNext => vec![vec![char_chord('j')]],
+            UiAction::SelectPrevious => vec![vec![char_chord('k')]],
             UiAction::CycleFocusNext => vec![
                 vec![key_chord(KeyCode::Tab)],
                 vec![char_chord('l')],
@@ -1730,6 +1743,8 @@ fn default_keymap_specs(leader: KeyChord) -> BTreeMap<UiAction, KeyMapActionSpec
             ],
             UiAction::HalfPageDown => vec![vec![ctrl_chord('d')]],
             UiAction::HalfPageUp => vec![vec![ctrl_chord('u')]],
+            UiAction::ScrollMessageViewportDown => vec![vec![char_chord('J')]],
+            UiAction::ScrollMessageViewportUp => vec![vec![char_chord('K')]],
             UiAction::JumpTop => vec![vec![char_chord('g')]],
             UiAction::JumpBottom => vec![vec![char_chord('G')]],
             UiAction::ScrollHorizontalLeft => vec![vec![char_chord('H')]],
@@ -1752,6 +1767,9 @@ fn default_keymap_specs(leader: KeyChord) -> BTreeMap<UiAction, KeyMapActionSpec
             UiAction::ViewMessageAttachment => vec![vec![char_chord('v')]],
             UiAction::ShowMessageProfile => vec![vec![char_chord('p')]],
             UiAction::PinMessage => vec![vec![char_chord('P')]],
+            UiAction::OpenThread => vec![vec![char_chord('t')]],
+            UiAction::ShowReactionUsers => vec![vec![char_chord('u')]],
+            UiAction::OpenPollVotePicker => vec![vec![char_chord('c')]],
             UiAction::ToggleGuildPane => vec![vec![leader, char_chord('1')]],
             UiAction::ToggleChannelPane => vec![vec![leader, char_chord('2')]],
             UiAction::ToggleMemberPane => vec![vec![leader, char_chord('4')]],
@@ -1937,10 +1955,18 @@ impl KeyBindings {
             UiAction::FocusChannelPane => Some(DashboardAction::FocusPane(FocusPane::Channels)),
             UiAction::FocusMessagePane => Some(DashboardAction::FocusPane(FocusPane::Messages)),
             UiAction::FocusMemberPane => Some(DashboardAction::FocusPane(FocusPane::Members)),
+            UiAction::SelectNext => Some(DashboardAction::Select(SelectionAction::Next)),
+            UiAction::SelectPrevious => Some(DashboardAction::Select(SelectionAction::Previous)),
             UiAction::CycleFocusNext => Some(DashboardAction::CycleFocusForward),
             UiAction::CycleFocusPrevious => Some(DashboardAction::CycleFocusBackward),
             UiAction::HalfPageDown => Some(DashboardAction::HalfPageDown),
             UiAction::HalfPageUp => Some(DashboardAction::HalfPageUp),
+            UiAction::ScrollMessageViewportDown if focus == FocusPane::Messages => {
+                Some(DashboardAction::ScrollMessageViewportDown)
+            }
+            UiAction::ScrollMessageViewportUp if focus == FocusPane::Messages => {
+                Some(DashboardAction::ScrollMessageViewportUp)
+            }
             UiAction::JumpTop => Some(DashboardAction::JumpTop),
             UiAction::JumpBottom => Some(DashboardAction::JumpBottom),
             UiAction::ScrollHorizontalLeft => Some(DashboardAction::ScrollHorizontalLeft),
@@ -1975,6 +2001,15 @@ impl KeyBindings {
             UiAction::PinMessage if focus == FocusPane::Messages => Some(
                 DashboardAction::MessageShortcut(MessageShortcutAction::OpenPinConfirmation),
             ),
+            UiAction::OpenThread if focus == FocusPane::Messages => Some(
+                DashboardAction::MessageShortcut(MessageShortcutAction::OpenThread),
+            ),
+            UiAction::ShowReactionUsers if focus == FocusPane::Messages => Some(
+                DashboardAction::MessageShortcut(MessageShortcutAction::ShowReactionUsers),
+            ),
+            UiAction::OpenPollVotePicker if focus == FocusPane::Messages => Some(
+                DashboardAction::MessageShortcut(MessageShortcutAction::OpenPollVotePicker),
+            ),
             _ => None,
         }
     }
@@ -1982,7 +2017,7 @@ impl KeyBindings {
     pub(in crate::tui) fn dashboard_action(
         &self,
         key: KeyEvent,
-        focus: FocusPane,
+        _focus: FocusPane,
     ) -> Option<DashboardAction> {
         if let Some(action) = self.selection_action(key, SelectionKeySet::Navigation) {
             return Some(DashboardAction::Select(action));
@@ -1990,12 +2025,6 @@ impl KeyBindings {
 
         match key.code {
             KeyCode::Esc => Some(DashboardAction::Back),
-            KeyCode::Char('J') if focus == FocusPane::Messages => {
-                Some(DashboardAction::ScrollMessageViewportDown)
-            }
-            KeyCode::Char('K') if focus == FocusPane::Messages => {
-                Some(DashboardAction::ScrollMessageViewportUp)
-            }
             KeyCode::Enter => Some(DashboardAction::ActivateFocused),
             _ => None,
         }
@@ -2354,18 +2383,22 @@ impl KeyBindings {
             KeyCode::Up => Some(SelectionAction::Previous),
             KeyCode::Char('n') if ctrl => Some(SelectionAction::Next),
             KeyCode::Char('p') if ctrl => Some(SelectionAction::Previous),
-            KeyCode::Char('j')
-                if key_set == SelectionKeySet::Navigation && is_shortcut_key(key) =>
-            {
-                Some(SelectionAction::Next)
-            }
-            KeyCode::Char('k')
-                if key_set == SelectionKeySet::Navigation && is_shortcut_key(key) =>
-            {
-                Some(SelectionAction::Previous)
-            }
+            _ if key_set == SelectionKeySet::Navigation => self.keymap_selection_action(key),
             _ => None,
         }
+    }
+
+    fn keymap_selection_action(&self, key: KeyEvent) -> Option<SelectionAction> {
+        self.keymap_single_key_shortcuts(UiAction::SelectNext)
+            .iter()
+            .any(|shortcut| shortcut.matches(key))
+            .then_some(SelectionAction::Next)
+            .or_else(|| {
+                self.keymap_single_key_shortcuts(UiAction::SelectPrevious)
+                    .iter()
+                    .any(|shortcut| shortcut.matches(key))
+                    .then_some(SelectionAction::Previous)
+            })
     }
 
     pub(in crate::tui) fn scroll_action(&self, key: KeyEvent) -> Option<ScrollAction> {
@@ -2551,27 +2584,62 @@ impl KeyBindings {
         actions: &[MessageActionItem],
         index: usize,
     ) -> Vec<KeyChord> {
-        scoped_action_shortcuts(
-            index,
-            actions
-                .iter()
-                .map(|item| MessageActionShortcutKind::from(item.kind)),
-            &self.action_shortcuts.message,
-            |kind| self.default_message_action_shortcut(kind),
-        )
+        keymap_action_shortcuts(index, actions.iter().map(|item| item.kind), |kind| {
+            self.keymap_single_key_shortcuts(kind.ui_action())
+        })
     }
 
     pub fn message_action_label(&self, action: &MessageActionItem) -> String {
-        let kind = MessageActionShortcutKind::from(action.kind);
-        action_label(&self.action_shortcuts.message, kind, &action.label)
+        self.keymap_action_label(action.kind.ui_action())
+            .unwrap_or_else(|| action.label.clone())
     }
 
-    fn default_message_action_shortcut(&self, kind: MessageActionShortcutKind) -> Vec<KeyChord> {
-        match kind {
-            MessageActionShortcutKind::OpenThread => vec![char_chord('t')],
-            MessageActionShortcutKind::ShowReactionUsers => vec![char_chord('u')],
-            MessageActionShortcutKind::OpenPollVotePicker => vec![char_chord('c')],
+    pub fn message_action_shortcut_label(
+        &self,
+        actions: &[MessageActionItem],
+        index: usize,
+    ) -> String {
+        let activation_shortcuts = self.message_action_shortcuts(actions, index);
+        if !activation_shortcuts.is_empty() {
+            return key_chord_list_label(&activation_shortcuts);
         }
+        actions
+            .get(index)
+            .and_then(|action| self.keymap_action_sequence_label(action.kind.ui_action()))
+            .unwrap_or_default()
+    }
+
+    fn keymap_action_label(&self, action: UiAction) -> Option<String> {
+        self.keymap
+            .specs
+            .get(&action)
+            .map(|spec| spec.label.clone())
+    }
+
+    fn keymap_single_key_shortcuts(&self, action: UiAction) -> Vec<KeyChord> {
+        self.keymap
+            .specs
+            .get(&action)
+            .map(|spec| {
+                spec.sequences
+                    .iter()
+                    .filter_map(|sequence| match sequence.as_slice() {
+                        [shortcut] => Some(*shortcut),
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    fn keymap_action_sequence_label(&self, action: UiAction) -> Option<String> {
+        self.keymap.specs.get(&action).map(|spec| {
+            spec.sequences
+                .iter()
+                .map(|sequence| key_chord_sequence_label(sequence))
+                .collect::<Vec<_>>()
+                .join("/")
+        })
     }
 
     pub(in crate::tui) fn matching_action_shortcut_index<A>(
@@ -2737,6 +2805,24 @@ fn action_shortcuts(
     Vec::new()
 }
 
+fn keymap_action_shortcuts<K>(
+    index: usize,
+    kinds: impl IntoIterator<Item = K>,
+    shortcuts: impl Fn(K) -> Vec<KeyChord>,
+) -> Vec<KeyChord>
+where
+    K: Copy,
+{
+    let shortcut_sets = kinds.into_iter().map(shortcuts).collect::<Vec<_>>();
+    let Some(preferred) = shortcut_sets.get(index) else {
+        return Vec::new();
+    };
+    if preferred.is_empty() {
+        return Vec::new();
+    }
+    action_shortcuts(index, shortcut_sets)
+}
+
 fn first_unused_indexed_shortcut(used: &[KeyChord]) -> Option<KeyChord> {
     (0..10)
         .filter_map(indexed_shortcut)
@@ -2774,6 +2860,22 @@ fn unique_action_shortcuts(
         }
     }
     unique
+}
+
+fn key_chord_list_label(shortcuts: &[KeyChord]) -> String {
+    shortcuts
+        .iter()
+        .map(|key| key.label())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn key_chord_sequence_label(sequence: &[KeyChord]) -> String {
+    sequence
+        .iter()
+        .map(|key| key.label())
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 #[cfg(test)]
@@ -2894,6 +2996,22 @@ mod tests {
     #[test]
     fn ui_action_names_match_future_colon_command_names() {
         assert_eq!(
+            UiAction::from_name("SelectNext"),
+            Some(UiAction::SelectNext)
+        );
+        assert_eq!(
+            UiAction::from_name("SelectPrevious"),
+            Some(UiAction::SelectPrevious)
+        );
+        assert_eq!(
+            UiAction::from_name("ScrollMessageViewportDown"),
+            Some(UiAction::ScrollMessageViewportDown)
+        );
+        assert_eq!(
+            UiAction::from_name("ScrollMessageViewportUp"),
+            Some(UiAction::ScrollMessageViewportUp)
+        );
+        assert_eq!(
             UiAction::from_name("ToggleGuildPane"),
             Some(UiAction::ToggleGuildPane)
         );
@@ -2967,18 +3085,6 @@ mod tests {
             member_actions: [("ShowProfile".to_owned(), KeymapBinding::one("s"))]
                 .into_iter()
                 .collect(),
-            message_actions: [
-                (
-                    "OpenThread".to_owned(),
-                    KeymapBinding {
-                        keys: vec!["R".to_owned()],
-                        description: Some("open message thread".to_owned()),
-                    },
-                ),
-                ("ShowReactionUsers".to_owned(), KeymapBinding::one("r")),
-            ]
-            .into_iter()
-            .collect(),
             ..Default::default()
         };
         let key_bindings =
@@ -3017,27 +3123,51 @@ mod tests {
             key_bindings.member_action_shortcuts(&member_actions, 0),
             char_chords(&['s'])
         );
+    }
 
-        let message_actions = [
-            MessageActionItem {
-                label: "Open thread".to_owned(),
-                ..MessageActionItem::test(MessageActionKind::OpenThread)
-            },
-            MessageActionItem {
-                label: "Show reacted users".to_owned(),
-                ..MessageActionItem::test(MessageActionKind::ShowReactionUsers)
-            },
-        ];
+    #[test]
+    fn message_action_menu_shortcuts_follow_direct_keymap_overrides() {
+        let keymap = KeymapOptions {
+            mappings: [
+                ("ReplyMessage".to_owned(), KeymapBinding::one("n")),
+                (
+                    "OpenThread".to_owned(),
+                    KeymapBinding {
+                        keys: vec!["T".to_owned()],
+                        description: Some("open message thread".to_owned()),
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        let key_bindings =
+            KeyBindings::try_from_options(&keymap).expect("message keymap should parse");
+        let actions = [MessageActionItem {
+            kind: MessageActionKind::Reply,
+            label: "reply".to_owned(),
+            enabled: true,
+        }];
+
+        assert_eq!(key_bindings.message_action_shortcut_label(&actions, 0), "n");
+        assert_eq!(key_bindings.message_action_label(&actions[0]), "reply");
         assert_eq!(
-            key_bindings.message_action_shortcuts(&message_actions, 0),
-            char_chords(&['R'])
+            key_bindings
+                .keymap_lookup_direct_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE)),
+            Some(UiAction::ReplyMessage)
+        );
+        let thread_actions = [MessageActionItem {
+            kind: MessageActionKind::OpenThread,
+            label: "open thread".to_owned(),
+            enabled: true,
+        }];
+        assert_eq!(
+            key_bindings.message_action_shortcuts(&thread_actions, 0),
+            char_chords(&['T'])
         );
         assert_eq!(
-            key_bindings.message_action_shortcuts(&message_actions, 1),
-            char_chords(&['r'])
-        );
-        assert_eq!(
-            key_bindings.message_action_label(&message_actions[0]),
+            key_bindings.message_action_label(&thread_actions[0]),
             "open message thread"
         );
     }
@@ -3559,6 +3689,154 @@ mod tests {
                 .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE)),
             None
         );
+    }
+
+    #[test]
+    fn keymap_can_remap_navigation_selection_actions() {
+        let keymap = KeymapOptions {
+            mappings: [
+                ("SelectNext".to_owned(), KeymapBinding::one("n")),
+                ("SelectPrevious".to_owned(), KeymapBinding::one("p")),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        let key_bindings =
+            KeyBindings::try_from_options(&keymap).expect("selection keys should parse");
+
+        assert_eq!(
+            key_bindings
+                .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE)),
+            Some(KeyMapLookup::Action(UiAction::SelectNext))
+        );
+        assert_eq!(
+            key_bindings
+                .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::NONE)),
+            Some(KeyMapLookup::Action(UiAction::SelectPrevious))
+        );
+        assert_eq!(
+            key_bindings
+                .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE)),
+            None
+        );
+        assert_eq!(
+            key_bindings.selection_action(
+                KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE),
+                SelectionKeySet::Navigation,
+            ),
+            Some(SelectionAction::Next)
+        );
+        assert_eq!(
+            key_bindings.selection_action(
+                KeyEvent::new(KeyCode::Char('p'), KeyModifiers::NONE),
+                SelectionKeySet::Navigation,
+            ),
+            Some(SelectionAction::Previous)
+        );
+        assert_eq!(
+            key_bindings.selection_action(
+                KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE),
+                SelectionKeySet::Navigation,
+            ),
+            None
+        );
+        assert_eq!(
+            key_bindings.selection_action(
+                KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE),
+                SelectionKeySet::TextSafe,
+            ),
+            None
+        );
+        assert_eq!(
+            key_bindings.selection_action(
+                KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL),
+                SelectionKeySet::Navigation,
+            ),
+            Some(SelectionAction::Next)
+        );
+        assert_eq!(
+            key_bindings.selection_action(
+                KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL),
+                SelectionKeySet::Navigation,
+            ),
+            Some(SelectionAction::Previous)
+        );
+    }
+
+    #[test]
+    fn keymap_can_remap_message_viewport_scroll_actions() {
+        let keymap = KeymapOptions {
+            mappings: [
+                (
+                    "ScrollMessageViewportDown".to_owned(),
+                    KeymapBinding::one("N"),
+                ),
+                (
+                    "ScrollMessageViewportUp".to_owned(),
+                    KeymapBinding::one("P"),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        let key_bindings =
+            KeyBindings::try_from_options(&keymap).expect("viewport scroll keys should parse");
+
+        assert_eq!(
+            key_bindings
+                .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('N'), KeyModifiers::NONE)),
+            Some(KeyMapLookup::Action(UiAction::ScrollMessageViewportDown))
+        );
+        assert_eq!(
+            key_bindings
+                .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('P'), KeyModifiers::NONE)),
+            Some(KeyMapLookup::Action(UiAction::ScrollMessageViewportUp))
+        );
+        assert_eq!(
+            key_bindings
+                .keymap_lookup_root_key(KeyEvent::new(KeyCode::Char('J'), KeyModifiers::NONE)),
+            None
+        );
+        assert_eq!(
+            key_bindings.dashboard_action_for_ui_action(
+                UiAction::ScrollMessageViewportDown,
+                FocusPane::Messages,
+            ),
+            Some(DashboardAction::ScrollMessageViewportDown)
+        );
+        assert_eq!(
+            key_bindings.dashboard_action_for_ui_action(
+                UiAction::ScrollMessageViewportUp,
+                FocusPane::Messages
+            ),
+            Some(DashboardAction::ScrollMessageViewportUp)
+        );
+        assert_eq!(
+            key_bindings.dashboard_action_for_ui_action(
+                UiAction::ScrollMessageViewportDown,
+                FocusPane::Channels,
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn keymap_rejects_fixed_control_selection_keys() {
+        for key in ["<C-n>", "<C-p>"] {
+            let keymap = KeymapOptions {
+                mappings: [("StartComposer".to_owned(), KeymapBinding::one(key))]
+                    .into_iter()
+                    .collect(),
+                ..Default::default()
+            };
+
+            assert!(
+                KeyBindings::try_from_options(&keymap).is_err(),
+                "{key} should stay reserved for row movement"
+            );
+        }
     }
 
     #[test]

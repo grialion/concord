@@ -1,6 +1,25 @@
 use super::*;
 
 #[test]
+fn quit_key_requires_confirmation() {
+    let mut state = DashboardState::new();
+
+    handle_key(&mut state, char_key('q'));
+
+    assert!(!state.should_quit());
+    assert!(state.is_quit_confirmation_open());
+
+    handle_key(&mut state, char_key('n'));
+    assert!(!state.should_quit());
+    assert!(!state.is_quit_confirmation_open());
+
+    handle_key(&mut state, char_key('q'));
+    handle_key(&mut state, char_key('y'));
+
+    assert!(state.should_quit());
+}
+
+#[test]
 fn forum_blank_bottom_rows_do_not_select_hidden_posts() {
     let mut state = state_with_forum_channel_posts();
     state.push_event(AppEvent::ForumPostsLoaded {
@@ -64,8 +83,7 @@ fn a_key_no_longer_opens_actions_directly() {
 fn esc_closes_modal_before_returning_from_opened_thread() {
     let mut state = state_with_thread_created_message();
     state.focus_pane(FocusPane::Messages);
-    handle_key(&mut state, key(KeyCode::Enter));
-    handle_key(&mut state, key(KeyCode::Enter));
+    handle_key(&mut state, char_key('t'));
     assert_eq!(state.selected_channel_id(), Some(Id::new(10)));
 
     handle_key(&mut state, char_key('`'));

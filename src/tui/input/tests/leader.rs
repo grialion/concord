@@ -486,8 +486,18 @@ fn configured_quit_key_replaces_default_q() {
 
     handle_key(&mut state, char_key('q'));
     assert!(!state.should_quit());
+    assert!(!state.is_quit_confirmation_open());
 
     handle_key(&mut state, char_key('x'));
+    assert!(!state.should_quit());
+    assert!(state.is_quit_confirmation_open());
+
+    handle_key(&mut state, key(KeyCode::Esc));
+    assert!(!state.should_quit());
+    assert!(!state.is_quit_confirmation_open());
+
+    handle_key(&mut state, char_key('x'));
+    handle_key(&mut state, key(KeyCode::Enter));
     assert!(state.should_quit());
 }
 

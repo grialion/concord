@@ -1046,7 +1046,12 @@ fn multiselect_poll_picker_toggles_and_submits_selected_answers() {
     let mut state = state_with_multiselect_poll();
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
-    for _ in 0..5 {
+    let poll_row = state
+        .selected_message_action_items()
+        .iter()
+        .position(|action| action.kind == MessageActionKind::OpenPollVotePicker)
+        .expect("poll action should exist");
+    for _ in 0..poll_row {
         handle_key(&mut state, key(KeyCode::Down));
     }
 

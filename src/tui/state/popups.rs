@@ -24,6 +24,7 @@ pub(super) struct PopupUiState {
     pub(super) message_url_picker: Option<MessageUrlPickerState>,
     pub(super) message_delete_confirmation: Option<MessageDeleteConfirmationState>,
     pub(super) message_pin_confirmation: Option<MessagePinConfirmationState>,
+    pub(super) quit_confirmation_open: bool,
     pub(super) options_popup: Option<OptionsPopupState>,
     pub(super) attachment_viewer: Option<AttachmentViewerState>,
     pub(super) guild_leader_action: Option<GuildLeaderActionState>,
@@ -262,6 +263,25 @@ impl DashboardState {
         self.popups.guild_leader_action = None;
         self.popups.channel_leader_action = None;
         self.popups.member_leader_action = None;
+    }
+
+    pub fn open_quit_confirmation(&mut self) {
+        self.close_all_action_contexts();
+        self.close_leader();
+        self.popups.quit_confirmation_open = true;
+    }
+
+    pub fn is_quit_confirmation_open(&self) -> bool {
+        self.popups.quit_confirmation_open
+    }
+
+    pub fn close_quit_confirmation(&mut self) {
+        self.popups.quit_confirmation_open = false;
+    }
+
+    pub fn confirm_quit(&mut self) {
+        self.close_quit_confirmation();
+        self.quit();
     }
 
     pub fn is_any_action_context_active(&self) -> bool {

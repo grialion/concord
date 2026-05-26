@@ -56,6 +56,26 @@ pub(in crate::tui::ui) fn render_message_pin_confirmation(
     );
 }
 
+pub(in crate::tui::ui) fn render_quit_confirmation(
+    frame: &mut Frame,
+    area: Rect,
+    state: &DashboardState,
+) {
+    if !state.is_quit_confirmation_open() {
+        return;
+    }
+
+    let lines = quit_confirmation_lines_with_key_bindings(state.key_bindings());
+    let popup = centered_rect(area, 44, (lines.len() as u16).saturating_add(2));
+    frame.render_widget(Clear, popup);
+    frame.render_widget(
+        Paragraph::new(lines)
+            .block(panel_block("Quit", true))
+            .wrap(Wrap { trim: false }),
+        popup,
+    );
+}
+
 #[cfg(test)]
 pub(in crate::tui::ui) fn message_delete_confirmation_lines(
     author: &str,
@@ -123,6 +143,32 @@ pub(in crate::tui::ui) fn message_pin_confirmation_lines(
         width,
         &crate::tui::keybindings::KeyBindings::default(),
     )
+}
+
+#[cfg(test)]
+pub(in crate::tui::ui) fn quit_confirmation_lines() -> Vec<Line<'static>> {
+    quit_confirmation_lines_with_key_bindings(&crate::tui::keybindings::KeyBindings::default())
+}
+
+fn quit_confirmation_lines_with_key_bindings(
+    key_bindings: &crate::tui::keybindings::KeyBindings,
+) -> Vec<Line<'static>> {
+    vec![
+        Line::from(Span::raw("Quit Concord?")),
+        Line::from(Span::raw(String::new())),
+        Line::from(vec![
+            Span::styled(
+                key_bindings.message_confirmation_confirm_label(),
+                Style::default().fg(ACCENT).bold(),
+            ),
+            Span::raw(" quit · "),
+            Span::styled(
+                key_bindings.message_confirmation_cancel_label(),
+                Style::default().fg(ACCENT).bold(),
+            ),
+            Span::raw(" cancel"),
+        ]),
+    ]
 }
 
 fn message_pin_confirmation_lines_with_key_bindings(

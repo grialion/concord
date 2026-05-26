@@ -12,7 +12,7 @@ use crate::tui::keybindings::{
     UiAction,
 };
 
-use super::super::state::{DashboardState, FocusPane};
+use super::super::state::{DashboardState, FocusPane, MessageActionKind};
 use crate::discord::AppCommand;
 
 pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppCommand> {
@@ -22,6 +22,10 @@ pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppComman
 
     if state.is_debug_log_popup_open() {
         return handle_debug_log_popup_key(state, key);
+    }
+
+    if state.is_quit_confirmation_open() {
+        return handle_quit_confirmation_key(state, key);
     }
 
     if state.is_options_popup_open() {
@@ -146,7 +150,7 @@ fn handle_dashboard_action(
             None
         }
         DashboardAction::Quit => {
-            state.quit();
+            state.open_quit_confirmation();
             None
         }
         DashboardAction::StartComposer => {
@@ -223,7 +227,10 @@ fn handle_dashboard_action(
                 }
                 command
             }
-            FocusPane::Members => state.show_selected_member_profile(),
+            FocusPane::Members => {
+                state.open_selected_member_actions();
+                None
+            }
             FocusPane::Messages => state.activate_selected_message_pane_item(),
         },
     }
@@ -235,34 +242,38 @@ fn handle_message_shortcut_action(
 ) -> Option<AppCommand> {
     match action {
         MessageShortcutAction::CopyContent => {
-            state.direct_copy_selected_message_content();
-            None
+            state.activate_message_action_kind(MessageActionKind::CopyContent)
         }
         MessageShortcutAction::OpenReactionPicker => {
-            state.direct_open_selected_message_reaction_picker();
-            None
+            state.activate_message_action_kind(MessageActionKind::OpenReactionPicker)
         }
         MessageShortcutAction::Reply => {
-            state.direct_reply_to_selected_message();
-            None
+            state.activate_message_action_kind(MessageActionKind::Reply)
         }
         MessageShortcutAction::OpenDeleteConfirmation => {
-            state.open_selected_message_delete_confirmation();
-            None
+            state.activate_message_action_kind(MessageActionKind::OpenDeleteConfirmation)
         }
-        MessageShortcutAction::Edit => {
-            state.direct_edit_selected_message();
-            None
+        MessageShortcutAction::Edit => state.activate_message_action_kind(MessageActionKind::Edit),
+        MessageShortcutAction::OpenUrl => {
+            state.activate_message_action_kind(MessageActionKind::OpenUrl)
         }
-        MessageShortcutAction::OpenUrl => state.direct_open_selected_message_url(),
         MessageShortcutAction::ViewAttachment => {
-            state.direct_open_selected_message_attachment_viewer();
-            None
+            state.activate_message_action_kind(MessageActionKind::ViewAttachment)
         }
-        MessageShortcutAction::ShowProfile => state.direct_show_selected_message_profile(),
+        MessageShortcutAction::ShowProfile => {
+            state.activate_message_action_kind(MessageActionKind::ShowProfile)
+        }
         MessageShortcutAction::OpenPinConfirmation => {
-            state.direct_open_selected_message_pin_confirmation();
-            None
+            state.activate_message_action_kind(MessageActionKind::OpenPinConfirmation)
+        }
+        MessageShortcutAction::OpenThread => {
+            state.activate_message_action_kind(MessageActionKind::OpenThread)
+        }
+        MessageShortcutAction::ShowReactionUsers => {
+            state.activate_message_action_kind(MessageActionKind::ShowReactionUsers)
+        }
+        MessageShortcutAction::OpenPollVotePicker => {
+            state.activate_message_action_kind(MessageActionKind::OpenPollVotePicker)
         }
     }
 }
@@ -725,6 +736,20 @@ fn handle_message_delete_confirmation_key(
         Some(MessageConfirmationAction::Confirm) => state.confirm_message_delete(),
         Some(MessageConfirmationAction::Cancel) => {
             state.close_message_delete_confirmation();
+            None
+        }
+        None => None,
+    }
+}
+
+fn handle_quit_confirmation_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppCommand> {
+    match state.key_bindings().message_confirmation_action(key) {
+        Some(MessageConfirmationAction::Confirm) => {
+            state.confirm_quit();
+            None
+        }
+        Some(MessageConfirmationAction::Cancel) => {
+            state.close_quit_confirmation();
             None
         }
         None => None,

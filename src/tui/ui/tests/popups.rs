@@ -64,6 +64,16 @@ fn message_pin_confirmation_lines_show_action_and_excerpt() {
 }
 
 #[test]
+fn quit_confirmation_lines_show_controls() {
+    let lines = quit_confirmation_lines();
+
+    assert_eq!(lines[0].spans[0].content, "Quit Concord?");
+    assert_eq!(lines[1].spans[0].content, "");
+    assert!(lines[2].spans[0].content.contains("Enter/y"));
+    assert!(lines[2].spans[2].content.contains("Esc/n"));
+}
+
+#[test]
 fn toast_area_anchors_to_terminal_bottom_left() {
     let area = toast_area(Rect::new(5, 2, 40, 12), "Message copied");
 
@@ -314,9 +324,9 @@ fn message_action_menu_marks_selected_and_disabled_actions() {
     assert_eq!(
         line_texts_from_ratatui(&lines),
         vec![
-            "  [t] Open thread",
-            "› [u] Show reacted users (unavailable)",
-            "  [c] Choose poll votes",
+            "  [t] open thread",
+            "› [u] show reacted users (unavailable)",
+            "  [c] choose poll votes",
         ]
     );
 }
@@ -338,7 +348,7 @@ fn message_action_menu_uses_numbered_shortcuts_for_duplicate_preferred_keys() {
 
     assert_eq!(
         line_texts_from_ratatui(&lines),
-        vec!["› [1] Show cat users", "  [2] Show dog users"]
+        vec!["› [1] show reacted users", "  [2] show reacted users"]
     );
 }
 

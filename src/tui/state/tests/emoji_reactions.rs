@@ -125,21 +125,25 @@ fn reaction_message_actions_use_single_reacted_users_item() {
 
     let actions = state.selected_message_action_items();
 
-    assert_eq!(
-        actions.iter().map(|action| action.kind).collect::<Vec<_>>(),
-        vec![
-            MessageActionKind::OpenThread,
-            MessageActionKind::ShowReactionUsers,
-            MessageActionKind::OpenPollVotePicker,
-        ]
-    );
-    assert!(!actions[0].enabled);
-    assert!(actions[1].enabled);
-    assert!(!actions[2].enabled);
+    let open_thread = actions
+        .iter()
+        .find(|action| action.kind == MessageActionKind::OpenThread)
+        .expect("open thread action should exist");
+    let show_reaction_users = actions
+        .iter()
+        .find(|action| action.kind == MessageActionKind::ShowReactionUsers)
+        .expect("reaction users action should exist");
+    let open_poll_vote_picker = actions
+        .iter()
+        .find(|action| action.kind == MessageActionKind::OpenPollVotePicker)
+        .expect("poll action should exist");
+    assert!(!open_thread.enabled);
+    assert!(show_reaction_users.enabled);
+    assert!(!open_poll_vote_picker.enabled);
     assert_eq!(
         actions
             .iter()
-            .filter(|action| action.label == "Show reacted users")
+            .filter(|action| action.kind == MessageActionKind::ShowReactionUsers)
             .count(),
         1
     );
@@ -256,7 +260,12 @@ fn show_reacted_users_action_loads_all_reaction_emojis() {
     let mut state = state_with_reaction_message();
     state.focus_pane(FocusPane::Messages);
     state.open_selected_message_actions();
-    assert!(state.select_message_action_row(1));
+    let row = state
+        .selected_message_action_items()
+        .iter()
+        .position(|action| action.kind == MessageActionKind::ShowReactionUsers)
+        .expect("reaction users action should exist");
+    assert!(state.select_message_action_row(row));
 
     let command = state.activate_selected_message_action();
 

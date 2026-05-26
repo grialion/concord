@@ -521,7 +521,14 @@ fn mouse_double_click_activates_message_action_row_like_enter() {
     state.focus_pane(FocusPane::Messages);
     handle_key(&mut state, key(KeyCode::Enter));
     let mut clicks = MouseClickTracker::default();
-    let (column, row) = message_action_row_point(3);
+    let poll_row = state
+        .selected_message_action_items()
+        .iter()
+        .position(|action| action.kind == MessageActionKind::OpenPollVotePicker)
+        .expect("poll action should exist");
+    let (column, row) = message_action_row_point(
+        u16::try_from(poll_row).expect("message action row fits in test area"),
+    );
 
     handle_mouse_event(
         &mut state,

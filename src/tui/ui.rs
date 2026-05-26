@@ -74,8 +74,9 @@ use self::popups::{
     render_attachment_viewer, render_channel_switcher_popup, render_debug_log_popup,
     render_emoji_reaction_picker, render_leader_popup, render_message_action_menu,
     render_message_delete_confirmation, render_message_pin_confirmation, render_message_url_picker,
-    render_options_popup, render_poll_vote_picker, render_reaction_users_popup, render_toast,
-    render_user_profile_popup, user_profile_popup_has_avatar, user_profile_popup_text_geometry,
+    render_options_popup, render_poll_vote_picker, render_quit_confirmation,
+    render_reaction_users_popup, render_toast, render_user_profile_popup,
+    user_profile_popup_has_avatar, user_profile_popup_text_geometry,
     user_profile_popup_total_lines,
 };
 use self::types::{
@@ -105,8 +106,8 @@ use self::{
         filtered_emoji_reaction_picker_lines, leader_action_lines_for_test,
         message_action_menu_lines, message_delete_confirmation_lines,
         message_pin_confirmation_lines, message_url_picker_lines_for_width, options_popup_lines,
-        poll_vote_picker_lines, reaction_users_popup_lines, toast_area, toast_line,
-        user_profile_popup_lines, user_profile_popup_lines_with_activities,
+        poll_vote_picker_lines, quit_confirmation_lines, reaction_users_popup_lines, toast_area,
+        toast_line, user_profile_popup_lines, user_profile_popup_lines_with_activities,
     },
 };
 pub fn sync_view_heights(area: Rect, state: &mut DashboardState) {
@@ -214,6 +215,7 @@ pub fn render(
     render_message_url_picker(frame, areas.messages, state);
     render_message_delete_confirmation(frame, areas.messages, state);
     render_message_pin_confirmation(frame, areas.messages, state);
+    render_quit_confirmation(frame, areas.messages, state);
     render_options_popup(frame, areas.messages, state);
     render_poll_vote_picker(frame, areas.messages, state);
     render_user_profile_popup(frame, areas.messages, state, profile_avatar, &emoji_images);

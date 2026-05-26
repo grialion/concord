@@ -131,7 +131,7 @@ fn leader_line_width(line: &Line<'_>) -> usize {
 fn leader_action_lines(state: &DashboardState) -> Vec<Line<'static>> {
     if state.is_message_action_menu_open() {
         let actions = state.selected_message_action_items();
-        return leader_action_key_lines(
+        return leader_action_label_lines(
             actions
                 .iter()
                 .enumerate()
@@ -139,7 +139,7 @@ fn leader_action_lines(state: &DashboardState) -> Vec<Line<'static>> {
                     (
                         state
                             .key_bindings()
-                            .message_action_shortcuts(&actions, index),
+                            .message_action_shortcut_label(&actions, index),
                         state.key_bindings().message_action_label(action),
                         action.enabled,
                     )
@@ -262,9 +262,23 @@ fn leader_shortcut_line(key: char, label: &str, enabled: bool) -> Line<'static> 
 // `[Ctrl+u]`). Pad every prefix to the widest one so the label column stays
 // aligned across rows.
 fn leader_action_key_lines(rows: Vec<(Vec<KeyChord>, String, bool)>) -> Vec<Line<'static>> {
+    leader_action_label_lines(
+        rows.into_iter()
+            .map(|(keys, label, enabled)| (leader_shortcut_key_label(&keys), label, enabled))
+            .collect(),
+    )
+}
+
+fn leader_action_label_lines(rows: Vec<(String, String, bool)>) -> Vec<Line<'static>> {
     let prefixes: Vec<String> = rows
         .iter()
-        .map(|(keys, _, _)| format!("[{}]", leader_shortcut_key_label(keys)))
+        .map(|(keys, _, _)| {
+            if keys.is_empty() {
+                "[ ]".to_owned()
+            } else {
+                format!("[{keys}]")
+            }
+        })
         .collect();
     let width = prefixes
         .iter()
@@ -360,7 +374,9 @@ fn message_action_menu_lines_with_key_bindings(
     key_bindings: &crate::tui::keybindings::KeyBindings,
 ) -> Vec<Line<'static>> {
     let prefixes: Vec<String> = (0..actions.len())
-        .map(|index| shortcut_keys_prefix(&key_bindings.message_action_shortcuts(actions, index)))
+        .map(|index| {
+            shortcut_label_prefix(&key_bindings.message_action_shortcut_label(actions, index))
+        })
         .collect();
     let prefix_width = prefixes
         .iter()
@@ -400,18 +416,11 @@ fn message_action_menu_lines_with_key_bindings(
         .collect()
 }
 
-fn shortcut_keys_prefix(shortcuts: &[KeyChord]) -> String {
-    if shortcuts.is_empty() {
+fn shortcut_label_prefix(label: &str) -> String {
+    if label.is_empty() {
         return "    ".to_owned();
     }
-    format!(
-        "[{}] ",
-        shortcuts
-            .iter()
-            .map(|key| key.label())
-            .collect::<Vec<_>>()
-            .join("/")
-    )
+    format!("[{label}] ")
 }
 
 fn truncate_action_menu_lines(lines: Vec<Line<'static>>, width: usize) -> Vec<Line<'static>> {

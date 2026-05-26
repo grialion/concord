@@ -120,6 +120,7 @@ struct MessageActionPopupSignature {
     message_action_items: DebugSignature,
     delete_confirmation_lines: Option<(String, Option<String>)>,
     pin_confirmation_lines: Option<(bool, String, Option<String>)>,
+    quit_confirmation_open: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -317,6 +318,7 @@ pub(super) fn visible_dashboard_signature(state: &DashboardState) -> VisibleDash
                     },
                     delete_confirmation_lines: state.message_delete_confirmation_lines(),
                     pin_confirmation_lines: state.message_pin_confirmation_lines(),
+                    quit_confirmation_open: state.is_quit_confirmation_open(),
                 },
                 message_url_picker: MessageUrlPickerPopupSignature {
                     message_url_picker_open: state.is_message_url_picker_open(),
