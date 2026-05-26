@@ -37,5 +37,6 @@ opus = '*'
 pkg-config = { stage = ["build"] }
 
 [dist.dependencies.apt]
+libopus-dev = { stage = ["build"] }
 libasound2-dev = { stage = ["build"] }
 pkg-config = { stage = ["build"] }

@@ -77,7 +77,7 @@ unicode-width = "0.2.2"
 uuid = { version = "1.23.1", features = ["v4"] }
 
 [features]
-default = []
+default = ["voice-playback"]
 voice-playback = ["dep:cpal", "dep:alsa"]
 
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -15,20 +15,20 @@ brew install chojs23/tap/concord
 
 ### Cargo
 
-`cargo install` builds Concord from source, so it requires pkg-config and the
-Opus development library. Concord links against Opus in the default build so it
-can decode received Discord voice audio.
+`cargo install` builds Concord from source. The default build includes voice
+playback, so it requires pkg-config, the Opus development library, and ALSA
+development files on Linux.
 
 On Fedora:
 
 ```sh
-sudo dnf install opus-devel pkgconf-pkg-config
+sudo dnf install opus-devel alsa-lib-devel pkgconf-pkg-config
 ```
 
 On Debian or Ubuntu:
 
 ```sh
-sudo apt install libopus-dev pkg-config
+sudo apt install libopus-dev libasound2-dev pkg-config
 ```
 
 On macOS with Homebrew:
@@ -39,6 +39,12 @@ brew install opus pkg-config
 
 ```sh
 cargo install concord
+```
+
+To install without local voice playback and microphone support:
+
+```sh
+cargo install concord --no-default-features
 ```
 
 To install the latest unreleased version directly from the Git repository:
@@ -112,20 +118,13 @@ The release binary is produced at:
 target/release/concord
 ```
 
-By default, source builds can join voice channels and decode received voice
-audio, but they do not open local audio input or output devices. To build with
-voice playback and gated microphone transmit, enable the optional
-`voice-playback` feature:
+By default, source builds can join voice channels, decode received voice audio,
+and open local audio devices for playback and gated microphone transmit. To
+build without local voice playback and microphone support, disable default
+features:
 
 ```sh
-cargo build --release --features voice-playback
-```
-
-Linux playback uses the system audio stack through `cpal`. If you build with
-`voice-playback`, you may also need ALSA development files:
-
-```sh
-sudo apt install libasound2-dev
+cargo build --release --no-default-features
 ```
 
 On WSLg, audio is usually exposed through PulseAudio instead of a real ALSA
