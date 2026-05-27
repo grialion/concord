@@ -1288,6 +1288,7 @@ impl GuildActionKind {
         match name {
             "MarkAsRead" => Some(Self::MarkAsRead),
             "MuteServer" | "ToggleMute" => Some(Self::ToggleMute),
+            "LeaveServer" => Some(Self::LeaveServer),
             _ => None,
         }
     }
@@ -1297,6 +1298,7 @@ impl GuildActionKind {
             Self::NoActionsYet => "NoActionsYet",
             Self::MarkAsRead => "MarkAsRead",
             Self::ToggleMute => "ToggleMute",
+            Self::LeaveServer => "LeaveServer",
         }
     }
 }
@@ -2715,6 +2717,7 @@ impl KeyBindings {
         match kind {
             GuildActionKind::MarkAsRead => vec![char_chord('m')],
             GuildActionKind::ToggleMute => vec![char_chord('u')],
+            GuildActionKind::LeaveServer => vec![char_chord('l')],
             GuildActionKind::NoActionsYet => Vec::new(),
         }
     }

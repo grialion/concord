@@ -639,6 +639,29 @@ fn leader_v_opens_voice_keymap_group() {
 }
 
 #[test]
+fn leader_server_actions_leave_opens_confirmation_then_leaves() {
+    let mut state = state_with_channel_tree();
+    state.focus_pane(FocusPane::Guilds);
+
+    handle_key(&mut state, char_key(' '));
+    handle_key(&mut state, char_key('a'));
+    handle_key(&mut state, char_key('l'));
+
+    assert!(!state.is_leader_active());
+    assert!(state.is_guild_leave_confirmation_open());
+
+    let command = handle_key(&mut state, char_key('y'));
+
+    assert_eq!(
+        command,
+        Some(AppCommand::LeaveGuild {
+            guild_id: Id::new(1),
+            label: "guild".to_owned(),
+        })
+    );
+}
+
+#[test]
 fn leader_o_category_shortcuts_open_scoped_options() {
     let mut state = DashboardState::new();
 
