@@ -2,7 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.1.4] - 2026-05-27
+## [2.1.5] - 2026-05-29
+
+### Bug Fixes
+
+- Schedule read ack when catching up to latest messages by @chojs23
+
+### Documentation
+
+- Clarify keymap action names warning in README by @chojs23
+- Document scoped pane action shortcuts as single-key only by @chojs23
+
+### Features
+
+- Add zoom feature for images and adjust sizing logic for images in popout window (#133) in [#133](https://github.com/chojs23/concord/pull/133) by @ibarrick
+- Allow leaving of server (#129) in [#129](https://github.com/chojs23/concord/pull/129) by @nexxai
+- Add goto key group by @chojs23
+- Message action keymap by @chojs23
+
+### Refactor
+
+- Use generic popup by @chojs23
+- Group tui runtime plumbing by @chojs23
+
+### New Contributors
+
+- @ibarrick made their first contribution in [#133](https://github.com/chojs23/concord/pull/133)
+
+## [2.1.4] - 2026-05-26
 
 ### Bug Fixes
 
