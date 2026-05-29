@@ -106,6 +106,7 @@ use super::{client::publish_app_event, events::AppEvent};
 
 const VOICE_GATEWAY_VERSION: u8 = 9;
 const VOICE_WEBSOCKET_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const VOICE_CONNECTION_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 const UDP_DISCOVERY_PACKET_LEN: usize = 74;
 const UDP_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(5);
 const RTP_HEADER_MIN_LEN: usize = 12;
@@ -141,6 +142,8 @@ const DISCORD_TRAILING_SILENCE_FRAMES: usize = 5;
 const OPUS_MAX_ENCODED_FRAME_BYTES: usize = 4000;
 #[cfg(feature = "voice-playback")]
 const VOICE_MIC_PCM_FRAME_QUEUE: usize = 16;
+#[cfg(feature = "voice-playback")]
+const VOICE_TRANSMIT_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
 #[cfg(feature = "voice-playback")]
 const VOICE_MIC_PREFERRED_BUFFER_FRAMES: u32 = 480;
 #[cfg(feature = "voice-playback")]
@@ -614,16 +617,15 @@ impl VoiceChildTasks {
     }
 
     #[cfg(feature = "voice-playback")]
-    fn replace_udp_transmit(
+    async fn replace_udp_transmit(
         &mut self,
         task: JoinHandle<()>,
         gate: watch::Sender<VoiceCaptureGate>,
         microphone_pcm_tx: mpsc::Sender<Vec<i16>>,
     ) {
-        if let Some(task) = self.udp_transmit.take() {
-            logging::debug("voice", "stopping previous voice UDP transmit task");
-            self.signal_udp_transmit_stop();
-            drop(task);
+        if self.udp_transmit.is_some() {
+            self.stop_udp_transmit_gracefully("stopping previous voice UDP transmit task")
+                .await;
         }
         self.udp_transmit = Some(task);
         self.transmit_gate = Some(gate);
@@ -642,6 +644,26 @@ impl VoiceChildTasks {
         self.microphone_capture = None;
         self.microphone_pcm_tx = None;
         self.transmit_gate = None;
+    }
+
+    #[cfg(feature = "voice-playback")]
+    async fn stop_udp_transmit_gracefully(&mut self, label: &str) {
+        let Some(mut task) = self.udp_transmit.take() else {
+            self.signal_udp_transmit_stop();
+            return;
+        };
+        logging::debug("voice", label);
+        self.signal_udp_transmit_stop();
+        match timeout(VOICE_TRANSMIT_SHUTDOWN_TIMEOUT, &mut task).await {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                logging::debug("voice", format!("voice UDP transmit task ended: {error}"));
+            }
+            Err(_) => {
+                logging::debug("voice", "voice UDP transmit graceful stop timed out");
+                task.abort();
+            }
+        }
     }
 
     fn replace_opus_decode(&mut self, opus_decode: VoiceOpusDecode) {
@@ -683,6 +705,13 @@ impl VoiceChildTasks {
             self.playback_enabled = None;
             self.microphone_capture = None;
         }
+    }
+
+    async fn shutdown_all(&mut self) {
+        #[cfg(feature = "voice-playback")]
+        self.stop_udp_transmit_gracefully("stopping voice UDP transmit task")
+            .await;
+        self.abort_all();
     }
 
     #[allow(dead_code)]

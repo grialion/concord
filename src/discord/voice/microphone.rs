@@ -768,6 +768,60 @@ impl VoiceFakeOutboundSendState {
 }
 
 #[cfg(feature = "voice-playback")]
+#[derive(Default)]
+pub(super) struct VoiceTransmitPacer {
+    next_send_at: Option<Instant>,
+}
+
+#[cfg(feature = "voice-playback")]
+impl VoiceTransmitPacer {
+    pub(super) fn delay_before_send(&mut self, now: Instant) -> Option<Duration> {
+        let delay = self
+            .next_send_at
+            .and_then(|next_send_at| next_send_at.checked_duration_since(now));
+        self.next_send_at = Some(match self.next_send_at {
+            Some(next_send_at) if next_send_at > now => {
+                next_send_at + VOICE_PLAYBACK_FRAME_DURATION
+            }
+            _ => now + VOICE_PLAYBACK_FRAME_DURATION,
+        });
+        delay
+    }
+
+    pub(super) fn reset(&mut self) {
+        self.next_send_at = None;
+    }
+}
+
+#[cfg(feature = "voice-playback")]
+#[derive(Debug, Eq, PartialEq)]
+pub(super) enum VoiceTransmitPacerDelayOutcome {
+    Elapsed,
+    GateChanged,
+    Closed,
+}
+
+#[cfg(feature = "voice-playback")]
+pub(super) async fn wait_voice_transmit_pacer_delay(
+    delay: Duration,
+    gate_rx: &mut watch::Receiver<VoiceCaptureGate>,
+) -> VoiceTransmitPacerDelayOutcome {
+    let deadline = tokio::time::Instant::now() + delay;
+    tokio::select! {
+        _ = tokio::time::sleep_until(deadline) => {
+            VoiceTransmitPacerDelayOutcome::Elapsed
+        }
+        changed = gate_rx.changed() => {
+            if changed.is_err() {
+                VoiceTransmitPacerDelayOutcome::Closed
+            } else {
+                VoiceTransmitPacerDelayOutcome::GateChanged
+            }
+        }
+    }
+}
+
+#[cfg(feature = "voice-playback")]
 pub(super) async fn run_voice_udp_transmit(
     mut pcm_rx: mpsc::Receiver<Vec<i16>>,
     mut gate_rx: watch::Receiver<VoiceCaptureGate>,
@@ -802,6 +856,7 @@ pub(super) async fn run_voice_udp_transmit(
     let transmit_started_at = Instant::now();
     let mut transmit_stats = VoiceUdpTransmitStats::default();
     let mut microphone_gate = VoiceMicrophoneGateState::default();
+    let mut transmit_pacer = VoiceTransmitPacer::default();
     let mut next_stats_log_at = transmit_started_at + VOICE_TRANSMIT_STATS_LOG_INTERVAL;
 
     loop {
@@ -828,6 +883,7 @@ pub(super) async fn run_voice_udp_transmit(
                 if !(gate.enabled && was_enabled) {
                     drain_voice_microphone_pcm_queue(&mut pcm_rx);
                     microphone_gate.reset();
+                    transmit_pacer.reset();
                 }
                 if !gate.enabled
                     && let Err(error) = flush_voice_outbound_events(
@@ -844,6 +900,7 @@ pub(super) async fn run_voice_udp_transmit(
                 if !gate.enabled {
                     let _ = context.local_speaking_tx.send(false);
                     microphone_gate.reset();
+                    transmit_pacer.reset();
                 }
                 sender.set_capture_gate(gate.enabled, false);
             }
@@ -864,10 +921,10 @@ pub(super) async fn run_voice_udp_transmit(
                     microphone_gate.reset();
                     break;
                 };
-                record_voice_transmit_frame(&mut transmit_stats, Instant::now());
                 let gate = *gate_rx.borrow();
                 if !gate.enabled {
                     microphone_gate.reset();
+                    transmit_pacer.reset();
                     continue;
                 }
                 if !microphone_gate.allows_frame(&frame, gate.microphone_sensitivity) {
@@ -910,6 +967,56 @@ pub(super) async fn run_voice_udp_transmit(
                         continue;
                     }
                 };
+                if let Some(delay) = transmit_pacer.delay_before_send(Instant::now()) {
+                    match wait_voice_transmit_pacer_delay(delay, &mut gate_rx).await {
+                        VoiceTransmitPacerDelayOutcome::Elapsed => {}
+                        VoiceTransmitPacerDelayOutcome::GateChanged => {
+                            if !gate_rx.borrow().enabled {
+                                if let Err(error) = flush_voice_outbound_events(
+                                    &context.udp_socket,
+                                    &context.writer,
+                                    sender.stop_speaking_with_dave(
+                                        &mut *context.dave_state.lock().await,
+                                    ),
+                                    &mut sender,
+                                    &context.local_speaking_tx,
+                                    &mut transmit_stats,
+                                )
+                                .await
+                                {
+                                    logging::error("voice", error);
+                                }
+                                let _ = context.local_speaking_tx.send(false);
+                                sender.set_capture_gate(false, false);
+                            }
+                            microphone_gate.reset();
+                            transmit_pacer.reset();
+                            continue;
+                        }
+                        VoiceTransmitPacerDelayOutcome::Closed => {
+                            drain_voice_microphone_pcm_queue(&mut pcm_rx);
+                            if let Err(error) = flush_voice_outbound_events(
+                                &context.udp_socket,
+                                &context.writer,
+                                sender.stop_speaking_with_dave(
+                                    &mut *context.dave_state.lock().await,
+                                ),
+                                &mut sender,
+                                &context.local_speaking_tx,
+                                &mut transmit_stats,
+                            )
+                            .await
+                            {
+                                logging::error("voice", error);
+                            }
+                            let _ = context.local_speaking_tx.send(false);
+                            sender.set_capture_gate(false, false);
+                            microphone_gate.reset();
+                            break;
+                        }
+                    }
+                }
+                record_voice_transmit_frame(&mut transmit_stats, Instant::now());
                 let outcome = sender.send_opus_frame_with_dave(&opus, &mut *context.dave_state.lock().await);
                 if let Err(error) = flush_voice_outbound_events(
                     &context.udp_socket,

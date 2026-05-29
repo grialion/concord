@@ -1,5 +1,6 @@
 use super::dave::VoiceDaveOutboundPayload;
 use super::rtp::build_voice_rtp_packet;
+use super::runtime::stop_voice_connection_task;
 use super::*;
 
 fn requested_voice() -> CurrentVoiceConnectionState {
@@ -1397,6 +1398,134 @@ async fn microphone_pcm_recv_returns_frames_in_fifo_order() {
     assert_eq!(rx.recv().await, Some(vec![1]));
     assert_eq!(rx.recv().await, Some(vec![2]));
     assert_eq!(rx.recv().await, Some(vec![3]));
+}
+
+#[cfg(feature = "voice-playback")]
+#[test]
+fn voice_transmit_pacer_delays_queued_frames_to_20ms_slots() {
+    let mut pacer = VoiceTransmitPacer::default();
+    let start = Instant::now();
+
+    assert_eq!(pacer.delay_before_send(start), None);
+    assert_eq!(
+        pacer.delay_before_send(start),
+        Some(VOICE_PLAYBACK_FRAME_DURATION)
+    );
+    assert_eq!(
+        pacer.delay_before_send(start + VOICE_PLAYBACK_FRAME_DURATION),
+        Some(VOICE_PLAYBACK_FRAME_DURATION)
+    );
+    assert_eq!(
+        pacer.delay_before_send(start + VOICE_PLAYBACK_FRAME_DURATION * 4),
+        None
+    );
+}
+
+#[cfg(feature = "voice-playback")]
+#[tokio::test]
+async fn voice_transmit_pacer_delay_stops_when_gate_disables() {
+    let (gate_tx, mut gate_rx) = watch::channel(VoiceCaptureGate {
+        enabled: true,
+        microphone_sensitivity: MicrophoneSensitivityDb::default(),
+        microphone_volume: VoiceVolumePercent::default(),
+    });
+    let wait = tokio::spawn(async move {
+        wait_voice_transmit_pacer_delay(Duration::from_secs(60), &mut gate_rx).await
+    });
+
+    gate_tx
+        .send(VoiceCaptureGate {
+            enabled: false,
+            microphone_sensitivity: MicrophoneSensitivityDb::default(),
+            microphone_volume: VoiceVolumePercent::default(),
+        })
+        .expect("gate receiver should still be alive");
+
+    let outcome = timeout(Duration::from_millis(100), wait)
+        .await
+        .expect("gate disable should interrupt pacer delay")
+        .expect("pacer wait task should finish");
+    assert_eq!(outcome, VoiceTransmitPacerDelayOutcome::GateChanged);
+}
+
+#[cfg(feature = "voice-playback")]
+#[tokio::test]
+async fn voice_transmit_pacer_delay_drops_frame_on_disable_then_reenable() {
+    let (gate_tx, mut gate_rx) = watch::channel(VoiceCaptureGate {
+        enabled: true,
+        microphone_sensitivity: MicrophoneSensitivityDb::default(),
+        microphone_volume: VoiceVolumePercent::default(),
+    });
+
+    gate_tx
+        .send(VoiceCaptureGate {
+            enabled: false,
+            microphone_sensitivity: MicrophoneSensitivityDb::default(),
+            microphone_volume: VoiceVolumePercent::default(),
+        })
+        .expect("gate receiver should still be alive");
+    gate_tx
+        .send(VoiceCaptureGate {
+            enabled: true,
+            microphone_sensitivity: MicrophoneSensitivityDb::default(),
+            microphone_volume: VoiceVolumePercent::default(),
+        })
+        .expect("gate receiver should still be alive");
+
+    let outcome = timeout(
+        Duration::from_millis(100),
+        wait_voice_transmit_pacer_delay(Duration::from_secs(60), &mut gate_rx),
+    )
+    .await
+    .expect("any gate change should interrupt pacer delay");
+    assert_eq!(outcome, VoiceTransmitPacerDelayOutcome::GateChanged);
+    assert!(gate_rx.borrow().enabled);
+}
+
+#[cfg(feature = "voice-playback")]
+#[tokio::test]
+async fn voice_child_tasks_waits_for_udp_transmit_shutdown() {
+    let (done_tx, done_rx) = tokio::sync::oneshot::channel();
+    let mut child_tasks = VoiceChildTasks::default();
+    child_tasks.udp_transmit = Some(tokio::spawn(async move {
+        sleep(Duration::from_millis(10)).await;
+        let _ = done_tx.send(());
+    }));
+
+    child_tasks.shutdown_all().await;
+
+    done_rx
+        .await
+        .expect("shutdown should await UDP transmit completion");
+}
+
+#[tokio::test]
+async fn voice_runtime_stops_connection_task_by_closing_gate_channels() {
+    let (capture_gate_tx, mut capture_gate_rx) = mpsc::unbounded_channel();
+    let (playback_gate_tx, mut playback_gate_rx) = mpsc::unbounded_channel();
+    let (done_tx, done_rx) = tokio::sync::oneshot::channel();
+    let mut connection_task = Some(tokio::spawn(async move {
+        assert!(capture_gate_rx.recv().await.is_none());
+        assert!(playback_gate_rx.recv().await.is_none());
+        let _ = done_tx.send(());
+    }));
+    let mut capture_gate_tx = Some(capture_gate_tx);
+    let mut playback_gate_tx = Some(playback_gate_tx);
+
+    stop_voice_connection_task(
+        &mut connection_task,
+        &mut capture_gate_tx,
+        &mut playback_gate_tx,
+        "test voice connection stop",
+    )
+    .await;
+
+    done_rx
+        .await
+        .expect("connection task should finish after gate channels close");
+    assert!(connection_task.is_none());
+    assert!(capture_gate_tx.is_none());
+    assert!(playback_gate_tx.is_none());
 }
 
 #[cfg(feature = "voice-playback")]

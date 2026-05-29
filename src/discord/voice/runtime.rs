@@ -186,13 +186,13 @@ pub(crate) async fn run_voice_runtime(
         if let Some(action) = state.apply(event) {
             match action {
                 VoiceRuntimeAction::Connect(session) => {
-                    if let Some(task) = connection_task.take() {
-                        logging::debug(
-                            "voice",
-                            "aborting previous voice connection task before reconnect",
-                        );
-                        task.abort();
-                    }
+                    stop_voice_connection_task(
+                        &mut connection_task,
+                        &mut capture_gate_tx,
+                        &mut playback_gate_tx,
+                        "stopping previous voice connection task before reconnect",
+                    )
+                    .await;
                     let (next_capture_gate_tx, capture_gate_rx) = mpsc::unbounded_channel();
                     let (next_playback_gate_tx, playback_gate_rx) = mpsc::unbounded_channel();
                     capture_gate_tx = Some(next_capture_gate_tx);
@@ -218,12 +218,13 @@ pub(crate) async fn run_voice_runtime(
                     )));
                 }
                 VoiceRuntimeAction::Close => {
-                    if let Some(task) = connection_task.take() {
-                        logging::debug("voice", "aborting active voice connection task");
-                        task.abort();
-                    }
-                    capture_gate_tx = None;
-                    playback_gate_tx = None;
+                    stop_voice_connection_task(
+                        &mut connection_task,
+                        &mut capture_gate_tx,
+                        &mut playback_gate_tx,
+                        "stopping active voice connection task",
+                    )
+                    .await;
                 }
             }
         }
@@ -246,11 +247,36 @@ pub(crate) async fn run_voice_runtime(
         }
     }
 
-    if let Some(task) = connection_task {
-        logging::debug(
-            "voice",
-            "aborting voice connection task during voice runtime shutdown",
-        );
-        task.abort();
+    stop_voice_connection_task(
+        &mut connection_task,
+        &mut capture_gate_tx,
+        &mut playback_gate_tx,
+        "stopping voice connection task during voice runtime shutdown",
+    )
+    .await;
+}
+
+pub(super) async fn stop_voice_connection_task(
+    connection_task: &mut Option<JoinHandle<()>>,
+    capture_gate_tx: &mut Option<mpsc::UnboundedSender<VoiceCaptureGate>>,
+    playback_gate_tx: &mut Option<mpsc::UnboundedSender<VoicePlaybackGate>>,
+    label: &str,
+) {
+    capture_gate_tx.take();
+    playback_gate_tx.take();
+    let Some(mut task) = connection_task.take() else {
+        return;
+    };
+    logging::debug("voice", label);
+    match timeout(VOICE_CONNECTION_SHUTDOWN_TIMEOUT, &mut task).await {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => {
+            logging::debug("voice", format!("voice connection task ended: {error}"));
+        }
+        Err(_) => {
+            logging::debug("voice", "voice connection graceful stop timed out");
+            task.abort();
+            let _ = timeout(Duration::from_millis(100), &mut task).await;
+        }
     }
 }

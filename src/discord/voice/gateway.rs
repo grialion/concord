@@ -94,6 +94,7 @@ pub(super) async fn connect_voice_gateway(
     let last_sequence = Arc::new(Mutex::new(None));
     let dave_state = Arc::new(Mutex::new(VoiceDaveState::new(session)));
 
+    let result: Result<(), String> = async {
     send_voice_text(&writer, voice_identify_payload(session)).await?;
     logging::debug("voice", "voice identify sent");
     logging::debug("voice", "voice websocket read loop started");
@@ -253,22 +254,24 @@ pub(super) async fn connect_voice_gateway(
                             if let Some(ready) = voice_ready.as_ref() {
                                 let (pcm_tx, pcm_rx) = mpsc::channel(VOICE_MIC_PCM_FRAME_QUEUE);
                                 let (gate_tx, gate_rx) = watch::channel(current_capture_gate);
-                                child_tasks.replace_udp_transmit(
-                                    audio_handle.spawn(run_voice_udp_transmit(
-                                        pcm_rx,
-                                        gate_rx,
-                                        VoiceUdpTransmitContext {
-                                            udp_socket: Arc::clone(socket),
-                                            writer: Arc::clone(&writer),
-                                            description: transmit_description,
-                                            ssrc: ready.ssrc,
-                                            dave_state: Arc::clone(&dave_state),
-                                            local_speaking_tx: local_speaking_tx.clone(),
-                                        },
-                                    )),
-                                    gate_tx,
-                                    pcm_tx,
-                                );
+                                child_tasks
+                                    .replace_udp_transmit(
+                                        audio_handle.spawn(run_voice_udp_transmit(
+                                            pcm_rx,
+                                            gate_rx,
+                                            VoiceUdpTransmitContext {
+                                                udp_socket: Arc::clone(socket),
+                                                writer: Arc::clone(&writer),
+                                                description: transmit_description,
+                                                ssrc: ready.ssrc,
+                                                dave_state: Arc::clone(&dave_state),
+                                                local_speaking_tx: local_speaking_tx.clone(),
+                                            },
+                                        )),
+                                        gate_tx,
+                                        pcm_tx,
+                                    )
+                                    .await;
                                 child_tasks.set_voice_transmit_gate(current_capture_gate);
                             }
                         }
@@ -363,13 +366,17 @@ pub(super) async fn connect_voice_gateway(
         }
     }
 
-    child_tasks.abort_all();
+    Ok(())
+    }
+    .await;
+
+    child_tasks.shutdown_all().await;
     for user_id in speaking_tracker.clear_all(session.user_id) {
         status_publisher
             .publish_speaking(session, user_id, false)
             .await;
     }
-    Ok(())
+    result
 }
 
 pub(super) async fn discover_voice_udp_address(
