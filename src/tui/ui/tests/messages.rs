@@ -519,7 +519,7 @@ fn message_content_preserves_explicit_newlines() {
 #[test]
 fn message_content_applies_supported_markdown_formatting() {
     let message = message_with_content(Some(
-            "# Project Update\n## Highlights\n### Detail\nMessage body\n> Keep the layout calm\n>\nNext paragraph\n- First action\n* Alternate action\nUse **bold**, *italic*, ***both***, and `code` text\n```rust\nlet answer = 42;\n**not bold in code**\n```\nAfter"
+            "# Project Update\n## Highlights\n### Detail\nMessage body\n> Keep the layout calm\n>\nNext paragraph\n- First action\n* Alternate action\nUse **bold**, *italic*, ***both***, and `code` text\n```rust\nlet answer = 42;\n**not bold in code**\n```\nAfter\n```css\nTEST```\n\n```cs\nsadfasdf\n```\n\n```css\nzdasfffaewfewf\n\n```"
             .to_owned(),
     ));
 
@@ -543,6 +543,18 @@ fn message_content_applies_supported_markdown_formatting() {
             "│ **not bold in code** │",
             "╰──────────────────────╯",
             "After",
+            "╭─ css ╮",
+            "│ TEST │",
+            "╰──────╯",
+            "",
+            "╭─ cs ─────╮",
+            "│ sadfasdf │",
+            "╰──────────╯",
+            "",
+            "╭─ css ──────────╮",
+            "│ zdasfffaewfewf │",
+            "│                │",
+            "╰────────────────╯",
         ]
     );
 

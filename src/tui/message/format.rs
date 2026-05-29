@@ -955,8 +955,12 @@ fn wrap_markdown_message_lines_with_loaded_custom_emoji_urls(
     for line in rendered.text.split('\n') {
         let line_end = line_start.saturating_add(line.len());
         let rendered_line = rendered_text_slice(&rendered, line_start, line_end);
-        if let Some(label) = markdown_code_fence_label(&rendered_line.text) {
-            if in_code_block {
+        if in_code_block {
+            if let Some(content_end) = markdown_code_fence_closing_content_end(&rendered_line.text)
+            {
+                if content_end > 0 {
+                    code_block_lines.push(rendered_text_slice(&rendered_line, 0, content_end));
+                }
                 lines.extend(wrap_code_block_lines(
                     std::mem::take(&mut code_block_lines),
                     width,
@@ -965,12 +969,12 @@ fn wrap_markdown_message_lines_with_loaded_custom_emoji_urls(
                 in_code_block = false;
                 code_block_fence = None;
             } else {
-                in_code_block = true;
-                code_block_label = (!label.is_empty()).then_some(label);
-                code_block_fence = Some(rendered_line);
+                code_block_lines.push(rendered_line);
             }
-        } else if in_code_block {
-            code_block_lines.push(rendered_line);
+        } else if let Some(label) = markdown_code_fence_label(&rendered_line.text) {
+            in_code_block = true;
+            code_block_label = (!label.is_empty()).then_some(label);
+            code_block_fence = Some(rendered_line);
         } else {
             let rendered_line = rendered_text_with_loaded_custom_emoji_placeholders(
                 rendered_line,
@@ -1213,6 +1217,16 @@ fn markdown_code_fence_label(value: &str) -> Option<String> {
         .trim_start()
         .strip_prefix("```")
         .map(|label| label.trim().to_owned())
+}
+
+fn markdown_code_fence_closing_content_end(value: &str) -> Option<usize> {
+    if value.trim() == "```" {
+        return Some(0);
+    }
+
+    let trimmed_end_len = value.trim_end().len();
+    let before_closing_fence = value[..trimmed_end_len].strip_suffix("```")?;
+    (!before_closing_fence.trim().is_empty()).then_some(before_closing_fence.len())
 }
 
 fn markdown_code_style() -> Style {
