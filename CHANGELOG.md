@@ -2,7 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.1.7] - 2026-05-30
+## [2.1.8] - 2026-06-01
+
+### Bug Fixes
+
+- Remove macos notification fallback by @chojs23
+
+### Features
+
+- Add emojis as links (#144) in [#144](https://github.com/chojs23/concord/pull/144) by @van-nessing
+- Add Nitro-aware custom emoji handling by @chojs23
+- Added option for notification icon (#148) in [#148](https://github.com/chojs23/concord/pull/148) by @ToborWinner
+- Add composer option and move emoji_as_link to composer option by @chojs23
+
+### New Contributors
+
+- @ToborWinner made their first contribution in [#148](https://github.com/chojs23/concord/pull/148)
+- @van-nessing made their first contribution in [#144](https://github.com/chojs23/concord/pull/144)
+
+## [2.1.7] - 2026-05-29
 
 ### Bug Fixes
 
