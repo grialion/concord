@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.10] - 2026-06-07
+
+### Bug Fixes
+
+- Show macOS notifications on terminals that don't set TERM_PROGRAM set (#160) in [#160](https://github.com/chojs23/concord/pull/160) by @cultlead3r
+- Fix slash command invocation to preserve selected command identity (#162) in [#162](https://github.com/chojs23/concord/pull/162) by @chojs23
+- Highlight TypeScript code fences as JavaScript by @chojs23
+
+### Features
+
+- Add syntax highlighting (#158) in [#158](https://github.com/chojs23/concord/pull/158) by @ToborWinner
+- Use pure rust syntect backend by @chojs23
+- Add profile configuration (#163) in [#163](https://github.com/chojs23/concord/pull/163) by @chojs23
+
+### New Contributors
+
+- @cultlead3r made their first contribution in [#160](https://github.com/chojs23/concord/pull/160)
+
 ## [2.1.9] - 2026-06-03
 
 ### Bug Fixes
