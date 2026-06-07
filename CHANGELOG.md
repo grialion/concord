@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.12] - 2026-06-07
+
+### Bug Fixes
+
+- _(deps)_ Lock ratatui-image by @chojs23
+
+### Miscellaneous Tasks
+
+- _(ci)_ Remove legacy Darwin SDK framework inputs from Nix flake by @chojs23
+
 ## [2.1.11] - 2026-06-07
 
 ### Features
