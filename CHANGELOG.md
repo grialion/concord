@@ -2,7 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.1.13] - 2026-06-08
+## [2.2.0] - 2026-06-07
+
+Concord save token in system keychain and use it for authentication, so you may need to re-login after this update.
+
+### Documentation
+
+- Update homebrew installation by @chojs23
+- Update image by @chojs23
+
+### Features
+
+- Wrap message text at word boundaries (#174) in [#174](https://github.com/chojs23/concord/pull/174) by @chojs23
+- Use system keychain and move ui state to XDG_STATE_HOME (#173) in [#173](https://github.com/chojs23/concord/pull/173) by @chojs23
+
+## [2.1.13] - 2026-06-07
 
 ### Bug Fixes
 
@@ -707,8 +721,17 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- _(flake)_ Use crane (#4) in [#4](https://github.com/chojs23/concord/pull/4) by @M4jor-Tom
 - Keep original image width:height ratio (#6) in [#6](https://github.com/chojs23/concord/pull/6) by @chojs23
+
+### Cd
+
+- Chain crates publish after release by @chojs23
+
+## [1.1.0] - 2026-05-09
+
+### Bug Fixes
+
+- _(flake)_ Use crane (#4) in [#4](https://github.com/chojs23/concord/pull/4) by @M4jor-Tom
 
 ### Documentation
 
@@ -723,10 +746,6 @@ All notable changes to this project will be documented in this file.
 ### Miscellaneous Tasks
 
 - Enable generated github release notes by @chojs23
-
-### Cd
-
-- Chain crates publish after release by @chojs23
 
 ### New Contributors
 
