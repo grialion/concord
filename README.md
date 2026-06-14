@@ -168,6 +168,8 @@ By default, tokens are saved in the system keychain when available. In the
 default `auto` mode, Concord falls back to its state directory when keychain
 storage is unavailable. See the Security section below for details.
 
+There is no built-in logout option yet, but you can log out by deleting stored credentials from the keychain or state directory.
+
 ### Guilds & Channels
 
 - Browse servers with guild folder grouping
