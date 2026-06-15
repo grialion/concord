@@ -13,18 +13,27 @@ use crate::{
         ApplicationCommandInfo, ApplicationCommandInteraction, ApplicationCommandInteractionOption,
         ChannelInfo, MAX_UPLOAD_FILE_BYTES, MessageAttachmentUpload, MessageSearchAuthorType,
         MessageSearchHas, MessageSearchQuery, ReactionEmoji,
-        rest::{
-            ForumPostPage, ForumSearchSort, REACTION_USERS_MAX_PAGES,
-            application_command_interaction_body, application_command_option_body,
-            is_search_index_warming, merge_forum_pages, message_multipart_form,
-            message_request_body, message_request_body_with_tts,
-            message_search_date_snowflake_bounds, message_search_query_params, mute_request_body,
-            next_reaction_users_after, parse_application_command_index, parse_forum_first_messages,
-            parse_forum_threads, parse_user_profile_response, poll_vote_request_body,
-            reaction_route_component, upload_content_type, validate_message_content,
-            validate_message_payload,
-        },
     },
+};
+
+use super::{
+    application_commands::{
+        application_command_interaction_body, application_command_option_body,
+        parse_application_command_index,
+    },
+    forum::{
+        ForumPostPage, ForumSearchSort, is_search_index_warming, merge_forum_pages,
+        parse_forum_first_messages, parse_forum_threads,
+    },
+    messages::{
+        message_multipart_form, message_request_body, message_request_body_with_tts,
+        upload_content_type, validate_message_content, validate_message_payload,
+    },
+    notification_settings::mute_request_body,
+    polls::poll_vote_request_body,
+    profile::parse_user_profile_response,
+    reactions::{REACTION_USERS_MAX_PAGES, next_reaction_users_after, reaction_route_component},
+    search::{message_search_date_snowflake_bounds, message_search_query_params},
 };
 
 #[test]
