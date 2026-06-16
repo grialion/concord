@@ -15,7 +15,8 @@ use crate::{
 use super::{
     ImagePreviewRenderInfo, ImagePreviewTarget, clipped_preview_image,
     decode::{MediaImageDecodeJob, MediaImageDecodeKey},
-    lru, query_image_picker,
+    lru::{self, TrackedCacheEntry},
+    query_image_picker,
 };
 
 pub(super) const MAX_IMAGE_PREVIEW_CACHE_ENTRIES: usize = 16;
@@ -101,7 +102,7 @@ impl ImagePreviewCache {
                 continue;
             };
             rendered_keys.insert(key.clone());
-            tick_entry(entry, &mut self.tick);
+            lru::touch_entry(entry, &mut self.tick);
             let state = match entry {
                 ImagePreviewEntry::Loading { filename, .. }
                 | ImagePreviewEntry::Decoding { filename, .. } => ImagePreviewState::Loading {
@@ -269,7 +270,7 @@ impl ImagePreviewCache {
                 continue;
             };
             let last_used = lru::next_tick(&mut self.tick);
-            let generation = self.next_decode_generation();
+            let generation = lru::next_generation(&mut self.decode_generation);
             self.entries.insert(
                 key.clone(),
                 ImagePreviewEntry::Decoding {
@@ -373,11 +374,6 @@ impl ImagePreviewCache {
         }
     }
 
-    fn next_decode_generation(&mut self) -> u64 {
-        self.decode_generation = self.decode_generation.saturating_add(1);
-        self.decode_generation
-    }
-
     fn prune_to_limit(&mut self, targets: &[ImagePreviewTarget]) {
         let protected = targets
             .iter()
@@ -388,7 +384,7 @@ impl ImagePreviewCache {
             &mut self.entries,
             MAX_IMAGE_PREVIEW_CACHE_ENTRIES,
             |key| protected.contains(key),
-            ImagePreviewEntry::last_used,
+            TrackedCacheEntry::last_used,
         );
     }
 
@@ -472,7 +468,9 @@ impl ImagePreviewEntry {
             | Self::Failed { filename, .. } => filename,
         }
     }
+}
 
+impl TrackedCacheEntry for ImagePreviewEntry {
     fn last_used(&self) -> u64 {
         match self {
             Self::Loading { last_used, .. }
@@ -481,23 +479,14 @@ impl ImagePreviewEntry {
             | Self::Failed { last_used, .. } => *last_used,
         }
     }
-}
 
-fn tick_entry(entry: &mut ImagePreviewEntry, tick: &mut u64) {
-    let last_used = lru::next_tick(tick);
-    match entry {
-        ImagePreviewEntry::Loading {
-            last_used: value, ..
+    fn touch(&mut self, tick: u64) {
+        match self {
+            ImagePreviewEntry::Loading { last_used, .. }
+            | ImagePreviewEntry::Decoding { last_used, .. }
+            | ImagePreviewEntry::Ready { last_used, .. }
+            | ImagePreviewEntry::Failed { last_used, .. } => *last_used = tick,
         }
-        | ImagePreviewEntry::Decoding {
-            last_used: value, ..
-        }
-        | ImagePreviewEntry::Ready {
-            last_used: value, ..
-        }
-        | ImagePreviewEntry::Failed {
-            last_used: value, ..
-        } => *value = last_used,
     }
 }
 

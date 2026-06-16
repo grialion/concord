@@ -5,27 +5,7 @@ use crate::discord::{AppCommand, MessageHistoryLoadTarget};
 
 #[test]
 fn message_creation_keeps_viewport_on_latest() {
-    let guild_id = Id::new(1);
-    let channel_id: Id<ChannelMarker> = Id::new(2);
-    let mut state = DashboardState::new();
-
-    state.push_event(guild_create_event(
-        guild_id,
-        "guild",
-        vec![text_channel_info(guild_id, channel_id, "general")],
-    ));
-    state.confirm_selected_guild();
-    state.confirm_selected_channel();
-    for id in 1..=3u64 {
-        state.push_event(message_create_event(MessageCreateFixture {
-            guild_id: Some(guild_id),
-            channel_id,
-            message_id: Id::new(id),
-            author_id: Id::new(99),
-            content: Some(format!("msg {id}")),
-            ..guild_message_create_fixture()
-        }));
-    }
+    let state = state_with_messages(3);
 
     assert_eq!(state.selected_message(), 2);
 }
@@ -43,14 +23,7 @@ fn message_scroll_preserves_position_when_not_following() {
     assert_eq!(state.selected_message(), 3);
     assert!(!state.message_auto_follow());
 
-    state.push_event(message_create_event(MessageCreateFixture {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(6),
-        author_id: Id::new(99),
-        content: Some("msg 6".to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    push_text_message(&mut state, 6, "msg 6");
 
     assert_eq!(state.selected_message(), 3);
     assert_eq!(state.messages()[state.selected_message()].id, Id::new(4));
@@ -131,15 +104,9 @@ fn user_sent_message_from_history_position_does_not_force_follow() {
     // Simulate the REST send response arriving as a self-authored
     // MessageCreate. Auto-follow must not yank the cursor down because the
     // user was reading older history.
-    state.push_event(message_create_event(MessageCreateFixture {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(99),
-        author_id: me,
-        author: "me".to_owned(),
-        content: Some("hello".to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    state.push_event(message_create_event(
+        guild_text_message(99, "hello").with_author(me, "me"),
+    ));
 
     let messages = state.messages();
     assert_eq!(messages[state.selected_message()].id, parked_message_id);

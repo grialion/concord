@@ -36,6 +36,7 @@ const MEMBER_SEARCH_MAX_QUERY_CHARS: usize = 64;
 const MEMBER_SEARCH_MAX_LIMIT: u16 = 10;
 const OFFICIAL_WORDLE_APPLICATION_ID: u64 = 1_211_781_489_931_452_447;
 const DISCORD_LOCAL_APPLICATION_ID: &str = "-1";
+const GATEWAY_COMMAND_CHANNEL_CLOSED: &str = "gateway command channel closed";
 
 type ApplicationCommandCache = HashMap<Option<Id<GuildMarker>>, Vec<ApplicationCommandInfo>>;
 type MemberListRange = (u32, u32);
@@ -197,15 +198,13 @@ impl DiscordClient {
         &self,
         guild_id: Id<GuildMarker>,
     ) -> std::result::Result<(), String> {
-        self.gateway_commands_tx
-            .send(GatewayCommand::RequestGuildMembers {
-                guild_id,
-                query: String::new(),
-                limit: 0,
-                presences: true,
-                nonce: None,
-            })
-            .map_err(|_| "gateway command channel closed".to_owned())
+        self.send_gateway_command(GatewayCommand::RequestGuildMembers {
+            guild_id,
+            query: String::new(),
+            limit: 0,
+            presences: true,
+            nonce: None,
+        })
     }
 
     pub fn request_guild_members_by_ids(
@@ -216,13 +215,11 @@ impl DiscordClient {
         if user_ids.is_empty() {
             return Ok(());
         }
-        self.gateway_commands_tx
-            .send(GatewayCommand::RequestGuildMembersByIds {
-                guild_id,
-                user_ids,
-                presences: false,
-            })
-            .map_err(|_| "gateway command channel closed".to_owned())
+        self.send_gateway_command(GatewayCommand::RequestGuildMembersByIds {
+            guild_id,
+            user_ids,
+            presences: false,
+        })
     }
 
     pub fn search_guild_members(
@@ -236,24 +233,20 @@ impl DiscordClient {
         };
         let limit = limit.min(MEMBER_SEARCH_MAX_LIMIT);
         let nonce = format!("mention-ac-{}-{:016x}", guild_id.get(), query_hash(&query));
-        self.gateway_commands_tx
-            .send(GatewayCommand::RequestGuildMembers {
-                guild_id,
-                query,
-                limit,
-                presences: true,
-                nonce: Some(nonce),
-            })
-            .map_err(|_| "gateway command channel closed".to_owned())
+        self.send_gateway_command(GatewayCommand::RequestGuildMembers {
+            guild_id,
+            query,
+            limit,
+            presences: true,
+            nonce: Some(nonce),
+        })
     }
 
     pub fn subscribe_direct_message(
         &self,
         channel_id: Id<ChannelMarker>,
     ) -> std::result::Result<(), String> {
-        self.gateway_commands_tx
-            .send(GatewayCommand::SubscribeDirectMessage { channel_id })
-            .map_err(|_| "gateway command channel closed".to_owned())
+        self.send_gateway_command(GatewayCommand::SubscribeDirectMessage { channel_id })
     }
 
     pub fn subscribe_guild_channel(
@@ -261,12 +254,10 @@ impl DiscordClient {
         guild_id: Id<GuildMarker>,
         channel_id: Id<ChannelMarker>,
     ) -> std::result::Result<(), String> {
-        self.gateway_commands_tx
-            .send(GatewayCommand::SubscribeGuildChannel {
-                guild_id,
-                channel_id,
-            })
-            .map_err(|_| "gateway command channel closed".to_owned())
+        self.send_gateway_command(GatewayCommand::SubscribeGuildChannel {
+            guild_id,
+            channel_id,
+        })
     }
 
     pub fn update_member_list_subscription(
@@ -275,13 +266,11 @@ impl DiscordClient {
         channel_id: Id<ChannelMarker>,
         ranges: Vec<(u32, u32)>,
     ) -> std::result::Result<(), String> {
-        self.gateway_commands_tx
-            .send(GatewayCommand::UpdateMemberListSubscription {
-                guild_id,
-                channel_id,
-                ranges,
-            })
-            .map_err(|_| "gateway command channel closed".to_owned())
+        self.send_gateway_command(GatewayCommand::UpdateMemberListSubscription {
+            guild_id,
+            channel_id,
+            ranges,
+        })
     }
 
     pub fn update_voice_state(
@@ -321,15 +310,12 @@ impl DiscordClient {
             }
         }
 
-        let result = self
-            .gateway_commands_tx
-            .send(GatewayCommand::UpdateVoiceState {
-                guild_id,
-                channel_id,
-                self_mute,
-                self_deaf,
-            })
-            .map_err(|_| "gateway command channel closed".to_owned());
+        let result = self.send_gateway_command(GatewayCommand::UpdateVoiceState {
+            guild_id,
+            channel_id,
+            self_mute,
+            self_deaf,
+        });
         if result.is_ok() {
             if let Some(channel_id) = channel_id {
                 let allow_microphone_transmit = requested
@@ -442,9 +428,8 @@ impl DiscordClient {
         status: PresenceStatus,
         activities: Vec<ActivityInfo>,
     ) -> Result<()> {
-        self.gateway_commands_tx
-            .send(GatewayCommand::UpdatePresence { status, activities })
-            .map_err(|_| AppError::DiscordRequest("gateway command channel closed".to_owned()))?;
+        self.send_gateway_command(GatewayCommand::UpdatePresence { status, activities })
+            .map_err(AppError::DiscordRequest)?;
         Ok(())
     }
 
@@ -470,9 +455,7 @@ impl DiscordClient {
 
     pub fn shutdown_gateway(&self) -> std::result::Result<(), String> {
         let _ = self.voice_events_tx.send(VoiceRuntimeEvent::Shutdown);
-        self.gateway_commands_tx
-            .send(GatewayCommand::Shutdown)
-            .map_err(|_| "gateway command channel closed".to_owned())
+        self.send_gateway_command(GatewayCommand::Shutdown)
     }
 
     pub async fn load_application_commands(
@@ -540,6 +523,12 @@ impl DiscordClient {
                 invocation.command_name
             ))
         })
+    }
+
+    fn send_gateway_command(&self, command: GatewayCommand) -> std::result::Result<(), String> {
+        self.gateway_commands_tx
+            .send(command)
+            .map_err(|_| GATEWAY_COMMAND_CHANNEL_CLOSED.to_owned())
     }
 }
 

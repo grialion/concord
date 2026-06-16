@@ -413,12 +413,10 @@ impl DashboardState {
 
     pub fn activate_message_url_shortcut(&mut self, shortcut: KeyChord) -> Option<AppCommand> {
         let urls = self.selected_message_url_items();
-        let index = urls.iter().enumerate().position(|(index, _)| {
-            self.options
-                .key_bindings()
-                .indexed_shortcut(index)
-                .is_some_and(|candidate| shortcut.matches_char(candidate))
-        })?;
+        let index = self
+            .options
+            .key_bindings()
+            .matching_indexed_shortcut_index(shortcut, urls.len())?;
         self.select_message_url_row(index);
         self.activate_selected_message_url()
     }

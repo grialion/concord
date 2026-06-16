@@ -966,6 +966,23 @@ impl KeyBindings {
         indexed_shortcut(index)
     }
 
+    pub(in crate::tui) fn indexed_shortcut_matches(
+        &self,
+        shortcut: KeyChord,
+        index: usize,
+    ) -> bool {
+        self.indexed_shortcut(index)
+            .is_some_and(|candidate| shortcut.matches_char(candidate))
+    }
+
+    pub(in crate::tui) fn matching_indexed_shortcut_index(
+        &self,
+        shortcut: KeyChord,
+        len: usize,
+    ) -> Option<usize> {
+        (0..len).find(|index| self.indexed_shortcut_matches(shortcut, *index))
+    }
+
     pub fn emoji_reaction_shortcut(
         &self,
         reactions: &[EmojiReactionItem],

@@ -552,45 +552,14 @@ impl DiscordState {
             .messages
             .entry(message.channel_id)
             .or_default();
-        let inserted = if let Some(existing) =
-            messages.iter_mut().find(|item| item.id == message.id)
-        {
-            existing.guild_id = message.guild_id.or(existing.guild_id);
-            existing.channel_id = message.channel_id;
-            existing.author_id = message.author_id;
-            existing.author = message.author;
-            if message.author_avatar_url.is_some() || existing.author_avatar_url.is_none() {
-                existing.author_avatar_url = message.author_avatar_url;
-            }
-            existing.message_kind = message.message_kind;
-            if message.reference.is_some() || existing.reference.is_none() {
-                existing.reference = message.reference;
-            }
-            if message.reply.is_some() || existing.reply.is_none() {
-                existing.reply = message.reply;
-            }
-            if message.poll.is_some() || existing.poll.is_none() {
-                existing.poll = message.poll;
-            }
-            existing.pinned = existing.pinned || message.pinned;
-            existing.reactions = message.reactions;
-            if message.content.is_some() {
-                existing.content = message.content;
-            }
-            if !message.mentions.is_empty() || existing.mentions.is_empty() {
-                existing.mentions = merge_message_mentions(&existing.mentions, &message.mentions);
-            }
-            if !message.attachments.is_empty() || existing.attachments.is_empty() {
-                existing.attachments = message.attachments;
-            }
-            if !message.forwarded_snapshots.is_empty() || existing.forwarded_snapshots.is_empty() {
-                existing.forwarded_snapshots = message.forwarded_snapshots;
-            }
-            false
-        } else {
-            messages.push_back(message);
-            true
-        };
+        let inserted =
+            if let Some(existing) = messages.iter_mut().find(|item| item.id == message.id) {
+                merge_duplicate_message_create(existing, &message);
+                false
+            } else {
+                messages.push_back(message);
+                true
+            };
 
         let mut evicted_message_ids = Vec::new();
         while messages.len() > self.message_cache.max_messages_per_channel {
@@ -1229,18 +1198,50 @@ impl DiscordState {
 }
 
 fn merge_message(existing: &mut MessageState, incoming: &MessageState) {
+    merge_shared_message_fields(existing, incoming);
+    existing.author_is_bot = incoming.author_is_bot;
+    if incoming.interaction.is_some() || existing.interaction.is_none() {
+        existing.interaction = incoming.interaction.clone();
+    }
+    if let Some(content) = &incoming.content {
+        if !content.is_empty() || message_content_is_empty(existing) {
+            existing.content = Some(content.clone());
+        }
+    }
+    if !incoming.sticker_names.is_empty() || existing.sticker_names.is_empty() {
+        existing.sticker_names = incoming.sticker_names.clone();
+    }
+    existing.mentions = merge_message_mentions(&existing.mentions, &incoming.mentions);
+    if !incoming.embeds.is_empty() || existing.embeds.is_empty() {
+        existing.embeds = incoming.embeds.clone();
+    }
+    if incoming.edited_timestamp.is_some() || existing.edited_timestamp.is_none() {
+        existing.edited_timestamp = incoming.edited_timestamp.clone();
+    }
+}
+
+fn merge_duplicate_message_create(existing: &mut MessageState, incoming: &MessageState) {
+    merge_shared_message_fields(existing, incoming);
+    if incoming.reference.is_some() || existing.reference.is_none() {
+        existing.reference = incoming.reference.clone();
+    }
+    if incoming.content.is_some() {
+        existing.content = incoming.content.clone();
+    }
+    if !incoming.mentions.is_empty() || existing.mentions.is_empty() {
+        existing.mentions = merge_message_mentions(&existing.mentions, &incoming.mentions);
+    }
+}
+
+fn merge_shared_message_fields(existing: &mut MessageState, incoming: &MessageState) {
     existing.guild_id = incoming.guild_id.or(existing.guild_id);
     existing.channel_id = incoming.channel_id;
     existing.author_id = incoming.author_id;
     existing.author = incoming.author.clone();
-    existing.author_is_bot = incoming.author_is_bot;
     if incoming.author_avatar_url.is_some() || existing.author_avatar_url.is_none() {
         existing.author_avatar_url = incoming.author_avatar_url.clone();
     }
     existing.message_kind = incoming.message_kind;
-    if incoming.interaction.is_some() || existing.interaction.is_none() {
-        existing.interaction = incoming.interaction.clone();
-    }
     if incoming.reply.is_some() || existing.reply.is_none() {
         existing.reply = incoming.reply.clone();
     }
@@ -1249,33 +1250,20 @@ fn merge_message(existing: &mut MessageState, incoming: &MessageState) {
     }
     existing.pinned = existing.pinned || incoming.pinned;
     existing.reactions = incoming.reactions.clone();
-
-    if let Some(content) = &incoming.content {
-        let existing_is_empty = existing
-            .content
-            .as_deref()
-            .map(str::is_empty)
-            .unwrap_or(true);
-        if !content.is_empty() || existing_is_empty {
-            existing.content = Some(content.clone());
-        }
-    }
-    if !incoming.sticker_names.is_empty() || existing.sticker_names.is_empty() {
-        existing.sticker_names = incoming.sticker_names.clone();
-    }
-    existing.mentions = merge_message_mentions(&existing.mentions, &incoming.mentions);
     if !incoming.attachments.is_empty() || existing.attachments.is_empty() {
         existing.attachments = incoming.attachments.clone();
-    }
-    if !incoming.embeds.is_empty() || existing.embeds.is_empty() {
-        existing.embeds = incoming.embeds.clone();
     }
     if !incoming.forwarded_snapshots.is_empty() || existing.forwarded_snapshots.is_empty() {
         existing.forwarded_snapshots = incoming.forwarded_snapshots.clone();
     }
-    if incoming.edited_timestamp.is_some() || existing.edited_timestamp.is_none() {
-        existing.edited_timestamp = incoming.edited_timestamp.clone();
-    }
+}
+
+fn message_content_is_empty(message: &MessageState) -> bool {
+    message
+        .content
+        .as_deref()
+        .map(str::is_empty)
+        .unwrap_or(true)
 }
 
 fn update_message_in(

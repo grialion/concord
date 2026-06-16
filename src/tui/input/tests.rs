@@ -233,6 +233,17 @@ fn state_with_messages(count: u64) -> DashboardState {
     state_with_messages_from_state(DashboardState::new(), count)
 }
 
+fn push_guild_message(state: &mut DashboardState, message_id: u64, content: impl Into<String>) {
+    state.push_event(message_create_event(guild_text_message(
+        message_id, content,
+    )));
+}
+
+fn guild_text_message(message_id: u64, content: impl Into<String>) -> MessageCreateFixture {
+    MessageCreateFixture::guild_message(Id::new(1), Id::new(2), Id::new(message_id))
+        .with_content(content)
+}
+
 fn state_with_messages_from_state(mut state: DashboardState, count: u64) -> DashboardState {
     let guild_id = Id::new(1);
     let channel_id = Id::new(2);
@@ -255,12 +266,7 @@ fn state_with_messages_from_state(mut state: DashboardState, count: u64) -> Dash
     state.confirm_selected_guild();
     state.confirm_selected_channel();
     for id in 1..=count {
-        state.push_event(message_create_event(MessageCreateFixture {
-            channel_id,
-            message_id: Id::new(id),
-            content: Some(format!("msg {id}")),
-            ..guild_message_create_fixture()
-        }));
+        push_guild_message(&mut state, id, format!("msg {id}"));
     }
     state
 }
@@ -338,18 +344,16 @@ fn state_with_thread_created_message() -> DashboardState {
     });
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(message_create_event(MessageCreateFixture {
-        channel_id: parent_id,
-        message_id: Id::new(1),
-        message_kind: crate::discord::MessageKind::new(18),
-        reference: Some(MessageReferenceInfo {
-            guild_id: Some(guild_id),
-            channel_id: Some(thread_id),
-            message_id: None,
-        }),
-        content: Some("release notes".to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    state.push_event(message_create_event(
+        MessageCreateFixture::guild_message(guild_id, parent_id, Id::new(1))
+            .with_message_kind(crate::discord::MessageKind::new(18))
+            .with_reference(MessageReferenceInfo {
+                guild_id: Some(guild_id),
+                channel_id: Some(thread_id),
+                message_id: None,
+            })
+            .with_content("release notes"),
+    ));
     state
 }
 
@@ -405,12 +409,7 @@ fn state_with_custom_emoji_message() -> DashboardState {
     });
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(message_create_event(MessageCreateFixture {
-        channel_id,
-        message_id: Id::new(1),
-        content: Some("msg 1".to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    push_guild_message(&mut state, 1, "msg 1");
     state
 }
 
@@ -495,11 +494,8 @@ fn state_with_image_message() -> DashboardState {
     });
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(message_create_event(MessageCreateFixture {
-        channel_id,
-        message_id: Id::new(1),
-        content: Some(String::new()),
-        attachments: vec![
+    state.push_event(message_create_event(
+        guild_text_message(1, String::new()).with_attachments(vec![
             crate::discord::AttachmentInfo {
                 id: Id::new(3),
                 filename: "cat.png".to_owned(),
@@ -523,9 +519,8 @@ fn state_with_image_message() -> DashboardState {
                 height: Some(480),
                 description: None,
             },
-        ],
-        ..guild_message_create_fixture()
-    }));
+        ]),
+    ));
     state
 }
 fn open_emoji_picker(state: &mut DashboardState) {

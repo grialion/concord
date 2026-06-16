@@ -13,7 +13,8 @@ use super::{
     PROFILE_POPUP_AVATAR_HEIGHT, PROFILE_POPUP_AVATAR_WIDTH, avatar_preview_url,
     clipped_preview_protocol,
     decode::{MediaImageDecodeJob, MediaImageDecodeKey},
-    lru, query_image_picker,
+    lru::{self, TrackedCacheEntry},
+    query_image_picker,
 };
 
 /// Avatar images are small on screen but decoded originals can still add up
@@ -100,7 +101,7 @@ impl AvatarProtocolKey {
     }
 }
 
-impl AvatarImageEntry {
+impl TrackedCacheEntry for AvatarImageEntry {
     fn last_used(&self) -> u64 {
         match self {
             AvatarImageEntry::Loading { last_used }
@@ -286,16 +287,17 @@ impl AvatarImageCache {
     }
 
     fn next_request_for_cache_url(&mut self, url: &str) -> Option<AppCommand> {
-        if self.entries.contains_key(url) {
-            return None;
+        let intent = lru::insert_loading_request(
+            &mut self.entries,
+            &mut self.tick,
+            url.to_owned(),
+            |last_used| AvatarImageEntry::Loading { last_used },
+            |url| AppCommand::LoadAttachmentPreview { url },
+        );
+        if intent.is_some() {
+            self.prune_to_limit(&[]);
         }
-        let last_used = lru::next_tick(&mut self.tick);
-        self.entries
-            .insert(url.to_owned(), AvatarImageEntry::Loading { last_used });
-        self.prune_to_limit(&[]);
-        Some(AppCommand::LoadAttachmentPreview {
-            url: url.to_owned(),
-        })
+        intent
     }
 
     pub(in crate::tui) fn record_event(&mut self, event: &AppEvent) -> Option<MediaImageDecodeJob> {
@@ -310,33 +312,22 @@ impl AvatarImageCache {
     }
 
     fn store_loaded(&mut self, url: &str, bytes: &[u8]) -> Option<MediaImageDecodeJob> {
-        if !matches!(
-            self.entries.get(url),
-            Some(AvatarImageEntry::Loading { .. })
-        ) {
-            return None;
-        }
-        let last_used = lru::next_tick(&mut self.tick);
-
-        if self.picker.is_none() {
-            self.entries
-                .insert(url.to_owned(), AvatarImageEntry::Failed { last_used });
-            return None;
-        }
-
-        let generation = self.next_decode_generation();
-        self.entries.insert(
-            url.to_owned(),
-            AvatarImageEntry::Decoding {
+        lru::start_url_decode_job(
+            (
+                &mut self.entries,
+                &mut self.tick,
+                &mut self.decode_generation,
+            ),
+            (url, bytes),
+            self.picker.is_some(),
+            |entry| matches!(entry, AvatarImageEntry::Loading { .. }),
+            |generation, last_used| AvatarImageEntry::Decoding {
                 generation,
                 last_used,
             },
-        );
-        Some(MediaImageDecodeJob {
-            key: MediaImageDecodeKey::Avatar(url.to_owned()),
-            generation,
-            bytes: std::sync::Arc::from(bytes.to_vec()),
-        })
+            |last_used| AvatarImageEntry::Failed { last_used },
+            MediaImageDecodeKey::Avatar,
+        )
     }
 
     pub(in crate::tui) fn store_decoded(
@@ -378,11 +369,6 @@ impl AvatarImageCache {
         }
     }
 
-    fn next_decode_generation(&mut self) -> u64 {
-        self.decode_generation = self.decode_generation.saturating_add(1);
-        self.decode_generation
-    }
-
     fn store_failed(&mut self, url: &str) {
         if self.entries.contains_key(url) {
             let last_used = lru::next_tick(&mut self.tick);
@@ -404,7 +390,7 @@ impl AvatarImageCache {
             &mut self.entries,
             MAX_AVATAR_IMAGE_CACHE_ENTRIES,
             |url| protected.contains(url.as_str()),
-            AvatarImageEntry::last_used,
+            TrackedCacheEntry::last_used,
         );
     }
 }

@@ -6,7 +6,7 @@ use crate::discord::ids::{
 };
 use crate::{DiscordClient, discord::AppCommand};
 
-use super::super::{commands as command_helpers, state::DashboardState};
+use super::super::{commands::send_or_record_closed as send_command, state::DashboardState};
 
 #[derive(Default)]
 pub(super) struct DashboardCommandScheduler {
@@ -66,6 +66,7 @@ impl DashboardCommandScheduler {
                 AppCommand::SearchGuildMembers { guild_id, query },
             )
             .await
+            .is_channel_closed()
         {
             *dirty = true;
         }
@@ -91,7 +92,10 @@ impl DashboardCommandScheduler {
                     before: None,
                 }
             };
-            if send_command(state, commands, command).await {
+            if send_command(state, commands, command)
+                .await
+                .is_channel_closed()
+            {
                 client.mark_message_history_request_failed(channel_id);
                 *dirty = true;
             }
@@ -115,6 +119,7 @@ impl DashboardCommandScheduler {
                 },
             )
             .await
+            .is_channel_closed()
             {
                 *dirty = true;
             }
@@ -131,6 +136,7 @@ impl DashboardCommandScheduler {
                 },
             )
             .await
+            .is_channel_closed()
             {
                 *dirty = true;
             }
@@ -152,6 +158,7 @@ impl DashboardCommandScheduler {
                 AppCommand::LoadPinnedMessages { channel_id },
             )
             .await
+            .is_channel_closed()
         {
             client.mark_pinned_message_request_failed(channel_id);
             *dirty = true;
@@ -178,6 +185,7 @@ impl DashboardCommandScheduler {
                 },
             )
             .await
+            .is_channel_closed()
         {
             client.mark_forum_post_request_failed(channel_id, archive_state, offset);
             *dirty = true;
@@ -193,7 +201,10 @@ impl DashboardCommandScheduler {
         dirty: &mut bool,
     ) {
         if let Some(guild_id) = client.next_member_request(state.selected_guild_id()) {
-            if send_command(state, commands, AppCommand::LoadGuildMembers { guild_id }).await {
+            if send_command(state, commands, AppCommand::LoadGuildMembers { guild_id })
+                .await
+                .is_channel_closed()
+            {
                 client.remove_member_request(guild_id);
                 *dirty = true;
             }
@@ -211,6 +222,7 @@ impl DashboardCommandScheduler {
                     },
                 )
                 .await
+                .is_channel_closed()
             {
                 *dirty = true;
             }
@@ -242,6 +254,7 @@ impl DashboardCommandScheduler {
                 },
             )
             .await
+            .is_channel_closed()
             {
                 client.remove_thread_preview_request((channel_id, latest_message_id));
                 *dirty = true;
@@ -279,20 +292,9 @@ impl DashboardCommandScheduler {
                 },
             )
             .await
+            .is_channel_closed()
         {
             *dirty = true;
         }
     }
-}
-
-async fn send_command(
-    state: &mut DashboardState,
-    commands: &mpsc::Sender<AppCommand>,
-    command: AppCommand,
-) -> bool {
-    if commands.send(command).await.is_ok() {
-        return false;
-    }
-    command_helpers::record_command_channel_closed(state);
-    true
 }

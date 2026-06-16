@@ -9,74 +9,79 @@ use crate::tui::keybindings::{
 };
 use crate::tui::state::{ActiveModalPopupKind, DashboardState};
 
-pub(super) fn handle_priority_popup_key(
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum PopupKeyPhase {
+    Priority,
+    Deferred,
+}
+
+pub(super) fn handle_popup_key(
     state: &mut DashboardState,
     key: KeyEvent,
+    phase: PopupKeyPhase,
 ) -> Option<Option<AppCommand>> {
-    let handled_page = if state.key_bindings().is_popup_close_key(key) {
-        false
-    } else {
-        match state.key_bindings().popup_page_action(key) {
+    let handled_page = phase == PopupKeyPhase::Priority
+        && !state.key_bindings().is_popup_close_key(key)
+        && match state.key_bindings().popup_page_action(key) {
             Some(SelectionAction::Next) => state.page_active_popup_down(),
             Some(SelectionAction::Previous) => state.page_active_popup_up(),
             None => false,
-        }
-    };
+        };
     if handled_page {
         return Some(None);
     }
 
-    match state.active_modal_popup_kind()? {
-        ActiveModalPopupKind::KeymapHelp => Some(handle_keymap_popup_key(state, key)),
-        ActiveModalPopupKind::DebugLog => Some(handle_debug_log_popup_key(state, key)),
-        ActiveModalPopupKind::QuitConfirmation => Some(handle_quit_confirmation_key(state, key)),
-        ActiveModalPopupKind::Options => Some(handle_options_popup_key(state, key)),
-        ActiveModalPopupKind::ReactionUsers => Some(handle_reaction_users_popup_key(state, key)),
+    let kind = state.active_modal_popup_kind()?;
+    if popup_key_phase(kind) != phase {
+        return None;
+    }
+
+    Some(match kind {
+        ActiveModalPopupKind::KeymapHelp => handle_keymap_popup_key(state, key),
+        ActiveModalPopupKind::DebugLog => handle_debug_log_popup_key(state, key),
+        ActiveModalPopupKind::QuitConfirmation => handle_quit_confirmation_key(state, key),
+        ActiveModalPopupKind::Options => handle_options_popup_key(state, key),
+        ActiveModalPopupKind::ReactionUsers => handle_reaction_users_popup_key(state, key),
         ActiveModalPopupKind::MessageDeleteConfirmation => {
-            Some(handle_message_delete_confirmation_key(state, key))
+            handle_message_delete_confirmation_key(state, key)
         }
         ActiveModalPopupKind::MessagePinConfirmation => {
-            Some(handle_message_pin_confirmation_key(state, key))
+            handle_message_pin_confirmation_key(state, key)
         }
         ActiveModalPopupKind::GuildLeaveConfirmation => {
-            Some(handle_guild_leave_confirmation_key(state, key))
+            handle_guild_leave_confirmation_key(state, key)
         }
-        ActiveModalPopupKind::PollVotePicker => Some(handle_poll_vote_picker_key(state, key)),
-        ActiveModalPopupKind::EmojiReactionPicker => {
-            Some(handle_emoji_reaction_picker_key(state, key))
-        }
+        ActiveModalPopupKind::PollVotePicker => handle_poll_vote_picker_key(state, key),
+        ActiveModalPopupKind::EmojiReactionPicker => handle_emoji_reaction_picker_key(state, key),
+        ActiveModalPopupKind::ChannelSwitcher => handle_channel_switcher_key(state, key),
+        ActiveModalPopupKind::Search => handle_search_popup_key(state, key),
+        ActiveModalPopupKind::Leader => super::leader::handle_leader_key(state, key),
+        ActiveModalPopupKind::MessageUrlPicker => handle_message_url_picker_key(state, key),
+        ActiveModalPopupKind::MessageActionMenu => handle_message_action_menu_key(state, key),
+        ActiveModalPopupKind::AttachmentViewer => handle_attachment_viewer_key(state, key),
+        ActiveModalPopupKind::UserProfile => handle_user_profile_popup_key(state, key),
+    })
+}
+
+fn popup_key_phase(kind: ActiveModalPopupKind) -> PopupKeyPhase {
+    match kind {
+        ActiveModalPopupKind::KeymapHelp
+        | ActiveModalPopupKind::DebugLog
+        | ActiveModalPopupKind::QuitConfirmation
+        | ActiveModalPopupKind::Options
+        | ActiveModalPopupKind::ReactionUsers
+        | ActiveModalPopupKind::MessageDeleteConfirmation
+        | ActiveModalPopupKind::MessagePinConfirmation
+        | ActiveModalPopupKind::GuildLeaveConfirmation
+        | ActiveModalPopupKind::PollVotePicker
+        | ActiveModalPopupKind::EmojiReactionPicker => PopupKeyPhase::Priority,
         ActiveModalPopupKind::MessageActionMenu
         | ActiveModalPopupKind::MessageUrlPicker
         | ActiveModalPopupKind::AttachmentViewer
         | ActiveModalPopupKind::Leader
         | ActiveModalPopupKind::UserProfile
         | ActiveModalPopupKind::ChannelSwitcher
-        | ActiveModalPopupKind::Search => None,
-    }
-}
-
-pub(super) fn handle_deferred_popup_key(
-    state: &mut DashboardState,
-    key: KeyEvent,
-) -> Option<Option<AppCommand>> {
-    match state.active_modal_popup_kind()? {
-        ActiveModalPopupKind::ChannelSwitcher => Some(handle_channel_switcher_key(state, key)),
-        ActiveModalPopupKind::Search => Some(handle_search_popup_key(state, key)),
-        ActiveModalPopupKind::Leader => Some(super::leader::handle_leader_key(state, key)),
-        ActiveModalPopupKind::MessageUrlPicker => Some(handle_message_url_picker_key(state, key)),
-        ActiveModalPopupKind::MessageActionMenu => Some(handle_message_action_menu_key(state, key)),
-        ActiveModalPopupKind::AttachmentViewer => Some(handle_attachment_viewer_key(state, key)),
-        ActiveModalPopupKind::UserProfile => Some(handle_user_profile_popup_key(state, key)),
-        ActiveModalPopupKind::MessageDeleteConfirmation
-        | ActiveModalPopupKind::MessagePinConfirmation
-        | ActiveModalPopupKind::QuitConfirmation
-        | ActiveModalPopupKind::GuildLeaveConfirmation
-        | ActiveModalPopupKind::Options
-        | ActiveModalPopupKind::EmojiReactionPicker
-        | ActiveModalPopupKind::PollVotePicker
-        | ActiveModalPopupKind::ReactionUsers
-        | ActiveModalPopupKind::DebugLog
-        | ActiveModalPopupKind::KeymapHelp => None,
+        | ActiveModalPopupKind::Search => PopupKeyPhase::Deferred,
     }
 }
 
@@ -172,67 +177,67 @@ pub(super) fn handle_message_url_picker_key(
     state: &mut DashboardState,
     key: KeyEvent,
 ) -> Option<AppCommand> {
-    match state.key_bindings().popup_list_action(key) {
-        Some(PopupListAction::Close) => state.close_message_url_picker(),
-        Some(PopupListAction::Select(SelectionAction::Next)) => {
-            state.move_message_url_picker_down()
-        }
-        Some(PopupListAction::Select(SelectionAction::Previous)) => {
-            state.move_message_url_picker_up()
-        }
-        Some(PopupListAction::ActivateSelected) => {
-            return state.activate_selected_message_url();
-        }
-        Some(PopupListAction::ActivateShortcut(shortcut)) => {
-            if let Some(command) = state.activate_message_url_shortcut(shortcut) {
-                return Some(command);
-            }
-            if state.key_bindings().is_popup_close_key(key) {
-                state.close_message_url_picker();
-            }
-        }
-        None => {}
-    }
-
-    None
+    handle_popup_list_key(
+        state,
+        key,
+        DashboardState::close_message_url_picker,
+        DashboardState::move_message_url_picker_down,
+        DashboardState::move_message_url_picker_up,
+        DashboardState::activate_selected_message_url,
+        DashboardState::activate_message_url_shortcut,
+    )
 }
 
 pub(super) fn handle_message_action_menu_key(
     state: &mut DashboardState,
     key: KeyEvent,
 ) -> Option<AppCommand> {
+    fn activate_message_action_shortcut(
+        state: &mut DashboardState,
+        shortcut: KeyChord,
+    ) -> Option<AppCommand> {
+        state
+            .message_action_shortcut_matches(shortcut)
+            .then(|| state.activate_message_action_shortcut(shortcut))?
+    }
+
+    handle_popup_list_key(
+        state,
+        key,
+        DashboardState::close_message_action_menu,
+        DashboardState::move_message_action_down,
+        DashboardState::move_message_action_up,
+        DashboardState::activate_selected_message_action,
+        activate_message_action_shortcut,
+    )
+}
+
+fn handle_popup_list_key(
+    state: &mut DashboardState,
+    key: KeyEvent,
+    close: impl Fn(&mut DashboardState),
+    move_down: impl Fn(&mut DashboardState),
+    move_up: impl Fn(&mut DashboardState),
+    activate_selected: impl Fn(&mut DashboardState) -> Option<AppCommand>,
+    activate_shortcut: impl Fn(&mut DashboardState, KeyChord) -> Option<AppCommand>,
+) -> Option<AppCommand> {
     match state.key_bindings().popup_list_action(key) {
-        Some(PopupListAction::Close) => state.close_message_action_menu(),
-        Some(PopupListAction::Select(SelectionAction::Next)) => state.move_message_action_down(),
-        Some(PopupListAction::Select(SelectionAction::Previous)) => state.move_message_action_up(),
-        Some(PopupListAction::ActivateSelected) => {
-            return state.activate_selected_message_action();
-        }
+        Some(PopupListAction::Close) => close(state),
+        Some(PopupListAction::Select(SelectionAction::Next)) => move_down(state),
+        Some(PopupListAction::Select(SelectionAction::Previous)) => move_up(state),
+        Some(PopupListAction::ActivateSelected) => return activate_selected(state),
         Some(PopupListAction::ActivateShortcut(shortcut)) => {
-            if message_action_shortcut_matches(state, shortcut) {
-                return state.activate_message_action_shortcut(shortcut);
+            if let Some(command) = activate_shortcut(state, shortcut) {
+                return Some(command);
             }
             if state.key_bindings().is_popup_close_key(key) {
-                state.close_message_action_menu();
+                close(state);
             }
         }
         None => {}
     }
 
     None
-}
-
-fn message_action_shortcut_matches(state: &DashboardState, shortcut: KeyChord) -> bool {
-    let actions = state.selected_message_action_items();
-    state
-        .key_bindings()
-        .matching_action_shortcut_index(
-            &actions,
-            shortcut,
-            |key_bindings, actions, index| key_bindings.message_action_shortcuts(actions, index),
-            |action| action.enabled,
-        )
-        .is_some()
 }
 
 pub(super) fn handle_message_delete_confirmation_key(

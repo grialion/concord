@@ -194,9 +194,10 @@ pub(super) async fn run_dashboard(
                                     dirty = true;
                                 }
                                 command => {
-                                    if commands.send(command).await.is_err() {
-                                        command_helpers::record_command_channel_closed(&mut state);
-                                    }
+                                    let _ = command_helpers::send_or_record_closed(
+                                        &mut state, &commands, command,
+                                    )
+                                    .await;
                                 }
                             }
                         }
@@ -362,12 +363,10 @@ pub(super) async fn run_dashboard(
                 }
             } => {
                 for command in client.due_read_ack_commands(std::time::Instant::now()) {
-                    if commands
-                        .send(command)
+                    if command_helpers::send_or_record_closed(&mut state, &commands, command)
                         .await
-                        .is_err()
+                        .is_channel_closed()
                     {
-                        command_helpers::record_command_channel_closed(&mut state);
                         break;
                     }
                 }

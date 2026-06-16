@@ -93,12 +93,7 @@ fn message_viewport_scroll_uses_configured_keys() {
         }),
         0,
     );
-    state.push_event(message_create_event(MessageCreateFixture {
-        channel_id: Id::new(2),
-        message_id: Id::new(1),
-        content: Some("abcdefghijkl".to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    push_guild_message(&mut state, 1, "abcdefghijkl");
     state.focus_pane(FocusPane::Messages);
     state.set_message_view_height(3);
     state.scroll_message_viewport_top();

@@ -1,7 +1,7 @@
 use crossterm::event::KeyEvent;
 
 use crate::discord::AppCommand;
-use crate::tui::keybindings::{KeyChord, KeyMapLookup, LeaderActionMenuAction};
+use crate::tui::keybindings::{KeyMapLookup, LeaderActionMenuAction};
 use crate::tui::state::{ActiveModalPopupKind, DashboardState};
 
 use super::execute_ui_action;
@@ -66,12 +66,12 @@ fn handle_leader_action_key(state: &mut DashboardState, key: KeyEvent) -> Option
             None
         }
         LeaderActionMenuAction::ActivateShortcut(shortcut) => {
-            let (matched, command) = activate_leader_action_shortcut(state, shortcut);
-            if !matched || !state.is_any_action_context_active() {
+            let activation = state.activate_active_action_shortcut(shortcut);
+            if !activation.matched || !state.is_any_action_context_active() {
                 state.close_all_action_contexts();
                 state.close_leader();
             }
-            command
+            activation.command
         }
         LeaderActionMenuAction::UnknownClose => {
             state.close_all_action_contexts();
@@ -79,122 +79,4 @@ fn handle_leader_action_key(state: &mut DashboardState, key: KeyEvent) -> Option
             None
         }
     }
-}
-
-fn activate_leader_action_shortcut(
-    state: &mut DashboardState,
-    shortcut: KeyChord,
-) -> (bool, Option<AppCommand>) {
-    if leader_message_action_matches(state, shortcut) {
-        return (true, state.activate_message_action_shortcut(shortcut));
-    }
-    if leader_channel_action_matches(state, shortcut) {
-        return (true, state.activate_channel_action_shortcut(shortcut));
-    }
-    if leader_guild_action_matches(state, shortcut) {
-        return (true, state.activate_guild_action_shortcut(shortcut));
-    }
-    if leader_member_action_matches(state, shortcut) {
-        return (true, state.activate_member_action_shortcut(shortcut));
-    }
-    (false, None)
-}
-
-fn leader_message_action_matches(state: &DashboardState, shortcut: KeyChord) -> bool {
-    if !state.is_message_action_context_active() {
-        return false;
-    }
-    let actions = state.selected_message_action_items();
-    action_shortcut_matches(
-        state,
-        &actions,
-        shortcut,
-        |key_bindings, actions, index| key_bindings.message_action_shortcuts(actions, index),
-        |action| action.enabled,
-    )
-}
-
-fn leader_channel_action_matches(state: &DashboardState, shortcut: KeyChord) -> bool {
-    if !state.is_channel_leader_action_active() {
-        return false;
-    }
-    if state.is_channel_action_threads_phase() {
-        return indexed_shortcut_matches(
-            state,
-            shortcut,
-            state.channel_action_thread_items().len(),
-        );
-    }
-    if state.is_channel_action_mute_duration_phase() {
-        return indexed_shortcut_matches(
-            state,
-            shortcut,
-            state.selected_channel_mute_duration_items().len(),
-        );
-    }
-    let actions = state.selected_channel_action_items();
-    action_shortcut_matches(
-        state,
-        &actions,
-        shortcut,
-        |key_bindings, actions, index| key_bindings.channel_action_shortcuts(actions, index),
-        |action| action.enabled,
-    )
-}
-
-fn leader_guild_action_matches(state: &DashboardState, shortcut: KeyChord) -> bool {
-    if !state.is_guild_leader_action_active() {
-        return false;
-    }
-    if state.is_guild_action_mute_duration_phase() {
-        return indexed_shortcut_matches(
-            state,
-            shortcut,
-            state.selected_guild_mute_duration_items().len(),
-        );
-    }
-    let actions = state.selected_guild_action_items();
-    action_shortcut_matches(
-        state,
-        &actions,
-        shortcut,
-        |key_bindings, actions, index| key_bindings.guild_action_shortcuts(actions, index),
-        |action| action.enabled,
-    )
-}
-
-fn leader_member_action_matches(state: &DashboardState, shortcut: KeyChord) -> bool {
-    if !state.is_member_leader_action_active() {
-        return false;
-    }
-    let actions = state.selected_member_action_items();
-    action_shortcut_matches(
-        state,
-        &actions,
-        shortcut,
-        |key_bindings, actions, index| key_bindings.member_action_shortcuts(actions, index),
-        |action| action.enabled,
-    )
-}
-
-fn action_shortcut_matches<A>(
-    state: &DashboardState,
-    actions: &[A],
-    shortcut: KeyChord,
-    shortcuts: impl Fn(&crate::tui::keybindings::KeyBindings, &[A], usize) -> Vec<KeyChord>,
-    is_enabled: impl Fn(&A) -> bool,
-) -> bool {
-    state
-        .key_bindings()
-        .matching_action_shortcut_index(actions, shortcut, shortcuts, is_enabled)
-        .is_some()
-}
-
-fn indexed_shortcut_matches(state: &DashboardState, shortcut: KeyChord, len: usize) -> bool {
-    (0..len).any(|index| {
-        state
-            .key_bindings()
-            .indexed_shortcut(index)
-            .is_some_and(|candidate| shortcut.matches_char(candidate))
-    })
 }

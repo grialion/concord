@@ -345,28 +345,19 @@ impl DashboardState {
     }
 
     pub fn push_search_char(&mut self, value: char) {
-        let mode = self.popups.search_popup().map(|search| search.mode);
-        if let Some(search) = self.popups.search_popup_mut()
-            && let Some(field) = search.active_field_mut()
-        {
-            field.push_char(value);
-            search.dirty = true;
-            search.error = None;
-            search.selection.select(0);
-        }
-        if mode == Some(SearchPopupMode::Member) {
-            self.refresh_member_search_results(false);
-        } else {
-            self.refresh_message_search_suggestions();
-        }
+        self.edit_active_search_field(|field| field.push_char(value));
     }
 
     pub fn pop_search_char(&mut self) {
+        self.edit_active_search_field(SearchTextField::pop_char);
+    }
+
+    fn edit_active_search_field(&mut self, edit: impl FnOnce(&mut SearchTextField)) {
         let mode = self.popups.search_popup().map(|search| search.mode);
         if let Some(search) = self.popups.search_popup_mut()
             && let Some(field) = search.active_field_mut()
         {
-            field.pop_char();
+            edit(field);
             search.dirty = true;
             search.error = None;
             search.selection.select(0);

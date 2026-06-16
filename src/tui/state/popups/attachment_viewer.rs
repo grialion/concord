@@ -9,6 +9,13 @@ use crate::tui::state::popups::{
     ActiveModalPopupKind, AttachmentViewerState, AttachmentViewerZoom, ModalPopup,
 };
 
+struct SelectedAttachmentViewerAttachment<'a> {
+    message_id: Id<MessageMarker>,
+    index: usize,
+    total: usize,
+    attachment: &'a AttachmentInfo,
+}
+
 impl DashboardState {
     pub fn open_attachment_viewer_for_selected_message(&mut self) -> bool {
         let Some(message) = self.selected_message_state() else {
@@ -71,7 +78,9 @@ impl DashboardState {
         else {
             return;
         };
-        let count = self.attachment_viewer_attachment_count(message_id);
+        let count = self
+            .attachment_viewer_attachments(message_id)
+            .map_or(0, |attachments| attachments.len());
         if count == 0 {
             self.close_attachment_viewer();
             return;
@@ -84,30 +93,24 @@ impl DashboardState {
     }
 
     pub fn selected_attachment_viewer_item(&self) -> Option<AttachmentViewerItem> {
-        let viewer = self.popups.attachment_viewer()?;
-        let attachments = self.attachment_viewer_attachments(viewer.message_id)?;
-        let selected = viewer.selection.selected_for_len(attachments.len());
-        let attachment = attachments.get(selected)?;
+        let selected = self.selected_attachment_viewer_attachment()?;
         Some(AttachmentViewerItem {
-            index: selected.saturating_add(1),
-            total: attachments.len(),
-            filename: attachment.filename.clone(),
-            url: attachment.preferred_url().map(str::to_owned),
-            size_bytes: attachment.size,
-            is_image: attachment.is_image(),
-            is_video: attachment.is_video(),
+            index: selected.index.saturating_add(1),
+            total: selected.total,
+            filename: selected.attachment.filename.clone(),
+            url: selected.attachment.preferred_url().map(str::to_owned),
+            size_bytes: selected.attachment.size,
+            is_image: selected.attachment.is_image(),
+            is_video: selected.attachment.is_video(),
         })
     }
 
     pub(in crate::tui) fn selected_attachment_viewer_preview(
         &self,
     ) -> Option<(Id<MessageMarker>, usize, InlinePreviewInfo<'_>)> {
-        let viewer = self.popups.attachment_viewer()?;
-        let attachments = self.attachment_viewer_attachments(viewer.message_id)?;
-        let selected = viewer.selection.selected_for_len(attachments.len());
-        let attachment = *attachments.get(selected)?;
-        let preview = attachment.inline_preview_info()?;
-        Some((viewer.message_id, selected, preview))
+        let selected = self.selected_attachment_viewer_attachment()?;
+        let preview = selected.attachment.inline_preview_info()?;
+        Some((selected.message_id, selected.index, preview))
     }
 
     pub fn download_selected_attachment_viewer_attachment(&mut self) -> Option<AppCommand> {
@@ -147,11 +150,19 @@ impl DashboardState {
             .map(|message| message.attachments_in_display_order().collect())
     }
 
-    fn attachment_viewer_attachment_count(&self, message_id: Id<MessageMarker>) -> usize {
-        match self.attachment_viewer_attachments(message_id) {
-            Some(attachments) => attachments.len(),
-            None => 0,
-        }
+    fn selected_attachment_viewer_attachment(
+        &self,
+    ) -> Option<SelectedAttachmentViewerAttachment<'_>> {
+        let viewer = self.popups.attachment_viewer()?;
+        let attachments = self.attachment_viewer_attachments(viewer.message_id)?;
+        let index = viewer.selection.selected_for_len(attachments.len());
+        let attachment = *attachments.get(index)?;
+        Some(SelectedAttachmentViewerAttachment {
+            message_id: viewer.message_id,
+            index,
+            total: attachments.len(),
+            attachment,
+        })
     }
 }
 

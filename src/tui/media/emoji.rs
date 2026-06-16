@@ -11,7 +11,9 @@ use crate::{
 use super::{
     EmojiImageTarget,
     decode::{MediaImageDecodeJob, MediaImageDecodeKey},
-    emoji_protocol, lru, query_image_picker,
+    emoji_protocol,
+    lru::{self, TrackedCacheEntry},
+    query_image_picker,
 };
 
 /// Cap on the URL-keyed emoji image cache. Each entry is a small terminal
@@ -46,7 +48,7 @@ pub(super) enum EmojiImageEntry {
     },
 }
 
-impl EmojiImageEntry {
+impl TrackedCacheEntry for EmojiImageEntry {
     fn last_used(&self) -> u64 {
         match self {
             EmojiImageEntry::Loading { last_used }
@@ -132,16 +134,15 @@ impl EmojiImageCache {
 
         let mut intents = Vec::new();
         for target in targets.iter().take(MAX_EMOJI_IMAGE_CACHE_ENTRIES) {
-            if self.entries.contains_key(&target.url) {
-                continue;
+            if let Some(intent) = lru::insert_loading_request(
+                &mut self.entries,
+                &mut self.tick,
+                target.url.clone(),
+                |last_used| EmojiImageEntry::Loading { last_used },
+                |url| AppCommand::LoadAttachmentPreview { url },
+            ) {
+                intents.push(intent);
             }
-
-            let last_used = lru::next_tick(&mut self.tick);
-            self.entries
-                .insert(target.url.clone(), EmojiImageEntry::Loading { last_used });
-            intents.push(AppCommand::LoadAttachmentPreview {
-                url: target.url.clone(),
-            });
         }
         self.prune_to_limit(targets);
         intents
@@ -170,35 +171,27 @@ impl EmojiImageCache {
             &mut self.entries,
             MAX_EMOJI_IMAGE_CACHE_ENTRIES,
             |url| protected.contains(url.as_str()),
-            EmojiImageEntry::last_used,
+            TrackedCacheEntry::last_used,
         );
     }
 
     fn store_loaded(&mut self, url: &str, bytes: &[u8]) -> Option<MediaImageDecodeJob> {
-        if !matches!(self.entries.get(url), Some(EmojiImageEntry::Loading { .. })) {
-            return None;
-        }
-        let last_used = lru::next_tick(&mut self.tick);
-
-        if self.picker.is_none() {
-            self.entries
-                .insert(url.to_owned(), EmojiImageEntry::Failed { last_used });
-            return None;
-        }
-
-        let generation = self.next_decode_generation();
-        self.entries.insert(
-            url.to_owned(),
-            EmojiImageEntry::Decoding {
+        lru::start_url_decode_job(
+            (
+                &mut self.entries,
+                &mut self.tick,
+                &mut self.decode_generation,
+            ),
+            (url, bytes),
+            self.picker.is_some(),
+            |entry| matches!(entry, EmojiImageEntry::Loading { .. }),
+            |generation, last_used| EmojiImageEntry::Decoding {
                 generation,
                 last_used,
             },
-        );
-        Some(MediaImageDecodeJob {
-            key: MediaImageDecodeKey::Emoji(url.to_owned()),
-            generation,
-            bytes: std::sync::Arc::from(bytes.to_vec()),
-        })
+            |last_used| EmojiImageEntry::Failed { last_used },
+            MediaImageDecodeKey::Emoji,
+        )
     }
 
     pub(in crate::tui) fn store_decoded(
@@ -249,11 +242,6 @@ impl EmojiImageCache {
                     .insert(url, EmojiImageEntry::Failed { last_used });
             }
         }
-    }
-
-    fn next_decode_generation(&mut self) -> u64 {
-        self.decode_generation = self.decode_generation.saturating_add(1);
-        self.decode_generation
     }
 
     fn store_failed(&mut self, url: &str) {

@@ -610,14 +610,7 @@ pub(super) fn state_with_custom_emojis() -> DashboardState {
     });
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(message_create_event(MessageCreateFixture {
-        guild_id: Some(guild_id),
-        channel_id,
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        content: Some("hello".to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    state.push_event(message_create_event(guild_text_message(1, "hello")));
     state
 }
 
@@ -633,14 +626,7 @@ pub(super) fn state_with_single_message_content(content: &str) -> DashboardState
     ));
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(message_create_event(MessageCreateFixture {
-        guild_id: Some(guild_id),
-        channel_id,
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        content: Some(content.to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    state.push_event(message_create_event(guild_text_message(1, content)));
     state
 }
 
@@ -665,20 +651,16 @@ pub(super) fn state_with_thread_created_message() -> DashboardState {
     ));
     state.confirm_selected_guild();
     state.confirm_selected_channel();
-    state.push_event(message_create_event(MessageCreateFixture {
-        guild_id: Some(guild_id),
-        channel_id: parent_id,
-        message_id: Id::new(1),
-        author_id: Id::new(99),
-        message_kind: MessageKind::new(18),
-        reference: Some(MessageReferenceInfo {
-            guild_id: Some(guild_id),
-            channel_id: Some(thread_id),
-            message_id: None,
-        }),
-        content: Some("release notes".to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    state.push_event(message_create_event(
+        MessageCreateFixture::guild_message(guild_id, parent_id, Id::new(1))
+            .with_message_kind(MessageKind::new(18))
+            .with_reference(MessageReferenceInfo {
+                guild_id: Some(guild_id),
+                channel_id: Some(thread_id),
+                message_id: None,
+            })
+            .with_content("release notes"),
+    ));
     state
 }
 
@@ -731,31 +713,29 @@ pub(super) fn state_with_messages_matching(
     state.confirm_selected_guild();
     state.confirm_selected_channel();
     for id in message_ids {
-        state.push_event(message_create_event(MessageCreateFixture {
-            guild_id: Some(guild_id),
-            channel_id,
-            message_id: Id::new(id),
-            author_id: Id::new(99),
-            content: Some(format!("msg {id}")),
-            attachments: has_image(id)
-                .then(|| image_attachment(id))
-                .into_iter()
-                .collect(),
-            ..guild_message_create_fixture()
-        }));
+        let attachments = has_image(id)
+            .then(|| image_attachment(id))
+            .into_iter()
+            .collect();
+        state.push_event(message_create_event(
+            guild_text_message(id, format!("msg {id}")).with_attachments(attachments),
+        ));
     }
     state
 }
 
 pub(super) fn push_text_message(state: &mut DashboardState, message_id: u64, content: &str) {
-    state.push_event(message_create_event(MessageCreateFixture {
-        guild_id: Some(Id::new(1)),
-        channel_id: Id::new(2),
-        message_id: Id::new(message_id),
-        author_id: Id::new(99),
-        content: Some(content.to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    state.push_event(message_create_event(guild_text_message(
+        message_id, content,
+    )));
+}
+
+pub(super) fn guild_text_message(
+    message_id: u64,
+    content: impl Into<String>,
+) -> MessageCreateFixture {
+    MessageCreateFixture::guild_message(Id::new(1), Id::new(2), Id::new(message_id))
+        .with_content(content)
 }
 
 pub(super) fn image_attachment(id: u64) -> AttachmentInfo {

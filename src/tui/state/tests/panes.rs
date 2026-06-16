@@ -17,27 +17,7 @@ fn cycle_focus_uses_four_top_level_panes() {
 
 #[test]
 fn loaded_messages_are_unselected_until_message_pane_is_focused() {
-    let guild_id = Id::new(1);
-    let channel_id: Id<ChannelMarker> = Id::new(2);
-    let mut state = DashboardState::new();
-
-    state.push_event(guild_create_event(
-        guild_id,
-        "guild",
-        vec![text_channel_info(guild_id, channel_id, "general")],
-    ));
-    state.confirm_selected_guild();
-    state.confirm_selected_channel();
-    for id in 1..=2u64 {
-        state.push_event(message_create_event(MessageCreateFixture {
-            guild_id: Some(guild_id),
-            channel_id,
-            message_id: Id::new(id),
-            author_id: Id::new(99),
-            content: Some(format!("msg {id}")),
-            ..guild_message_create_fixture()
-        }));
-    }
+    let mut state = state_with_messages(2);
 
     assert_eq!(state.selected_message(), 1);
     assert_eq!(state.focused_message_selection(), None);
@@ -57,14 +37,9 @@ fn startup_events_do_not_auto_open_direct_messages() {
         last_message_id: Some(Id::new(30)),
         ..dm_channel_info(channel_id, "neo")
     }));
-    state.push_event(message_create_event(MessageCreateFixture {
-        guild_id: None,
-        channel_id,
-        message_id: Id::new(30),
-        author_id: Id::new(99),
-        content: Some("hello".to_owned()),
-        ..guild_message_create_fixture()
-    }));
+    state.push_event(message_create_event(
+        MessageCreateFixture::direct_message(channel_id, Id::new(30)).with_content("hello"),
+    ));
 
     assert_eq!(state.selected_channel_id(), None);
     assert_eq!(state.selected_channel_state(), None);

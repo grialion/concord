@@ -7,14 +7,10 @@ fn bounds_messages_per_channel() {
     let mut state = DiscordState::new(1);
 
     for id in [1, 2] {
-        state.apply_event(&message_create_event(MessageCreateFixture {
-            guild_id: None,
-            channel_id,
-            message_id: Id::new(id),
-            author_id: Id::new(99),
-            content: Some(format!("message {id}")),
-            ..MessageCreateFixture::default()
-        }));
+        state.apply_event(&message_create_event(
+            MessageCreateFixture::direct_message(channel_id, Id::new(id))
+                .with_content(format!("message {id}")),
+        ));
     }
 
     let messages = state.messages_for_channel(channel_id);
@@ -63,16 +59,12 @@ fn duplicate_message_create_refreshes_message_kind() {
     let author_id = Id::new(99);
     let mut state = DiscordState::default();
 
+    state.apply_event(&message_create_event(
+        MessageCreateFixture::direct_message(channel_id, message_id)
+            .with_author_id(author_id)
+            .with_content("cached"),
+    ));
     state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
-        channel_id,
-        message_id,
-        author_id,
-        content: Some("cached".to_owned()),
-        ..MessageCreateFixture::default()
-    }));
-    state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
         channel_id,
         message_id,
         author_id,
@@ -94,16 +86,12 @@ fn duplicate_message_create_adds_missing_mentions() {
     let author_id = Id::new(99);
     let mut state = DiscordState::default();
 
+    state.apply_event(&message_create_event(
+        MessageCreateFixture::direct_message(channel_id, message_id)
+            .with_author_id(author_id)
+            .with_content("hello <@10>"),
+    ));
     state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
-        channel_id,
-        message_id,
-        author_id,
-        content: Some("hello <@10>".to_owned()),
-        ..MessageCreateFixture::default()
-    }));
-    state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
         channel_id,
         message_id,
         author_id,
@@ -123,7 +111,6 @@ fn stores_reply_preview_from_message_create() {
     let mut state = DiscordState::default();
 
     state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
         channel_id,
         message_id: Id::new(20),
         author_id: Id::new(99),
@@ -161,7 +148,6 @@ fn duplicate_message_create_preserves_cached_reply_preview() {
     let mut state = DiscordState::default();
 
     state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
         channel_id,
         message_id,
         author_id,
@@ -173,15 +159,11 @@ fn duplicate_message_create_preserves_cached_reply_preview() {
         content: Some("asdf".to_owned()),
         ..MessageCreateFixture::default()
     }));
-    state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
-        channel_id,
-        message_id,
-        author_id,
-        message_kind: MessageKind::new(19),
-        content: None,
-        ..MessageCreateFixture::default()
-    }));
+    let mut gateway_echo = MessageCreateFixture::direct_message(channel_id, message_id)
+        .with_author_id(author_id)
+        .without_content();
+    gateway_echo.message_kind = MessageKind::new(19);
+    state.apply_event(&message_create_event(gateway_echo));
 
     let messages = state.messages_for_channel(channel_id);
     assert_eq!(messages.len(), 1);
@@ -200,7 +182,6 @@ fn stores_poll_payload_from_message_create() {
     let mut state = DiscordState::default();
 
     state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
         channel_id,
         message_id: Id::new(20),
         author_id: Id::new(99),
@@ -223,23 +204,16 @@ fn duplicate_message_create_preserves_cached_poll_payload() {
     let author_id = Id::new(99);
     let mut state = DiscordState::default();
 
-    state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
-        channel_id,
-        message_id,
-        author_id,
-        poll: Some(poll_info()),
-        content: Some(String::new()),
-        ..MessageCreateFixture::default()
-    }));
-    state.apply_event(&message_create_event(MessageCreateFixture {
-        guild_id: None,
-        channel_id,
-        message_id,
-        author_id,
-        content: None,
-        ..MessageCreateFixture::default()
-    }));
+    let mut poll_message = MessageCreateFixture::direct_message(channel_id, message_id)
+        .with_author_id(author_id)
+        .with_content(String::new());
+    poll_message.poll = Some(poll_info());
+    state.apply_event(&message_create_event(poll_message));
+    state.apply_event(&message_create_event(
+        MessageCreateFixture::direct_message(channel_id, message_id)
+            .with_author_id(author_id)
+            .without_content(),
+    ));
 
     let messages = state.messages_for_channel(channel_id);
     assert_eq!(messages.len(), 1);

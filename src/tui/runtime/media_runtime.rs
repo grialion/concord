@@ -186,13 +186,8 @@ pub(super) async fn drain_pending_commands_after_draw(
     state: &mut DashboardState,
     commands: &mpsc::Sender<AppCommand>,
 ) -> bool {
-    for command in state.drain_pending_commands() {
-        if commands.send(command).await.is_err() {
-            command_helpers::record_command_channel_closed(state);
-            return true;
-        }
-    }
-    false
+    let pending_commands = state.drain_pending_commands();
+    send_commands_until_closed(state, commands, pending_commands).await
 }
 
 pub(super) async fn schedule_media_loads_after_draw(
@@ -201,26 +196,24 @@ pub(super) async fn schedule_media_loads_after_draw(
     commands: &mpsc::Sender<AppCommand>,
 ) -> bool {
     let mut dirty = false;
-    for command in media_runtime
-        .image_previews
-        .next_requests(&media_runtime.image_targets)
-    {
-        dirty = true;
-        if commands.send(command).await.is_err() {
-            command_helpers::record_command_channel_closed(state);
-            break;
-        }
-    }
-    for command in media_runtime
-        .avatar_images
-        .next_requests(&media_runtime.avatar_targets)
-    {
-        dirty = true;
-        if commands.send(command).await.is_err() {
-            command_helpers::record_command_channel_closed(state);
-            break;
-        }
-    }
+    send_media_request_commands(
+        state,
+        commands,
+        media_runtime
+            .image_previews
+            .next_requests(&media_runtime.image_targets),
+        &mut dirty,
+    )
+    .await;
+    send_media_request_commands(
+        state,
+        commands,
+        media_runtime
+            .avatar_images
+            .next_requests(&media_runtime.avatar_targets),
+        &mut dirty,
+    )
+    .await;
 
     // Profile popup avatar isn't part of the message-pane targets, so schedule
     // its fetch separately. It uses a larger avatar CDN size than message-pane
@@ -238,22 +231,51 @@ pub(super) async fn schedule_media_loads_after_draw(
             None
         };
         if let Some(command) = command {
-            dirty = true;
-            if commands.send(command).await.is_err() {
-                command_helpers::record_command_channel_closed(state);
-            }
+            send_media_request_commands(state, commands, [command], &mut dirty).await;
         }
     }
 
-    for command in media_runtime
-        .emoji_images
-        .next_requests(&media_runtime.emoji_targets)
-    {
-        dirty = true;
-        if commands.send(command).await.is_err() {
-            command_helpers::record_command_channel_closed(state);
+    send_media_request_commands(
+        state,
+        commands,
+        media_runtime
+            .emoji_images
+            .next_requests(&media_runtime.emoji_targets),
+        &mut dirty,
+    )
+    .await;
+    dirty
+}
+
+async fn send_media_request_commands(
+    state: &mut DashboardState,
+    commands: &mpsc::Sender<AppCommand>,
+    media_commands: impl IntoIterator<Item = AppCommand>,
+    dirty: &mut bool,
+) {
+    for command in media_commands {
+        *dirty = true;
+        if command_helpers::send_or_record_closed(state, commands, command)
+            .await
+            .is_channel_closed()
+        {
             break;
         }
     }
-    dirty
+}
+
+async fn send_commands_until_closed(
+    state: &mut DashboardState,
+    commands: &mpsc::Sender<AppCommand>,
+    pending_commands: impl IntoIterator<Item = AppCommand>,
+) -> bool {
+    for command in pending_commands {
+        if command_helpers::send_or_record_closed(state, commands, command)
+            .await
+            .is_channel_closed()
+        {
+            return true;
+        }
+    }
+    false
 }

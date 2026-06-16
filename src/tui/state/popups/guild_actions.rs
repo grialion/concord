@@ -186,15 +186,12 @@ impl DashboardState {
             }
             GuildLeaderActionState::MuteDuration { .. } => {
                 let index = self
-                    .selected_guild_mute_duration_items()
-                    .iter()
-                    .enumerate()
-                    .position(|(index, _)| {
-                        self.options
-                            .key_bindings()
-                            .indexed_shortcut(index)
-                            .is_some_and(|candidate| shortcut.matches_char(candidate))
-                    })?;
+                    .options
+                    .key_bindings()
+                    .matching_indexed_shortcut_index(
+                        shortcut,
+                        self.selected_guild_mute_duration_items().len(),
+                    )?;
                 self.select_guild_action_row(index);
                 self.activate_selected_guild_action()
             }

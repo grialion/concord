@@ -4,15 +4,15 @@ use std::{
     path::PathBuf,
 };
 
-use crate::discord::ReactionEmoji;
 use crate::discord::ids::{
     Id,
     marker::{ChannelMarker, GuildMarker, MessageMarker, UserMarker},
 };
+use crate::discord::{AppCommand, ReactionEmoji};
 use crate::discord::{PresenceStatus, ProfileAvatarUpload};
 
 use crate::discord::ReactionUsersInfo;
-use crate::tui::keybindings::{KeyChord, LeaderShortcutItem, SelectionAction};
+use crate::tui::keybindings::{KeyBindings, KeyChord, LeaderShortcutItem, SelectionAction};
 use crate::tui::text_input::TextInputState;
 
 mod attachment_viewer;
@@ -42,6 +42,12 @@ pub(super) enum LeaderMode {
 #[derive(Debug, Default)]
 pub(super) struct PopupUiState {
     pub(super) modal: Option<ModalPopup>,
+}
+
+#[derive(Debug)]
+pub(in crate::tui) struct ActionShortcutActivation {
+    pub(in crate::tui) matched: bool,
+    pub(in crate::tui) command: Option<AppCommand>,
 }
 
 #[derive(Debug)]
@@ -106,74 +112,6 @@ impl ModalPopup {
             Self::Keymap(_) => ActiveModalPopupKind::KeymapHelp,
             Self::ChannelSwitcher(_) => ActiveModalPopupKind::ChannelSwitcher,
             Self::Search(_) => ActiveModalPopupKind::Search,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ActivePopupPageTarget {
-    Scrollable(ScrollablePopupPageTarget),
-    Selectable(SelectablePopupPageTarget),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ScrollablePopupPageTarget {
-    Keymap,
-    ReactionUsers,
-    UserProfile,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum SelectablePopupPageTarget {
-    Options,
-    ChannelSwitcher,
-    PollVotePicker,
-    EmojiReactionPicker,
-    MessageUrlPicker,
-    MessageActionMenu,
-}
-
-impl ActivePopupPageTarget {
-    fn from_modal(modal: &ModalPopup) -> Option<Self> {
-        Some(match modal {
-            ModalPopup::Keymap(_) => Self::Scrollable(ScrollablePopupPageTarget::Keymap),
-            ModalPopup::ReactionUsers(_) => {
-                Self::Scrollable(ScrollablePopupPageTarget::ReactionUsers)
-            }
-            ModalPopup::UserProfile(_) => Self::Scrollable(ScrollablePopupPageTarget::UserProfile),
-            ModalPopup::Options(_) => Self::Selectable(SelectablePopupPageTarget::Options),
-            ModalPopup::ChannelSwitcher(_) => {
-                Self::Selectable(SelectablePopupPageTarget::ChannelSwitcher)
-            }
-            ModalPopup::PollVotePicker(_) => {
-                Self::Selectable(SelectablePopupPageTarget::PollVotePicker)
-            }
-            ModalPopup::EmojiReactionPicker(_) => {
-                Self::Selectable(SelectablePopupPageTarget::EmojiReactionPicker)
-            }
-            ModalPopup::MessageUrlPicker(_) => {
-                Self::Selectable(SelectablePopupPageTarget::MessageUrlPicker)
-            }
-            ModalPopup::MessageActionMenu(_) => {
-                Self::Selectable(SelectablePopupPageTarget::MessageActionMenu)
-            }
-            ModalPopup::Search(_) => return None,
-            ModalPopup::MessageDeleteConfirmation(_)
-            | ModalPopup::MessagePinConfirmation(_)
-            | ModalPopup::QuitConfirmation
-            | ModalPopup::GuildLeaveConfirmation(_)
-            | ModalPopup::AttachmentViewer(_)
-            // Leader action popups are shortcut-only. They can render message
-            // actions, but they intentionally do not expose selection paging.
-            | ModalPopup::Leader(_)
-            | ModalPopup::DebugLog => return None,
-        })
-    }
-
-    fn page(self, state: &mut DashboardState, action: SelectionAction) {
-        match self {
-            Self::Scrollable(target) => state.page_scrollable_popup(target, action),
-            Self::Selectable(target) => state.page_selectable_popup(target, action),
         }
     }
 }
@@ -1076,83 +1014,74 @@ impl DashboardState {
     }
 
     fn page_active_popup(&mut self, action: SelectionAction) -> bool {
-        let Some(target) = self.active_popup_page_target() else {
-            return false;
-        };
-
-        target.page(self, action);
-        true
-    }
-
-    fn page_scrollable_popup(
-        &mut self,
-        target: ScrollablePopupPageTarget,
-        action: SelectionAction,
-    ) {
-        match target {
-            ScrollablePopupPageTarget::Keymap => {
+        match self.active_modal_popup_kind() {
+            Some(ActiveModalPopupKind::KeymapHelp) => {
                 if let Some(popup) = self.popups.keymap_popup_mut() {
                     popup.scroll.page(action);
                 }
+                true
             }
-            ScrollablePopupPageTarget::ReactionUsers => {
+            Some(ActiveModalPopupKind::ReactionUsers) => {
                 if let Some(popup) = self.popups.reaction_users_popup_mut() {
                     popup.scroll.page(action);
                 }
+                true
             }
-            ScrollablePopupPageTarget::UserProfile => {
+            Some(ActiveModalPopupKind::UserProfile) => {
                 if let Some(popup) = self.popups.user_profile_popup_mut() {
                     popup.scroll.page(action);
                 }
+                true
             }
-        }
-    }
-
-    fn page_selectable_popup(
-        &mut self,
-        target: SelectablePopupPageTarget,
-        action: SelectionAction,
-    ) {
-        match target {
-            SelectablePopupPageTarget::Options => {
+            Some(ActiveModalPopupKind::Options) => {
                 let len = self.options_popup_item_count();
                 if let Some(popup) = self.popups.options_popup_mut() {
                     popup.selection.page(len, action);
                 }
+                true
             }
-            SelectablePopupPageTarget::ChannelSwitcher => {
-                self.page_channel_switcher_selection(action)
+            Some(ActiveModalPopupKind::ChannelSwitcher) => {
+                self.page_channel_switcher_selection(action);
+                true
             }
-            SelectablePopupPageTarget::PollVotePicker => {
+            Some(ActiveModalPopupKind::PollVotePicker) => {
                 if let Some(picker) = self.popups.poll_vote_picker_mut() {
                     picker.selection.page(picker.answers.len(), action);
                 }
+                true
             }
-            SelectablePopupPageTarget::EmojiReactionPicker => {
+            Some(ActiveModalPopupKind::EmojiReactionPicker) => {
                 let len = self.filtered_emoji_reaction_items().len();
                 if let Some(picker) = self.popups.emoji_reaction_picker_mut() {
                     picker.selection.page(len, action);
                 }
+                true
             }
-            SelectablePopupPageTarget::MessageUrlPicker => {
+            Some(ActiveModalPopupKind::MessageUrlPicker) => {
                 if let Some(picker) = self.popups.message_url_picker_mut() {
                     picker.selection.page(picker.items.len(), action);
                 }
+                true
             }
-            SelectablePopupPageTarget::MessageActionMenu => {
+            Some(ActiveModalPopupKind::MessageActionMenu) => {
                 let len = self.selected_message_action_items().len();
                 if let Some(menu) = self.popups.message_action_menu_mut() {
                     menu.selection.page(len, action);
                 }
+                true
             }
+            Some(ActiveModalPopupKind::MessageDeleteConfirmation)
+            | Some(ActiveModalPopupKind::MessagePinConfirmation)
+            | Some(ActiveModalPopupKind::QuitConfirmation)
+            | Some(ActiveModalPopupKind::GuildLeaveConfirmation)
+            | Some(ActiveModalPopupKind::AttachmentViewer)
+            // Leader action popups are shortcut-only. They can render message
+            // actions, but they intentionally do not expose selection paging.
+            | Some(ActiveModalPopupKind::Leader)
+            | Some(ActiveModalPopupKind::DebugLog)
+            | Some(ActiveModalPopupKind::Search)
+            | None => false,
         }
-    }
-
-    fn active_popup_page_target(&self) -> Option<ActivePopupPageTarget> {
-        self.popups
-            .modal
-            .as_ref()
-            .and_then(ActivePopupPageTarget::from_modal)
     }
 
     pub fn is_any_action_context_active(&self) -> bool {
@@ -1161,6 +1090,135 @@ impl DashboardState {
             || self.popups.channel_leader_action().is_some()
             || self.popups.member_leader_action().is_some()
     }
+
+    pub(in crate::tui) fn activate_active_action_shortcut(
+        &mut self,
+        shortcut: KeyChord,
+    ) -> ActionShortcutActivation {
+        if self.message_action_shortcut_matches(shortcut) {
+            return ActionShortcutActivation {
+                matched: true,
+                command: self.activate_message_action_shortcut(shortcut),
+            };
+        }
+        if self.channel_action_shortcut_matches(shortcut) {
+            return ActionShortcutActivation {
+                matched: true,
+                command: self.activate_channel_action_shortcut(shortcut),
+            };
+        }
+        if self.guild_action_shortcut_matches(shortcut) {
+            return ActionShortcutActivation {
+                matched: true,
+                command: self.activate_guild_action_shortcut(shortcut),
+            };
+        }
+        if self.member_action_shortcut_matches(shortcut) {
+            return ActionShortcutActivation {
+                matched: true,
+                command: self.activate_member_action_shortcut(shortcut),
+            };
+        }
+        ActionShortcutActivation {
+            matched: false,
+            command: None,
+        }
+    }
+
+    pub(in crate::tui) fn message_action_shortcut_matches(&self, shortcut: KeyChord) -> bool {
+        if !self.is_message_action_context_active() {
+            return false;
+        }
+        let actions = self.selected_message_action_items();
+        action_shortcut_matches(
+            self.key_bindings(),
+            &actions,
+            shortcut,
+            |key_bindings, actions, index| key_bindings.message_action_shortcuts(actions, index),
+            |action| action.enabled,
+        )
+    }
+
+    fn channel_action_shortcut_matches(&self, shortcut: KeyChord) -> bool {
+        if !self.is_channel_leader_action_active() {
+            return false;
+        }
+        if self.is_channel_action_threads_phase() {
+            return indexed_shortcut_matches(
+                self.key_bindings(),
+                shortcut,
+                self.channel_action_thread_items().len(),
+            );
+        }
+        if self.is_channel_action_mute_duration_phase() {
+            return indexed_shortcut_matches(
+                self.key_bindings(),
+                shortcut,
+                self.selected_channel_mute_duration_items().len(),
+            );
+        }
+        let actions = self.selected_channel_action_items();
+        action_shortcut_matches(
+            self.key_bindings(),
+            &actions,
+            shortcut,
+            |key_bindings, actions, index| key_bindings.channel_action_shortcuts(actions, index),
+            |action| action.enabled,
+        )
+    }
+
+    fn guild_action_shortcut_matches(&self, shortcut: KeyChord) -> bool {
+        if !self.is_guild_leader_action_active() {
+            return false;
+        }
+        if self.is_guild_action_mute_duration_phase() {
+            return indexed_shortcut_matches(
+                self.key_bindings(),
+                shortcut,
+                self.selected_guild_mute_duration_items().len(),
+            );
+        }
+        let actions = self.selected_guild_action_items();
+        action_shortcut_matches(
+            self.key_bindings(),
+            &actions,
+            shortcut,
+            |key_bindings, actions, index| key_bindings.guild_action_shortcuts(actions, index),
+            |action| action.enabled,
+        )
+    }
+
+    fn member_action_shortcut_matches(&self, shortcut: KeyChord) -> bool {
+        if !self.is_member_leader_action_active() {
+            return false;
+        }
+        let actions = self.selected_member_action_items();
+        action_shortcut_matches(
+            self.key_bindings(),
+            &actions,
+            shortcut,
+            |key_bindings, actions, index| key_bindings.member_action_shortcuts(actions, index),
+            |action| action.enabled,
+        )
+    }
+}
+
+fn action_shortcut_matches<A>(
+    key_bindings: &KeyBindings,
+    actions: &[A],
+    shortcut: KeyChord,
+    shortcuts: impl Fn(&KeyBindings, &[A], usize) -> Vec<KeyChord>,
+    is_enabled: impl Fn(&A) -> bool,
+) -> bool {
+    key_bindings
+        .matching_action_shortcut_index(actions, shortcut, shortcuts, is_enabled)
+        .is_some()
+}
+
+fn indexed_shortcut_matches(key_bindings: &KeyBindings, shortcut: KeyChord, len: usize) -> bool {
+    key_bindings
+        .matching_indexed_shortcut_index(shortcut, len)
+        .is_some()
 }
 
 impl DashboardState {

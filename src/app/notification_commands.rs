@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-use super::command_loop::log_app_error;
+use super::command_loop::publish_app_error;
 
 pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
     match command {
@@ -40,14 +40,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                         })
                         .await;
                 }
-                Err(error) => {
-                    log_app_error("set guild mute failed", &error);
-                    client
-                        .publish_event(AppEvent::GatewayError {
-                            message: format!("set guild mute failed: {error}"),
-                        })
-                        .await;
-                }
+                Err(error) => publish_app_error(&client, "set guild mute failed", &error).await,
             }
         }
         AppCommand::SetChannelMuted {
@@ -81,14 +74,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                         })
                         .await;
                 }
-                Err(error) => {
-                    log_app_error("set channel mute failed", &error);
-                    client
-                        .publish_event(AppEvent::GatewayError {
-                            message: format!("set channel mute failed: {error}"),
-                        })
-                        .await;
-                }
+                Err(error) => publish_app_error(&client, "set channel mute failed", &error).await,
             }
         }
         _ => unreachable!("non-notification command routed to notification handler"),

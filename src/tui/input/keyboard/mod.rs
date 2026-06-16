@@ -14,14 +14,14 @@ mod popups;
 use composer::handle_composer_key;
 use dashboard::{execute_ui_action, handle_dashboard_action};
 pub use paste::{handle_paste, handle_pasted_file_attachments, handle_pasted_user_profile_avatar};
-use popups::{handle_deferred_popup_key, handle_priority_popup_key};
+use popups::{PopupKeyPhase, handle_popup_key};
 
 pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppCommand> {
     if key.kind != KeyEventKind::Press {
         return None;
     }
 
-    if let Some(command) = handle_priority_popup_key(state, key) {
+    if let Some(command) = handle_popup_key(state, key, PopupKeyPhase::Priority) {
         return command;
     }
 
@@ -39,7 +39,7 @@ pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppComman
         return None;
     }
 
-    if let Some(command) = handle_deferred_popup_key(state, key) {
+    if let Some(command) = handle_popup_key(state, key, PopupKeyPhase::Deferred) {
         return command;
     }
 

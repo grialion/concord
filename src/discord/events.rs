@@ -476,11 +476,74 @@ pub(crate) mod test_builders {
         }
     }
 
-    pub(crate) fn guild_message_create_fixture() -> MessageCreateFixture {
-        MessageCreateFixture {
-            guild_id: Some(Id::new(1)),
-            ..MessageCreateFixture::default()
+    impl MessageCreateFixture {
+        pub(crate) fn direct_message(
+            channel_id: Id<ChannelMarker>,
+            message_id: Id<MessageMarker>,
+        ) -> Self {
+            Self {
+                channel_id,
+                message_id,
+                ..Self::default()
+            }
         }
+
+        pub(crate) fn guild_message(
+            guild_id: Id<GuildMarker>,
+            channel_id: Id<ChannelMarker>,
+            message_id: Id<MessageMarker>,
+        ) -> Self {
+            Self {
+                guild_id: Some(guild_id),
+                channel_id,
+                message_id,
+                ..Self::default()
+            }
+        }
+
+        pub(crate) fn with_author_id(mut self, author_id: Id<UserMarker>) -> Self {
+            self.author_id = author_id;
+            self
+        }
+
+        pub(crate) fn with_author(
+            mut self,
+            author_id: Id<UserMarker>,
+            author: impl Into<String>,
+        ) -> Self {
+            self.author_id = author_id;
+            self.author = author.into();
+            self
+        }
+
+        pub(crate) fn with_message_kind(mut self, message_kind: MessageKind) -> Self {
+            self.message_kind = message_kind;
+            self
+        }
+
+        pub(crate) fn with_reference(mut self, reference: MessageReferenceInfo) -> Self {
+            self.reference = Some(reference);
+            self
+        }
+
+        pub(crate) fn with_attachments(mut self, attachments: Vec<AttachmentInfo>) -> Self {
+            self.attachments = attachments;
+            self
+        }
+
+        pub(crate) fn with_content(mut self, content: impl Into<String>) -> Self {
+            self.content = Some(content.into());
+            self
+        }
+
+        pub(crate) fn without_content(mut self) -> Self {
+            self.content = None;
+            self
+        }
+    }
+
+    pub(crate) fn guild_message_create_fixture() -> MessageCreateFixture {
+        MessageCreateFixture::guild_message(Id::new(1), Id::new(2), Id::new(1))
     }
 
     pub(crate) fn message_create_event(event: MessageCreateFixture) -> AppEvent {

@@ -1,3 +1,4 @@
+mod command_dispatch;
 mod command_loop;
 mod credentials;
 mod gateway_commands;

@@ -3,7 +3,7 @@ use crate::{
     discord::{AppCommand, AppEvent, AttachmentUpdate, MessageInfo, ReactionUsersInfo},
 };
 
-use super::command_loop::log_app_error;
+use super::command_loop::{log_app_error, publish_app_error};
 
 pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
     match command {
@@ -17,28 +17,14 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
             .await
         {
             Ok(message) => client.publish_event(message_create_event(message)).await,
-            Err(error) => {
-                log_app_error("send message failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("send message failed: {error}"),
-                    })
-                    .await;
-            }
+            Err(error) => publish_app_error(&client, "send message failed", &error).await,
         },
         AppCommand::SendTtsMessage {
             channel_id,
             content,
         } => match client.send_tts_message(channel_id, &content).await {
             Ok(message) => client.publish_event(message_create_event(message)).await,
-            Err(error) => {
-                log_app_error("send tts message failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("send tts message failed: {error}"),
-                    })
-                    .await;
-            }
+            Err(error) => publish_app_error(&client, "send tts message failed", &error).await,
         },
         AppCommand::LoadApplicationCommands { guild_id } => {
             match client.load_application_commands(guild_id).await {
@@ -53,12 +39,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
         }
         AppCommand::RunApplicationCommand { invocation } => {
             if let Err(error) = client.run_application_command(&invocation).await {
-                log_app_error("run application command failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("run application command failed: {error}"),
-                    })
-                    .await;
+                publish_app_error(&client, "run application command failed", &error).await;
             }
         }
         AppCommand::EditMessage {
@@ -69,14 +50,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
             Ok(message) => {
                 client.publish_event(message_update_event(message)).await;
             }
-            Err(error) => {
-                log_app_error("edit message failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("edit message failed: {error}"),
-                    })
-                    .await;
-            }
+            Err(error) => publish_app_error(&client, "edit message failed", &error).await,
         },
         AppCommand::DeleteMessage {
             channel_id,
@@ -91,14 +65,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                     })
                     .await;
             }
-            Err(error) => {
-                log_app_error("delete message failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("delete message failed: {error}"),
-                    })
-                    .await;
-            }
+            Err(error) => publish_app_error(&client, "delete message failed", &error).await,
         },
         AppCommand::LeaveGuild { guild_id, label } => match client.leave_guild(guild_id).await {
             Ok(()) => {
@@ -129,14 +96,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                     })
                     .await;
             }
-            Err(error) => {
-                log_app_error("add reaction failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("add reaction failed: {error}"),
-                    })
-                    .await;
-            }
+            Err(error) => publish_app_error(&client, "add reaction failed", &error).await,
         },
         AppCommand::RemoveReaction {
             channel_id,
@@ -155,14 +115,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                     })
                     .await;
             }
-            Err(error) => {
-                log_app_error("remove reaction failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("remove reaction failed: {error}"),
-                    })
-                    .await;
-            }
+            Err(error) => publish_app_error(&client, "remove reaction failed", &error).await,
         },
         AppCommand::LoadReactionUsers {
             channel_id,
@@ -178,12 +131,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                 {
                     Ok(users) => loaded_reactions.push(ReactionUsersInfo { emoji, users }),
                     Err(error) => {
-                        log_app_error("load reaction users failed", &error);
-                        client
-                            .publish_event(AppEvent::GatewayError {
-                                message: format!("load reaction users failed: {error}"),
-                            })
-                            .await;
+                        publish_app_error(&client, "load reaction users failed", &error).await;
                         failed = true;
                         break;
                     }
@@ -237,14 +185,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                     })
                     .await;
             }
-            Err(error) => {
-                log_app_error("set pin failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("set pin failed: {error}"),
-                    })
-                    .await;
-            }
+            Err(error) => publish_app_error(&client, "set pin failed", &error).await,
         },
         AppCommand::VotePoll {
             channel_id,
@@ -260,14 +201,7 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                     })
                     .await;
             }
-            Err(error) => {
-                log_app_error("poll vote failed", &error);
-                client
-                    .publish_event(AppEvent::GatewayError {
-                        message: format!("poll vote failed: {error}"),
-                    })
-                    .await;
-            }
+            Err(error) => publish_app_error(&client, "poll vote failed", &error).await,
         },
         _ => unreachable!("non-message command routed to message handler"),
     }
