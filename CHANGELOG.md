@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.3] - 2026-06-18
+
+### Bug Fixes
+
+- Limit image protocol refresh to modal popup open/close by @chojs23
+- Fix thread-kind reuse by @chojs23
+- Fix mention detecting by authoritative Discord gateway fields (#198) in [#198](https://github.com/chojs23/concord/pull/198) by @chojs23
+
+### Features
+
+- Add sign-out feature (#202) in [#202](https://github.com/chojs23/concord/pull/202) by @chojs23
+
+### Miscellaneous Tasks
+
+- Extract app helper modules by @chojs23
+
+### Refactor
+
+- Split media cache modules by resource by @chojs23
+- Refactor media structure and add jobs by @chojs23
+- Extract dashboard event reducer by @chojs23
+- Redesign modules by @chojs23
+- Reuse message payloads in app events by @chojs23
+- Merge presence updates into optional guild event by @chojs23
+- Refactor some states duplication by @chojs23
+
 ## [2.2.2] - 2026-06-14
 
 ### Documentation
