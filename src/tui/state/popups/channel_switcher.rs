@@ -171,6 +171,7 @@ impl DashboardState {
                 self.activate_guild(ActiveGuildScope::Guild(guild_id));
                 if let Some(parent_id) = parent_id {
                     self.navigation
+                        .channels
                         .collapsed_channel_categories
                         .remove(&parent_id);
                 }
@@ -227,8 +228,8 @@ impl DashboardState {
     ) -> Vec<ChannelSwitcherItem> {
         let mut recent = Vec::new();
         let mut seen = HashSet::new();
-        for channel_id in &self.navigation.recent_channel_ids {
-            if Some(*channel_id) == self.navigation.active_channel_id {
+        for channel_id in &self.navigation.channels.recent_channel_ids {
+            if Some(*channel_id) == self.navigation.channels.active_channel_id {
                 continue;
             }
             if !seen.insert(*channel_id) {

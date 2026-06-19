@@ -352,7 +352,7 @@ fn selected_channel_category_toggles_open_and_closed() {
 #[test]
 fn selected_channel_child_can_close_parent_category() {
     let mut state = state_with_channel_tree();
-    state.navigation.channels.selected = 1;
+    state.navigation.channels.list.selected = 1;
 
     state.toggle_selected_channel_category();
     let entries = state.channel_pane_entries();
@@ -415,6 +415,7 @@ fn collapsed_category_state_is_saved_and_restored() {
     assert!(
         restored
             .navigation
+            .channels
             .collapsed_channel_categories
             .contains(&Id::new(10))
     );
@@ -458,7 +459,7 @@ fn moving_guild_cursor_does_not_activate_guild() {
     assert!(active_guild.is_some());
 
     state.move_down();
-    assert_eq!(state.navigation.guilds.selected, 2);
+    assert_eq!(state.navigation.guilds.list.selected, 2);
     assert_eq!(state.selected_guild_id(), active_guild);
 
     state.confirm_selected_guild();
@@ -543,7 +544,7 @@ fn moving_channel_cursor_does_not_activate_channel() {
 
     state.move_down();
     state.move_down();
-    assert_eq!(state.navigation.channels.selected, 2);
+    assert_eq!(state.navigation.channels.list.selected, 2);
     assert_eq!(state.selected_channel_id(), None);
 
     state.confirm_selected_channel();
@@ -652,7 +653,7 @@ fn folder_without_id_can_be_toggled_closed() {
 #[test]
 fn selected_folder_child_can_close_parent() {
     let mut state = state_with_folder(Some(42));
-    state.navigation.guilds.selected = 2;
+    state.navigation.guilds.list.selected = 2;
 
     state.toggle_selected_folder();
     let entries = state.guild_pane_entries();

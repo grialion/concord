@@ -2,8 +2,8 @@ use chrono::{DateTime, Utc};
 
 use super::DiscordClient;
 use crate::discord::{
-    MessageAttachmentUpload, MessageInfo, ReactionEmoji, ReactionUserInfo, UserProfileInfo,
-    UserProfileUpdate,
+    GuildFolder, MessageAttachmentUpload, MessageInfo, ReactionEmoji, ReactionUserInfo,
+    UserProfileInfo, UserProfileUpdate,
     commands::ForumPostArchiveState,
     ids::{
         Id,
@@ -126,6 +126,30 @@ impl DiscordClient {
         self.rest
             .set_guild_muted(guild_id, muted, mute_end_time, selected_time_window)
             .await
+    }
+
+    pub async fn rename_guild_folder(
+        &self,
+        folder_id: u64,
+        name: Option<String>,
+    ) -> Result<Vec<GuildFolder>> {
+        let mut folders = self
+            .state
+            .read()
+            .expect("discord state lock is not poisoned")
+            .guild_folders()
+            .to_vec();
+        let Some(folder) = folders
+            .iter_mut()
+            .find(|folder| folder.id == Some(folder_id))
+        else {
+            return Err(AppError::DiscordRequest(format!(
+                "guild folder {folder_id} was not found"
+            )));
+        };
+        folder.name = name;
+        self.rest.update_guild_folders(&folders).await?;
+        Ok(folders)
     }
 
     pub async fn set_channel_muted(

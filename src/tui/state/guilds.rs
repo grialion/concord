@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::discord::ids::{Id, marker::GuildMarker};
 use crate::discord::{GuildFolder, GuildState, MuteDuration};
 
-use super::{ActiveGuildScope, DashboardState, FolderKey};
+use super::{ActiveGuildScope, DashboardState, FolderKey, FolderRenameState};
 use super::{
     model::{FocusPane, GuildBranch, GuildPaneEntry},
     scroll::{clamp_selected_index, toggle_collapsed_key},
@@ -65,7 +65,7 @@ impl DashboardState {
             let folder_key = Self::folder_key(folder);
             let collapsed = folder_key
                 .as_ref()
-                .is_some_and(|key| self.navigation.collapsed_folders.contains(key));
+                .is_some_and(|key| self.navigation.guilds.collapsed_folders.contains(key));
             entries.push(GuildPaneEntry::FolderHeader { folder, collapsed });
 
             // Always mark children as placed even when collapsed so we don't
@@ -81,7 +81,7 @@ impl DashboardState {
                 .collect();
             if collapsed {
                 child_guilds.retain(|guild| {
-                    self.navigation.active_guild == ActiveGuildScope::Guild(guild.id)
+                    self.navigation.guilds.active == ActiveGuildScope::Guild(guild.id)
                 });
             }
             let last_child_index = child_guilds.len().saturating_sub(1);
@@ -119,7 +119,8 @@ impl DashboardState {
     pub fn guild_pane_filtered_entries(&self) -> Vec<GuildPaneEntry<'_>> {
         let query = self
             .navigation
-            .guild_pane_filter
+            .guilds
+            .filter
             .as_ref()
             .map(|f| f.query().trim().to_owned())
             .filter(|q| !q.is_empty());
@@ -196,7 +197,7 @@ impl DashboardState {
         };
         if let Some(scope) = action {
             self.activate_guild(scope);
-            self.navigation.guilds.keep_selection_visible();
+            self.navigation.guilds.list.keep_selection_visible();
             return true;
         }
         false
@@ -204,20 +205,20 @@ impl DashboardState {
 
     pub fn selected_guild(&self) -> usize {
         clamp_selected_index(
-            self.navigation.guilds.selected,
+            self.navigation.guilds.list.selected,
             self.guild_pane_filtered_entries().len(),
         )
     }
 
     pub fn guild_scroll(&self) -> usize {
-        self.navigation.guilds.scroll
+        self.navigation.guilds.list.scroll
     }
 
     pub fn visible_guild_pane_entries(&self) -> Vec<GuildPaneEntry<'_>> {
         self.guild_pane_filtered_entries()
             .into_iter()
-            .skip(self.navigation.guilds.scroll)
-            .take(self.navigation.guilds.content_height())
+            .skip(self.navigation.guilds.list.scroll)
+            .take(self.navigation.guilds.list.content_height())
             .collect()
     }
 
@@ -227,10 +228,10 @@ impl DashboardState {
         {
             let selected = self.selected_guild();
             let visible_len = self.visible_guild_pane_entries().len();
-            if selected >= self.navigation.guilds.scroll
-                && selected < self.navigation.guilds.scroll + visible_len
+            if selected >= self.navigation.guilds.list.scroll
+                && selected < self.navigation.guilds.list.scroll + visible_len
             {
-                Some(selected - self.navigation.guilds.scroll)
+                Some(selected - self.navigation.guilds.list.scroll)
             } else {
                 None
             }
@@ -241,14 +242,15 @@ impl DashboardState {
 
     pub fn set_guild_view_height(&mut self, height: usize) {
         let len = self.guild_pane_filtered_entries().len();
-        let selected = self.navigation.guilds.selected;
+        let selected = self.navigation.guilds.list.selected;
         self.navigation
             .guilds
+            .list
             .set_view_height_and_clamp(height, selected, len);
     }
 
     pub fn selected_guild_id(&self) -> Option<Id<GuildMarker>> {
-        match self.navigation.active_guild {
+        match self.navigation.guilds.active {
             ActiveGuildScope::Guild(guild_id) => Some(guild_id),
             ActiveGuildScope::Unset | ActiveGuildScope::DirectMessages => None,
         }
@@ -261,7 +263,7 @@ impl DashboardState {
     }
 
     pub fn is_active_guild_entry(&self, entry: &GuildPaneEntry<'_>) -> bool {
-        match (self.navigation.active_guild, entry) {
+        match (self.navigation.guilds.active, entry) {
             (ActiveGuildScope::DirectMessages, GuildPaneEntry::DirectMessages) => true,
             (ActiveGuildScope::Guild(active_id), GuildPaneEntry::Guild { state, .. }) => {
                 state.id == active_id
@@ -277,7 +279,7 @@ impl DashboardState {
     pub fn toggle_selected_folder(&mut self) {
         let folder_key = self.selected_folder_key();
         if let Some(key) = folder_key {
-            toggle_collapsed_key(&mut self.navigation.collapsed_folders, key);
+            toggle_collapsed_key(&mut self.navigation.guilds.collapsed_folders, key);
             self.options.ui_state_save_pending = true;
         }
     }
@@ -300,10 +302,113 @@ impl DashboardState {
         }
     }
 
+    pub fn start_selected_folder_rename(&mut self) -> bool {
+        let Some((folder_id, name)) = self.selected_renamable_folder() else {
+            return false;
+        };
+        let mut input = crate::tui::text_input::TextInputState::default();
+        input.set_value(name.unwrap_or_default());
+        self.navigation.guilds.folder_rename = Some(FolderRenameState { folder_id, input });
+        true
+    }
+
+    pub fn cancel_folder_rename(&mut self) {
+        self.navigation.guilds.folder_rename = None;
+    }
+
+    pub fn is_renaming_folder(&self) -> bool {
+        self.navigation.guilds.folder_rename.is_some()
+    }
+
+    pub(in crate::tui) fn folder_rename_target_id(&self) -> Option<u64> {
+        self.navigation
+            .guilds
+            .folder_rename
+            .as_ref()
+            .map(|rename| rename.folder_id)
+    }
+
+    pub(in crate::tui) fn folder_rename_value(&self) -> Option<&str> {
+        self.navigation
+            .guilds
+            .folder_rename
+            .as_ref()
+            .map(|rename| rename.input.value())
+    }
+
+    pub(in crate::tui) fn folder_rename_cursor_byte_index(&self) -> Option<usize> {
+        self.navigation
+            .guilds
+            .folder_rename
+            .as_ref()
+            .map(|rename| rename.input.cursor_byte_index())
+    }
+
+    pub fn push_folder_rename_char(&mut self, value: char) {
+        if let Some(rename) = self.navigation.guilds.folder_rename.as_mut() {
+            rename.input.insert_char(value);
+        }
+    }
+
+    pub fn pop_folder_rename_char(&mut self) {
+        if let Some(rename) = self.navigation.guilds.folder_rename.as_mut() {
+            rename.input.delete_previous_grapheme();
+        }
+    }
+
+    pub fn delete_previous_folder_rename_word(&mut self) {
+        if let Some(rename) = self.navigation.guilds.folder_rename.as_mut() {
+            rename.input.delete_previous_word();
+        }
+    }
+
+    pub fn move_folder_rename_cursor_left(&mut self) {
+        self.move_folder_rename_cursor_with(|input| input.move_left());
+    }
+
+    pub fn move_folder_rename_cursor_right(&mut self) {
+        self.move_folder_rename_cursor_with(|input| input.move_right());
+    }
+
+    pub fn move_folder_rename_cursor_word_left(&mut self) {
+        self.move_folder_rename_cursor_with(|input| input.move_word_left());
+    }
+
+    pub fn move_folder_rename_cursor_word_right(&mut self) {
+        self.move_folder_rename_cursor_with(|input| input.move_word_right());
+    }
+
+    pub fn move_folder_rename_cursor_home(&mut self) {
+        self.move_folder_rename_cursor_with(|input| input.move_home());
+    }
+
+    pub fn move_folder_rename_cursor_end(&mut self) {
+        self.move_folder_rename_cursor_with(|input| input.move_end());
+    }
+
+    fn move_folder_rename_cursor_with(
+        &mut self,
+        update: impl FnOnce(&mut crate::tui::text_input::TextInputState),
+    ) {
+        if let Some(rename) = self.navigation.guilds.folder_rename.as_mut() {
+            update(&mut rename.input);
+        }
+    }
+
+    pub fn commit_folder_rename_command(&mut self) -> Option<AppCommand> {
+        let rename = self.navigation.guilds.folder_rename.take()?;
+        let name = rename.input.value().trim().to_owned();
+        let name = (!name.is_empty()).then_some(name);
+        Some(AppCommand::RenameGuildFolder {
+            folder_id: rename.folder_id,
+            name,
+        })
+    }
+
     pub(super) fn activate_guild(&mut self, scope: ActiveGuildScope) {
-        self.navigation.active_guild = scope;
-        self.navigation.channels.reset_selection_and_scroll();
-        self.navigation.active_channel_id = None;
+        self.navigation.guilds.active = scope;
+        self.navigation.channels.list.reset_selection_and_scroll();
+        self.navigation.channels.active_channel_id = None;
         self.messages.pinned_message_view_channel_id = None;
         self.messages.pinned_message_view_return_target = None;
         self.messages.selected_message = 0;
@@ -312,7 +417,7 @@ impl DashboardState {
         self.messages.message_keep_selection_visible = true;
         self.messages.message_auto_follow = true;
         self.clear_new_messages_marker();
-        self.navigation.members.reset_selection_and_scroll();
+        self.navigation.members.list.reset_selection_and_scroll();
 
         self.refresh_composer_emoji_candidates_for_current_query();
     }
@@ -330,6 +435,15 @@ impl DashboardState {
                     GuildPaneEntry::FolderHeader { folder, .. } => Self::folder_key(folder),
                     _ => None,
                 }),
+            _ => None,
+        }
+    }
+
+    fn selected_renamable_folder(&self) -> Option<(u64, Option<String>)> {
+        match self.guild_pane_entries().get(self.selected_guild()) {
+            Some(GuildPaneEntry::FolderHeader { folder, .. }) => {
+                folder.id.map(|id| (id, folder.name.clone()))
+            }
             _ => None,
         }
     }

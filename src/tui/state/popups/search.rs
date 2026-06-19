@@ -761,7 +761,7 @@ impl DashboardState {
     }
 
     fn member_search_results_for_query(&self, query: &str) -> Vec<SearchResultItem> {
-        let guild_id = match self.navigation.active_guild {
+        let guild_id = match self.navigation.guilds.active {
             ActiveGuildScope::Guild(guild_id) => Some(guild_id),
             ActiveGuildScope::DirectMessages | ActiveGuildScope::Unset => None,
         };

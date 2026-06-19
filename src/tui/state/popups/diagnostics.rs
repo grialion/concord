@@ -77,7 +77,7 @@ impl DashboardState {
     /// missing channel is actually being filtered by `can_view_channel` or
     /// just isn't in the cache. DM scope always reports `(N, 0)`.
     pub fn debug_channel_visibility(&self) -> ChannelVisibilityStats {
-        match self.navigation.active_guild {
+        match self.navigation.guilds.active {
             ActiveGuildScope::Unset => ChannelVisibilityStats::default(),
             ActiveGuildScope::DirectMessages => self.discord.cache.channel_visibility_stats(None),
             ActiveGuildScope::Guild(guild_id) => {

@@ -132,18 +132,18 @@ impl DashboardState {
     }
 
     fn apply_ui_state_options(&mut self, options: UiStateOptions) {
-        self.navigation.guild_pane_visible = options.guild_pane_visible;
-        self.navigation.channel_pane_visible = options.channel_pane_visible;
-        self.navigation.member_pane_visible = options.member_pane_visible;
-        self.navigation.server_width = options.server_width;
-        self.navigation.channel_list_width = options.channel_list_width;
-        self.navigation.member_list_width = options.member_list_width;
+        self.navigation.guilds.visible = options.guild_pane_visible;
+        self.navigation.channels.visible = options.channel_pane_visible;
+        self.navigation.members.visible = options.member_pane_visible;
+        self.navigation.guilds.width = options.server_width;
+        self.navigation.channels.width = options.channel_list_width;
+        self.navigation.members.width = options.member_list_width;
         if !self.is_pane_visible(self.navigation.focus) {
             self.navigation.focus = FocusPane::Messages;
         }
-        self.navigation.collapsed_channel_categories =
+        self.navigation.channels.collapsed_channel_categories =
             options.collapsed_channel_categories.into_iter().collect();
-        self.navigation.collapsed_folders = options
+        self.navigation.guilds.collapsed_folders = options
             .collapsed_server_folder_ids
             .into_iter()
             .map(FolderKey::Id)
@@ -159,6 +159,7 @@ impl DashboardState {
     fn ui_state_options(&self) -> UiStateOptions {
         let mut collapsed_channel_categories: Vec<_> = self
             .navigation
+            .channels
             .collapsed_channel_categories
             .iter()
             .copied()
@@ -167,7 +168,7 @@ impl DashboardState {
 
         let mut collapsed_server_folder_ids = Vec::new();
         let mut collapsed_server_folder_guilds = Vec::new();
-        for folder in &self.navigation.collapsed_folders {
+        for folder in &self.navigation.guilds.collapsed_folders {
             match folder {
                 FolderKey::Id(id) => collapsed_server_folder_ids.push(*id),
                 FolderKey::Guilds(guilds) => collapsed_server_folder_guilds.push(guilds.clone()),
@@ -181,12 +182,12 @@ impl DashboardState {
         });
 
         UiStateOptions {
-            guild_pane_visible: self.navigation.guild_pane_visible,
-            channel_pane_visible: self.navigation.channel_pane_visible,
-            member_pane_visible: self.navigation.member_pane_visible,
-            server_width: self.navigation.server_width,
-            channel_list_width: self.navigation.channel_list_width,
-            member_list_width: self.navigation.member_list_width,
+            guild_pane_visible: self.navigation.guilds.visible,
+            channel_pane_visible: self.navigation.channels.visible,
+            member_pane_visible: self.navigation.members.visible,
+            server_width: self.navigation.guilds.width,
+            channel_list_width: self.navigation.channels.width,
+            member_list_width: self.navigation.members.width,
             collapsed_channel_categories,
             collapsed_server_folder_ids,
             collapsed_server_folder_guilds,

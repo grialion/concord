@@ -395,7 +395,7 @@ impl DashboardState {
     }
 
     pub fn channels(&self) -> Vec<&ChannelState> {
-        match self.navigation.active_guild {
+        match self.navigation.guilds.active {
             ActiveGuildScope::Unset => Vec::new(),
             // DMs do not carry guild-style permissions, so show every channel.
             ActiveGuildScope::DirectMessages => self.discord.cache.channels_for_guild(None),
@@ -410,7 +410,7 @@ impl DashboardState {
 
     pub fn channel_pane_entries(&self) -> Vec<ChannelPaneEntry<'_>> {
         let mut channels = self.channels();
-        if self.navigation.active_guild == ActiveGuildScope::DirectMessages {
+        if self.navigation.guilds.active == ActiveGuildScope::DirectMessages {
             sort_direct_message_channels(&mut channels);
             return channels
                 .into_iter()
@@ -422,7 +422,7 @@ impl DashboardState {
                 .collect();
         }
 
-        let voice_participants_by_channel = match self.navigation.active_guild {
+        let voice_participants_by_channel = match self.navigation.guilds.active {
             ActiveGuildScope::Guild(guild_id) => self
                 .discord
                 .voice_participants_by_channel_for_guild(guild_id),
@@ -474,6 +474,7 @@ impl DashboardState {
 
             let collapsed = self
                 .navigation
+                .channels
                 .collapsed_channel_categories
                 .contains(&root.id);
             entries.push(ChannelPaneEntry::CategoryHeader {
@@ -501,7 +502,7 @@ impl DashboardState {
     }
 
     fn collapsed_category_child_visible(&self, channel: &ChannelState) -> bool {
-        self.navigation.active_channel_id == Some(channel.id)
+        self.navigation.channels.active_channel_id == Some(channel.id)
             || self.sidebar_channel_unread(channel.id) != ChannelUnreadState::Seen
     }
 
@@ -552,7 +553,8 @@ impl DashboardState {
     pub fn channel_pane_filtered_entries(&self) -> Vec<ChannelPaneEntry<'_>> {
         let query = self
             .navigation
-            .channel_pane_filter
+            .channels
+            .filter
             .as_ref()
             .map(|f| f.query().trim().to_owned())
             .filter(|q| !q.is_empty());
@@ -588,7 +590,7 @@ impl DashboardState {
 
     fn channel_pane_search_channels(&self) -> Vec<&ChannelState> {
         let mut channels = self.channels();
-        if self.navigation.active_guild == ActiveGuildScope::DirectMessages {
+        if self.navigation.guilds.active == ActiveGuildScope::DirectMessages {
             channels.retain(|channel| !channel.is_thread());
             sort_direct_message_channels(&mut channels);
             return channels;
@@ -615,7 +617,7 @@ impl DashboardState {
         };
         if let Some(channel_id) = channel_id {
             let command = self.activate_channel_command(channel_id);
-            self.navigation.channels.keep_selection_visible();
+            self.navigation.channels.list.keep_selection_visible();
             return command;
         }
         None
@@ -630,57 +632,57 @@ impl DashboardState {
         &self,
         entries: &[ChannelPaneEntry<'_>],
     ) -> usize {
-        selectable_channel_index_near(entries, self.navigation.channels.selected, false)
+        selectable_channel_index_near(entries, self.navigation.channels.list.selected, false)
             .unwrap_or(0)
     }
 
     pub(super) fn move_channel_selection_down(&mut self) {
         let selected = self.selected_channel();
         self.select_channel_entry_near(selected.saturating_add(1), true);
-        self.navigation.channels.keep_selection_visible();
+        self.navigation.channels.list.keep_selection_visible();
         self.clamp_channel_viewport();
     }
 
     pub(super) fn move_channel_selection_up(&mut self) {
         let selected = self.selected_channel();
         self.select_channel_entry_near(selected.saturating_sub(1), false);
-        self.navigation.channels.keep_selection_visible();
+        self.navigation.channels.list.keep_selection_visible();
         self.clamp_channel_viewport();
     }
 
     pub(super) fn move_channel_selection_down_by(&mut self, distance: usize) {
         let selected = self.selected_channel();
         self.select_channel_entry_near(selected.saturating_add(distance), true);
-        self.navigation.channels.keep_selection_visible();
+        self.navigation.channels.list.keep_selection_visible();
         self.clamp_channel_viewport();
     }
 
     pub(super) fn move_channel_selection_up_by(&mut self, distance: usize) {
         let selected = self.selected_channel();
         self.select_channel_entry_near(selected.saturating_sub(distance), false);
-        self.navigation.channels.keep_selection_visible();
+        self.navigation.channels.list.keep_selection_visible();
         self.clamp_channel_viewport();
     }
 
     pub(super) fn jump_channel_selection_top(&mut self) {
         self.select_channel_entry_near(0, true);
-        self.navigation.channels.keep_selection_visible();
+        self.navigation.channels.list.keep_selection_visible();
         self.clamp_channel_viewport();
     }
 
     pub(super) fn jump_channel_selection_bottom(&mut self) {
         let entries = self.channel_pane_filtered_entries();
-        self.navigation.channels.selected = entries
+        self.navigation.channels.list.selected = entries
             .iter()
             .rposition(ChannelPaneEntry::is_selectable)
             .unwrap_or(0);
-        self.navigation.channels.keep_selection_visible();
+        self.navigation.channels.list.keep_selection_visible();
         self.clamp_channel_viewport();
     }
 
     fn select_channel_entry_near(&mut self, index: usize, prefer_forward: bool) {
         let entries = self.channel_pane_filtered_entries();
-        self.navigation.channels.selected =
+        self.navigation.channels.list.selected =
             selectable_channel_index_near(&entries, index, prefer_forward).unwrap_or(0);
     }
 
@@ -691,22 +693,23 @@ impl DashboardState {
     }
 
     pub fn channel_scroll(&self) -> usize {
-        self.navigation.channels.scroll
+        self.navigation.channels.list.scroll
     }
 
     pub fn visible_channel_pane_entries(&self) -> Vec<ChannelPaneEntry<'_>> {
         self.channel_pane_filtered_entries()
             .into_iter()
-            .skip(self.navigation.channels.scroll)
-            .take(self.navigation.channels.content_height())
+            .skip(self.navigation.channels.list.scroll)
+            .take(self.navigation.channels.list.content_height())
             .collect()
     }
 
     pub fn set_channel_view_height(&mut self, height: usize) {
         let len = self.channel_pane_filtered_entries().len();
-        let selected = self.navigation.channels.selected;
+        let selected = self.navigation.channels.list.selected;
         self.navigation
             .channels
+            .list
             .set_view_height_and_clamp(height, selected, len);
     }
 
@@ -719,16 +722,17 @@ impl DashboardState {
             .iter()
             .position(|entry| entry.channel_id() == Some(channel_id))
         {
-            self.navigation.channels.selected = index;
+            self.navigation.channels.list.selected = index;
         }
     }
 
     pub fn selected_channel_id(&self) -> Option<Id<ChannelMarker>> {
-        self.navigation.active_channel_id
+        self.navigation.channels.active_channel_id
     }
 
     pub fn selected_channel_state(&self) -> Option<&ChannelState> {
         self.navigation
+            .channels
             .active_channel_id
             .and_then(|channel_id| self.discord.cache.channel(channel_id))
     }
@@ -867,7 +871,7 @@ impl DashboardState {
         matches!(
             entry,
             ChannelPaneEntry::Channel { state, .. } | ChannelPaneEntry::Thread { state, .. }
-                if Some(state.id) == self.navigation.active_channel_id
+                if Some(state.id) == self.navigation.channels.active_channel_id
         )
     }
 
@@ -876,7 +880,7 @@ impl DashboardState {
             return;
         };
         toggle_collapsed_key(
-            &mut self.navigation.collapsed_channel_categories,
+            &mut self.navigation.channels.collapsed_channel_categories,
             category_id,
         );
         self.options.ui_state_save_pending = true;
@@ -920,7 +924,7 @@ impl DashboardState {
     }
 
     pub(super) fn record_thread_return_target(&mut self, thread_channel_id: Id<ChannelMarker>) {
-        let Some(channel_id) = self.navigation.active_channel_id else {
+        let Some(channel_id) = self.navigation.channels.active_channel_id else {
             return;
         };
         if channel_id == thread_channel_id {
@@ -944,7 +948,7 @@ impl DashboardState {
         let Some(target) = self.messages.thread_return_target else {
             return false;
         };
-        if self.navigation.active_channel_id != Some(target.thread_channel_id) {
+        if self.navigation.channels.active_channel_id != Some(target.thread_channel_id) {
             return false;
         }
         if !self
@@ -985,13 +989,13 @@ impl DashboardState {
             .channel(channel_id)
             .is_some_and(|channel| channel.is_forum());
         let preserves_thread_return = self.messages.thread_return_target.is_some_and(|target| {
-            self.navigation.active_channel_id == Some(target.channel_id)
+            self.navigation.channels.active_channel_id == Some(target.channel_id)
                 && channel_id == target.thread_channel_id
         });
         if !preserves_thread_return {
             self.messages.thread_return_target = None;
         }
-        self.navigation.active_channel_id = Some(channel_id);
+        self.navigation.channels.active_channel_id = Some(channel_id);
         self.messages.pinned_message_view_channel_id = None;
         self.messages.pinned_message_view_return_target = None;
 
@@ -1088,10 +1092,15 @@ impl DashboardState {
         }
 
         self.navigation
+            .channels
             .recent_channel_ids
             .retain(|id| *id != channel_id);
-        self.navigation.recent_channel_ids.push_front(channel_id);
         self.navigation
+            .channels
+            .recent_channel_ids
+            .push_front(channel_id);
+        self.navigation
+            .channels
             .recent_channel_ids
             .truncate(RECENT_CHANNEL_LIMIT);
     }
@@ -1111,7 +1120,7 @@ impl DashboardState {
         } else {
             self.queue_channel_ack(channel_id);
         }
-        if self.navigation.active_channel_id == Some(channel_id) {
+        if self.navigation.channels.active_channel_id == Some(channel_id) {
             self.messages.unread_divider_last_acked_id = None;
             self.messages.pending_unread_anchor_scroll = false;
             self.clear_new_messages_marker();

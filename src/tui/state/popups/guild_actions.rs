@@ -33,12 +33,14 @@ impl DashboardState {
             return None;
         }
         match self.guild_pane_entries().get(self.selected_guild()) {
-            Some(GuildPaneEntry::DirectMessages | GuildPaneEntry::Guild { .. }) => {
-                Some(GuildLeaderActionState::Actions {
-                    selection: Default::default(),
-                })
-            }
-            Some(GuildPaneEntry::FolderHeader { .. }) | None => None,
+            Some(
+                GuildPaneEntry::DirectMessages
+                | GuildPaneEntry::Guild { .. }
+                | GuildPaneEntry::FolderHeader { .. },
+            ) => Some(GuildLeaderActionState::Actions {
+                selection: Default::default(),
+            }),
+            None => None,
         }
     }
 
@@ -91,7 +93,12 @@ impl DashboardState {
                 "No server actions yet",
                 false,
             )],
-            Some(GuildPaneEntry::FolderHeader { .. }) | None => Vec::new(),
+            Some(GuildPaneEntry::FolderHeader { folder, .. }) => vec![GuildActionItem::new(
+                GuildActionKind::RenameFolder,
+                "Rename folder",
+                folder.id.is_some(),
+            )],
+            None => Vec::new(),
         }
     }
 
@@ -150,6 +157,11 @@ impl DashboardState {
                     GuildActionKind::LeaveServer => {
                         self.close_guild_leader_action();
                         self.open_current_guild_leave_confirmation();
+                        None
+                    }
+                    GuildActionKind::RenameFolder => {
+                        self.close_guild_leader_action();
+                        self.start_selected_folder_rename();
                         None
                     }
                     GuildActionKind::NoActionsYet => None,
@@ -244,7 +256,7 @@ impl DashboardState {
         }
 
         for (channel_id, _) in targets.iter().copied() {
-            if self.navigation.active_channel_id == Some(channel_id) {
+            if self.navigation.channels.active_channel_id == Some(channel_id) {
                 self.messages.unread_divider_last_acked_id = None;
                 self.messages.pending_unread_anchor_scroll = false;
                 self.clear_new_messages_marker();

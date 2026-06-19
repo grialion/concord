@@ -306,7 +306,7 @@ impl DashboardState {
         if let Some(scope) = scope {
             self.activate_guild(scope);
             self.activate_channel(channel_id);
-            self.navigation.channels.keep_selection_visible();
+            self.navigation.channels.list.keep_selection_visible();
             *channel_cursor_id = Some(channel_id);
         }
     }

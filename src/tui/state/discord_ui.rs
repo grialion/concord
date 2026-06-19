@@ -121,9 +121,9 @@ impl DashboardState {
 
         self.clamp_active_selection();
         self.restore_channel_cursor(channel_cursor_id);
-        self.navigation.guilds.selected = self.selected_guild();
-        self.navigation.channels.selected = self.selected_channel();
-        self.navigation.members.selected = self.selected_member();
+        self.navigation.guilds.list.selected = self.selected_guild();
+        self.navigation.channels.list.selected = self.selected_channel();
+        self.navigation.members.list.selected = self.selected_member();
         self.clamp_guild_viewport();
         self.clamp_channel_viewport();
         self.clamp_member_viewport();
@@ -192,7 +192,7 @@ impl DashboardState {
         };
         if !self.desktop_notifications_enabled()
             || (self.terminal_focused()
-                && self.navigation.active_channel_id == Some(message.channel_id))
+                && self.navigation.channels.active_channel_id == Some(message.channel_id))
         {
             return None;
         }

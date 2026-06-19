@@ -19,6 +19,7 @@ mod profile;
 mod reactions;
 mod read_state;
 mod search;
+mod user_settings;
 
 pub use forum::ForumPostPage;
 
@@ -41,12 +42,17 @@ impl DiscordRest {
     }
 
     async fn send_unit(&self, request: RequestBuilder, label: &str) -> Result<()> {
-        self.authenticated(request)
-            .send()
-            .await
-            .map_err(|error| AppError::DiscordRequest(format!("{label} request failed: {error}")))?
-            .error_for_status()
-            .map_err(|error| AppError::DiscordRequest(format!("{label} failed: {error}")))?;
+        let response = self.authenticated(request).send().await.map_err(|error| {
+            AppError::DiscordRequest(format!("{label} request failed: {error}"))
+        })?;
+        if let Err(error) = response.error_for_status_ref() {
+            let detail = response.text().await.ok().map(truncate_error_body);
+            let message = match detail.filter(|detail| !detail.trim().is_empty()) {
+                Some(detail) => format!("{label} failed: {error}: {detail}"),
+                None => format!("{label} failed: {error}"),
+            };
+            return Err(AppError::DiscordRequest(message));
+        }
         Ok(())
     }
 
@@ -55,15 +61,32 @@ impl DiscordRest {
         request: RequestBuilder,
         label: &str,
     ) -> Result<T> {
-        self.authenticated(request)
-            .send()
-            .await
-            .map_err(|error| AppError::DiscordRequest(format!("{label} request failed: {error}")))?
-            .error_for_status()
-            .map_err(|error| AppError::DiscordRequest(format!("{label} failed: {error}")))?
+        let response = self.authenticated(request).send().await.map_err(|error| {
+            AppError::DiscordRequest(format!("{label} request failed: {error}"))
+        })?;
+        if let Err(error) = response.error_for_status_ref() {
+            let detail = response.text().await.ok().map(truncate_error_body);
+            let message = match detail.filter(|detail| !detail.trim().is_empty()) {
+                Some(detail) => format!("{label} failed: {error}: {detail}"),
+                None => format!("{label} failed: {error}"),
+            };
+            return Err(AppError::DiscordRequest(message));
+        }
+        response
             .json()
             .await
             .map_err(|error| AppError::DiscordRequest(format!("{label} decode failed: {error}")))
+    }
+}
+
+fn truncate_error_body(body: String) -> String {
+    const MAX_ERROR_BODY_CHARS: usize = 500;
+    let mut chars = body.chars();
+    let truncated: String = chars.by_ref().take(MAX_ERROR_BODY_CHARS).collect();
+    if chars.next().is_some() {
+        format!("{truncated}...")
+    } else {
+        truncated
     }
 }
 

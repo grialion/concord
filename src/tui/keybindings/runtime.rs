@@ -821,6 +821,7 @@ impl KeyBindings {
             GuildActionKind::MarkAsRead => vec![char_chord('m')],
             GuildActionKind::ToggleMute => vec![char_chord('u')],
             GuildActionKind::LeaveServer => vec![char_chord('l')],
+            GuildActionKind::RenameFolder => vec![char_chord('r')],
             GuildActionKind::NoActionsYet => Vec::new(),
         }
     }

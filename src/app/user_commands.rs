@@ -1,6 +1,6 @@
 use crate::{
     DiscordClient,
-    discord::{AppCommand, AppEvent, PresenceEventFields},
+    discord::{AppCommand, AppEvent, PresenceEventFields, UserSettingsInfo},
 };
 
 use super::command_loop::log_app_error;
@@ -120,6 +120,28 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
                 }
                 Err(error) => {
                     log_app_error("update presence status failed", &error);
+                    client
+                        .publish_event(AppEvent::GatewayError {
+                            message: error.to_string(),
+                        })
+                        .await;
+                }
+            }
+        }
+        AppCommand::RenameGuildFolder { folder_id, name } => {
+            match client.rename_guild_folder(folder_id, name).await {
+                Ok(folders) => {
+                    client
+                        .publish_event(AppEvent::UserSettingsUpdate {
+                            settings: UserSettingsInfo {
+                                guild_folders: Some(folders),
+                                ..UserSettingsInfo::default()
+                            },
+                        })
+                        .await;
+                }
+                Err(error) => {
+                    log_app_error("rename guild folder failed", &error);
                     client
                         .publish_event(AppEvent::GatewayError {
                             message: error.to_string(),

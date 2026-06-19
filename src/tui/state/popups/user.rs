@@ -32,7 +32,7 @@ impl DashboardState {
         let entries = self.flattened_members();
         let entry = entries.get(self.selected_member())?;
         let user_id = entry.user_id();
-        let guild_id = match self.navigation.active_guild {
+        let guild_id = match self.navigation.guilds.active {
             ActiveGuildScope::Guild(guild_id) => Some(guild_id),
             ActiveGuildScope::DirectMessages | ActiveGuildScope::Unset => None,
         };
@@ -41,7 +41,7 @@ impl DashboardState {
 
     pub fn open_current_user_profile_popup(&mut self) -> Option<AppCommand> {
         let user_id = self.current_user_id()?;
-        let guild_id = match self.navigation.active_guild {
+        let guild_id = match self.navigation.guilds.active {
             ActiveGuildScope::Guild(guild_id) => Some(guild_id),
             ActiveGuildScope::DirectMessages | ActiveGuildScope::Unset => None,
         };
@@ -68,7 +68,7 @@ impl DashboardState {
         // For DM/group-DM panes there is no guild context. Pass it through so
         // the profile fetch can omit `guild_id` and skip the guild_member
         // section gracefully.
-        let guild_id = match self.navigation.active_guild {
+        let guild_id = match self.navigation.guilds.active {
             ActiveGuildScope::Guild(guild_id) => Some(guild_id),
             ActiveGuildScope::DirectMessages | ActiveGuildScope::Unset => None,
         };

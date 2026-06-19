@@ -59,6 +59,10 @@ pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppComman
         }
     }
 
+    if state.is_renaming_folder() {
+        return handle_folder_rename_key(state, key);
+    }
+
     if is_keymap_help_key(key) {
         state.open_keymap_help_popup();
         return None;
@@ -83,6 +87,43 @@ pub fn handle_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppComman
         return None;
     }
 
+    None
+}
+
+fn handle_folder_rename_key(state: &mut DashboardState, key: KeyEvent) -> Option<AppCommand> {
+    match key.code {
+        KeyCode::Esc => state.cancel_folder_rename(),
+        KeyCode::Enter => return state.commit_folder_rename_command(),
+        KeyCode::Backspace
+            if key
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+        {
+            state.delete_previous_folder_rename_word();
+        }
+        KeyCode::Backspace => state.pop_folder_rename_char(),
+        KeyCode::Left if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            state.move_folder_rename_cursor_word_left();
+        }
+        KeyCode::Right if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            state.move_folder_rename_cursor_word_right();
+        }
+        KeyCode::Left => state.move_folder_rename_cursor_left(),
+        KeyCode::Right => state.move_folder_rename_cursor_right(),
+        KeyCode::Home => state.move_folder_rename_cursor_home(),
+        KeyCode::End => state.move_folder_rename_cursor_end(),
+        KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            state.delete_previous_folder_rename_word();
+        }
+        KeyCode::Char(value)
+            if !key
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+        {
+            state.push_folder_rename_char(value);
+        }
+        _ => {}
+    }
     None
 }
 

@@ -1415,7 +1415,7 @@ impl DashboardState {
             .or_default();
         if archive_state == ForumPostArchiveState::Active && offset == 0 {
             list.active_post_ids.clear();
-            if self.navigation.active_channel_id == Some(channel_id) {
+            if self.navigation.channels.active_channel_id == Some(channel_id) {
                 self.messages.selected_message = 0;
                 self.messages.message_scroll = 0;
                 self.messages.message_line_scroll = 0;

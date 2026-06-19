@@ -94,7 +94,7 @@ impl DashboardState {
         } else {
             format!("Show threads ({thread_count})")
         };
-        let active_channel_has_unread_snapshot = self.navigation.active_channel_id
+        let active_channel_has_unread_snapshot = self.navigation.channels.active_channel_id
             == Some(channel_id)
             && (self.messages.unread_divider_last_acked_id.is_some()
                 || self.messages.pending_unread_anchor_scroll);

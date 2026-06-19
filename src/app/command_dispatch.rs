@@ -106,6 +106,7 @@ impl CommandDispatcher {
             | AppCommand::LoadUserNote { .. }
             | AppCommand::UpdateUserProfile { .. }
             | AppCommand::UpdateCurrentUserStatus { .. }
+            | AppCommand::RenameGuildFolder { .. }
             | AppCommand::UpdateCurrentUserActivity { .. }) => {
                 user_commands::handle(self.client.clone(), command).await;
             }
