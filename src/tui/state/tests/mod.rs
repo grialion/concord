@@ -7,7 +7,9 @@ use crate::{
     config::{DisplayOptions, ImagePreviewQualityPreset, NotificationOptions, VoiceOptions},
     discord::ids::{
         Id,
-        marker::{ChannelMarker, GuildMarker, MessageMarker, RoleMarker, UserMarker},
+        marker::{
+            ChannelMarker, ForumTagMarker, GuildMarker, MessageMarker, RoleMarker, UserMarker,
+        },
     },
 };
 use unicode_width::UnicodeWidthStr;
@@ -22,8 +24,8 @@ use crate::discord::{
     ActivityInfo, ActivityKind, AppCommand, AppEvent, AttachmentInfo, ChannelInfo,
     ChannelNotificationOverrideInfo, ChannelRecipientInfo, ChannelUnreadState,
     ChannelVisibilityStats, CustomEmojiInfo, DiscordState, DownloadAttachmentSource,
-    EmbedFieldInfo, EmbedInfo, ForumPostArchiveState, GuildFolder, GuildMemberListUpdateInfo,
-    GuildNotificationSettingsInfo, MessageAttachmentUpload, MessageInfo, MessageKind,
+    EmbedFieldInfo, EmbedInfo, ForumPostArchiveState, ForumTagInfo, GuildFolder,
+    GuildMemberListUpdateInfo, GuildNotificationSettingsInfo, MessageInfo, MessageKind,
     MessageReferenceInfo, MessageSearchPage, MessageSnapshotInfo, MessageState,
     MessageUpdateDispatchInfo, MessageUpdateEventFields, NotificationLevel,
     PermissionOverwriteInfo, PermissionOverwriteKind, PresenceStatus, ReactionEmoji, ReactionInfo,

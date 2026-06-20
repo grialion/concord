@@ -9,6 +9,7 @@ use crate::discord::{
     ChannelState, ChannelUnreadState, GuildFolder, GuildState, MuteDuration, ReactionEmoji,
     ReactionInfo, VoiceParticipantState,
 };
+use ratatui_image::protocol::Protocol;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ChannelSwitcherItem {
@@ -189,6 +190,52 @@ pub struct SearchPopupView {
     pub error: Option<String>,
     pub total_results: Option<usize>,
     pub has_more: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ForumPostComposerField {
+    Title,
+    Body,
+    Attachments,
+    Tags,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ForumPostComposerTagView {
+    pub name: String,
+    pub emoji: Option<String>,
+    pub selected: bool,
+    pub active: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ForumPostComposerAttachmentView {
+    pub filename: String,
+    pub size_bytes: u64,
+    pub active: bool,
+    pub preview: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ForumPostComposerView {
+    pub channel_label: String,
+    pub active_field: ForumPostComposerField,
+    pub editing_field: Option<ForumPostComposerField>,
+    pub title: String,
+    pub title_cursor: usize,
+    pub body: String,
+    pub body_cursor: usize,
+    pub attachments: Vec<ForumPostComposerAttachmentView>,
+    pub tags: Vec<ForumPostComposerTagView>,
+    pub requires_tag: bool,
+    pub paste_pending: bool,
+    pub status: Option<String>,
+}
+
+pub enum ForumPostAttachmentPreviewView<'a> {
+    Loading { filename: String },
+    Ready { protocol: &'a Protocol },
+    Failed { filename: String, message: String },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

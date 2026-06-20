@@ -14,13 +14,7 @@ pub(in crate::tui::ui) fn render_message_confirmation(
         return;
     };
 
-    let lines = message_confirmation_lines_with_key_bindings(
-        kind,
-        &author,
-        content.as_deref(),
-        56,
-        state.key_bindings(),
-    );
+    let lines = message_confirmation_lines(kind, &author, content.as_deref(), 56);
     let popup = clear_centered_popup_area(frame, area, 60, (lines.len() as u16).saturating_add(2));
     render_modal_paragraph(frame, popup, kind.title(), lines);
 }
@@ -34,7 +28,7 @@ pub(in crate::tui::ui) fn render_quit_confirmation(
         return;
     }
 
-    let lines = quit_confirmation_lines_with_key_bindings(state.key_bindings());
+    let lines = quit_confirmation_popup_lines();
     let popup = clear_centered_popup_area(frame, area, 44, (lines.len() as u16).saturating_add(2));
     render_modal_paragraph(frame, popup, "Quit", lines);
 }
@@ -52,7 +46,7 @@ pub(in crate::tui::ui) fn render_guild_leave_confirmation(
         return;
     };
 
-    let lines = guild_leave_confirmation_lines_with_key_bindings(&name, 56, state.key_bindings());
+    let lines = guild_leave_confirmation_lines(&name, 56);
     let popup = clear_centered_popup_area(frame, area, 60, (lines.len() as u16).saturating_add(2));
     render_modal_paragraph(frame, popup, "Leave server?", lines);
 }
@@ -63,13 +57,7 @@ pub(in crate::tui::ui) fn message_delete_confirmation_lines(
     content: Option<&str>,
     width: usize,
 ) -> Vec<Line<'static>> {
-    message_confirmation_lines_with_key_bindings(
-        MessageConfirmationKind::Delete,
-        author,
-        content,
-        width,
-        &crate::tui::keybindings::KeyBindings::default(),
-    )
+    message_confirmation_lines(MessageConfirmationKind::Delete, author, content, width)
 }
 
 #[cfg(test)]
@@ -79,18 +67,17 @@ pub(in crate::tui::ui) fn message_pin_confirmation_lines(
     content: Option<&str>,
     width: usize,
 ) -> Vec<Line<'static>> {
-    message_confirmation_lines_with_key_bindings(
+    message_confirmation_lines(
         MessageConfirmationKind::Pin { pinned },
         author,
         content,
         width,
-        &crate::tui::keybindings::KeyBindings::default(),
     )
 }
 
 #[cfg(test)]
 pub(in crate::tui::ui) fn quit_confirmation_lines() -> Vec<Line<'static>> {
-    quit_confirmation_lines_with_key_bindings(&crate::tui::keybindings::KeyBindings::default())
+    quit_confirmation_popup_lines()
 }
 
 #[cfg(test)]
@@ -99,41 +86,26 @@ pub(in crate::tui::ui) fn message_remove_embeds_confirmation_lines(
     content: Option<&str>,
     width: usize,
 ) -> Vec<Line<'static>> {
-    message_confirmation_lines_with_key_bindings(
+    message_confirmation_lines(
         MessageConfirmationKind::RemoveEmbeds,
         author,
         content,
         width,
-        &crate::tui::keybindings::KeyBindings::default(),
     )
 }
 
-fn quit_confirmation_lines_with_key_bindings(
-    key_bindings: &crate::tui::keybindings::KeyBindings,
-) -> Vec<Line<'static>> {
+fn quit_confirmation_popup_lines() -> Vec<Line<'static>> {
     vec![
         Line::from(Span::raw("Quit Concord?")),
         Line::from(Span::raw(String::new())),
-        Line::from(vec![
-            Span::styled(
-                key_bindings.message_confirmation_confirm_label(),
-                Style::default().fg(ACCENT).bold(),
-            ),
-            Span::raw(" quit · "),
-            Span::styled(
-                key_bindings.message_confirmation_cancel_label(),
-                Style::default().fg(ACCENT).bold(),
-            ),
-            Span::raw(" cancel"),
-        ]),
+        Line::from(Span::styled(
+            popup_shortcut_help_text(&[("Enter/y", "quit"), ("Esc/n", "cancel")]),
+            Style::default().fg(DIM),
+        )),
     ]
 }
 
-fn guild_leave_confirmation_lines_with_key_bindings(
-    name: &str,
-    width: usize,
-    key_bindings: &crate::tui::keybindings::KeyBindings,
-) -> Vec<Line<'static>> {
+fn guild_leave_confirmation_lines(name: &str, width: usize) -> Vec<Line<'static>> {
     let name = truncate_display_width(name, width.max(1).saturating_sub(2));
     vec![
         Line::from(Span::raw("Leave the current server?")),
@@ -142,36 +114,20 @@ fn guild_leave_confirmation_lines_with_key_bindings(
             Style::default().fg(Color::Red),
         )),
         Line::from(Span::raw(String::new())),
-        Line::from(vec![
-            Span::styled(
-                key_bindings.message_confirmation_confirm_label(),
-                Style::default().fg(ACCENT).bold(),
-            ),
-            Span::raw(" leave server · "),
-            Span::styled(
-                key_bindings.message_confirmation_cancel_label(),
-                Style::default().fg(ACCENT).bold(),
-            ),
-            Span::raw(" cancel"),
-        ]),
+        Line::from(Span::styled(
+            popup_shortcut_help_text(&[("Enter/y", "leave server"), ("Esc/n", "cancel")]),
+            Style::default().fg(DIM),
+        )),
     ]
 }
 
-fn message_confirmation_lines_with_key_bindings(
+fn message_confirmation_lines(
     kind: MessageConfirmationKind,
     author: &str,
     content: Option<&str>,
     width: usize,
-    key_bindings: &crate::tui::keybindings::KeyBindings,
 ) -> Vec<Line<'static>> {
-    confirmation_lines(
-        kind.prompt(),
-        author,
-        content,
-        width,
-        kind.action_label(),
-        key_bindings,
-    )
+    confirmation_lines(kind.prompt(), author, content, width, kind.action_label())
 }
 
 fn confirmation_lines(
@@ -180,7 +136,6 @@ fn confirmation_lines(
     content: Option<&str>,
     width: usize,
     action_label: String,
-    key_bindings: &crate::tui::keybindings::KeyBindings,
 ) -> Vec<Line<'static>> {
     let width = width.max(1);
     let excerpt = content
@@ -200,17 +155,9 @@ fn confirmation_lines(
             Style::default().fg(Color::Red),
         )),
         Line::from(Span::raw(String::new())),
-        Line::from(vec![
-            Span::styled(
-                key_bindings.message_confirmation_confirm_label(),
-                Style::default().fg(ACCENT).bold(),
-            ),
-            Span::raw(format!(" {action_label} · ")),
-            Span::styled(
-                key_bindings.message_confirmation_cancel_label(),
-                Style::default().fg(ACCENT).bold(),
-            ),
-            Span::raw(" cancel"),
-        ]),
+        Line::from(Span::styled(
+            popup_shortcut_help_text(&[("Enter/y", &action_label), ("Esc/n", "cancel")]),
+            Style::default().fg(DIM),
+        )),
     ]
 }

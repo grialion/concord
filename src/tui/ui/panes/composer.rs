@@ -766,6 +766,15 @@ pub(in crate::tui::ui) fn composer_text(state: &DashboardState, width: u16) -> S
             "group-dm" | "Group" => channel.name.clone(),
             _ => format!("#{}", channel.name),
         };
+        if channel.is_forum() {
+            if state.can_create_post_in_selected_channel() {
+                return format!(
+                    "press {} to create a post in {label}",
+                    state.key_bindings().start_composer_key_label()
+                );
+            }
+            return format!("read-only · cannot create posts in {label}");
+        }
         // Tell the user up-front if the shortcut won't open the composer here,
         // so they don't repeatedly press `i` and wonder why nothing happens.
         if !state.can_send_in_selected_channel() {

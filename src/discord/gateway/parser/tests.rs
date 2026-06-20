@@ -485,6 +485,65 @@ fn channel_parser_keeps_last_message_id() {
 }
 
 #[test]
+fn channel_parser_reads_forum_tags_and_media_type() {
+    let channel = parse_channel_info(
+        &json!({
+            "id": "10",
+            "type": 16,
+            "name": "support",
+            "flags": 16,
+            "available_tags": [{
+                "id": "101",
+                "name": "Resolved",
+                "moderated": true,
+                "emoji_id": "201"
+            }]
+        }),
+        None,
+    )
+    .expect("media channel should parse");
+
+    assert_eq!(channel.kind, "media");
+    assert!(channel.requires_forum_tag());
+    assert_eq!(channel.available_tags.len(), 1);
+    assert_eq!(channel.available_tags[0].id.get(), 101);
+    assert_eq!(channel.available_tags[0].name, "Resolved");
+    assert!(channel.available_tags[0].moderated);
+    assert_eq!(
+        channel.available_tags[0].emoji_id.map(|id| id.get()),
+        Some(201)
+    );
+}
+
+#[test]
+fn channel_parser_reads_thread_applied_tags() {
+    let channel = parse_channel_info(
+        &json!({
+            "id": "20",
+            "type": 11,
+            "name": "post",
+            "parent_id": "10",
+            "thread_metadata": {
+                "archived": false,
+                "locked": false
+            },
+            "applied_tags": ["101", "102"]
+        }),
+        None,
+    )
+    .expect("thread should parse");
+
+    assert_eq!(
+        channel
+            .applied_tags
+            .iter()
+            .map(|tag_id| tag_id.get())
+            .collect::<Vec<_>>(),
+        vec![101, 102]
+    );
+}
+
+#[test]
 fn raw_ready_parser_adds_current_user_to_group_dm_recipients() {
     let events = parse_user_account_event(
         &json!({

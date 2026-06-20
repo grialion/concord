@@ -26,8 +26,8 @@ mod scheduler;
 
 use effects as effect_helpers;
 use media_runtime::{
-    DashboardMediaRuntime, clear_image_surfaces_frame, drain_pending_commands_after_draw,
-    draw_dashboard_frame, schedule_media_loads_after_draw,
+    DashboardMediaRuntime, ForumPostAttachmentPreviewResult, clear_image_surfaces_frame,
+    drain_pending_commands_after_draw, draw_dashboard_frame, schedule_media_loads_after_draw,
 };
 use redraw::{
     should_redraw_after_visible_signature_change,
@@ -92,6 +92,8 @@ pub(super) async fn run_dashboard(
     let mut terminal_events = EventStream::new();
     let mut mouse_clicks = input::MouseClickTracker::default();
     let (media_decode_tx, mut media_decode_rx) = mpsc::unbounded_channel();
+    let (forum_post_attachment_preview_tx, mut forum_post_attachment_preview_rx) =
+        mpsc::unbounded_channel::<ForumPostAttachmentPreviewResult>();
     let (clipboard_paste_tx, mut clipboard_paste_rx) = mpsc::unbounded_channel();
     let (clipboard_paste_indicator_tx, mut clipboard_paste_indicator_rx) =
         mpsc::unbounded_channel();
@@ -128,8 +130,13 @@ pub(super) async fn run_dashboard(
             dirty = false;
 
             dirty |= drain_pending_commands_after_draw(&mut state, &commands).await;
-            dirty |=
-                schedule_media_loads_after_draw(&mut state, &mut media_runtime, &commands).await;
+            dirty |= schedule_media_loads_after_draw(
+                &mut state,
+                &mut media_runtime,
+                &commands,
+                &forum_post_attachment_preview_tx,
+            )
+            .await;
         }
 
         let pending_read_ack_deadline = client.next_read_ack_deadline();
@@ -230,6 +237,15 @@ pub(super) async fn run_dashboard(
             }
             Some(result) = media_decode_rx.recv() => {
                 media_runtime.store_media_decode(result);
+                schedule_background_redraw(&mut pending_redraw_deadline, BACKGROUND_REDRAW_DEBOUNCE);
+            }
+            Some(result) = forum_post_attachment_preview_rx.recv() => {
+                state.store_forum_post_attachment_preview_result(
+                    result.attachment_index,
+                    result.generation,
+                    result.filename,
+                    result.result,
+                );
                 schedule_background_redraw(&mut pending_redraw_deadline, BACKGROUND_REDRAW_DEBOUNCE);
             }
             Some(result) = clipboard_paste_rx.recv() => {
@@ -467,6 +483,30 @@ fn apply_clipboard_paste_data(state: &mut DashboardState, data: ClipboardPasteDa
     }
 
     if !state.is_composing() {
+        if state.is_forum_post_composer_active() {
+            if state.is_forum_post_composer_editing() {
+                if state.forum_post_composer_accepts_attachment_paste() {
+                    if let Some(attachments) = data.file_attachments {
+                        state.add_pending_forum_post_attachments(attachments);
+                        return true;
+                    }
+                    if let Some(text) = data.text.as_deref()
+                        && input::handle_pasted_file_attachments(state, text)
+                    {
+                        return true;
+                    }
+                    if let Some(attachment) = data.image_attachment {
+                        state.add_pending_forum_post_attachments(vec![attachment]);
+                        return true;
+                    }
+                }
+                return data
+                    .text
+                    .as_deref()
+                    .is_some_and(|text| input::handle_paste(state, text));
+            }
+            return false;
+        }
         return false;
     }
     if state.composer_accepts_attachments() {

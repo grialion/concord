@@ -16,7 +16,10 @@ const DISCORD_AVATAR_MAX_SIZE: u64 = 1024;
 pub(super) const EMOJI_REACTION_THUMB_WIDTH: u16 = 2;
 pub(super) const EMOJI_REACTION_THUMB_HEIGHT: u16 = 1;
 
-pub(super) fn query_image_picker(target: &str, unavailable_message: &str) -> Option<Picker> {
+pub(in crate::tui) fn query_image_picker(
+    target: &str,
+    unavailable_message: &str,
+) -> Option<Picker> {
     match Picker::from_query_stdio() {
         Ok(picker) => Some(picker),
         Err(error) => {
@@ -62,7 +65,7 @@ fn avatar_preview_size(width_columns: u16, height_rows: u16) -> u64 {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct ImagePreviewRenderInfo {
+pub(in crate::tui) struct ImagePreviewRenderInfo {
     pub(super) viewer: bool,
     pub(super) message_index: usize,
     pub(super) preview_x_offset_columns: u16,
@@ -75,6 +78,26 @@ pub(super) struct ImagePreviewRenderInfo {
     pub(super) accent_color: Option<u32>,
     pub(super) show_play_marker: bool,
     pub(super) mask_circular: bool,
+}
+
+pub(in crate::tui) fn fixed_image_preview_render_info(
+    preview_width: u16,
+    preview_height: u16,
+) -> ImagePreviewRenderInfo {
+    ImagePreviewRenderInfo {
+        viewer: false,
+        message_index: 0,
+        preview_x_offset_columns: 0,
+        preview_y_offset_rows: 0,
+        preview_width,
+        preview_height,
+        preview_overflow_count: 0,
+        visible_preview_height: preview_height,
+        top_clip_rows: 0,
+        accent_color: None,
+        show_play_marker: false,
+        mask_circular: false,
+    }
 }
 
 pub(super) fn clipped_preview_image(
@@ -199,7 +222,7 @@ fn apply_circular_alpha_mask(
     *image = DynamicImage::ImageRgba8(rgba);
 }
 
-pub(super) fn clipped_preview_protocol(
+pub(in crate::tui) fn clipped_preview_protocol(
     picker: &Picker,
     image: &DynamicImage,
     render_info: ImagePreviewRenderInfo,

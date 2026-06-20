@@ -1,12 +1,15 @@
 use serde_json::Value;
 
 use crate::discord::{
-    ChannelInfo, ChannelRecipientInfo, PermissionOverwriteInfo, PermissionOverwriteKind,
-    ThreadListSyncInfo, ThreadMemberUpdateInfo, ThreadMembersUpdateInfo, ThreadMetadataInfo,
+    ChannelInfo, ChannelRecipientInfo, ForumTagInfo, PermissionOverwriteInfo,
+    PermissionOverwriteKind, ThreadListSyncInfo, ThreadMemberUpdateInfo, ThreadMembersUpdateInfo,
+    ThreadMetadataInfo,
     events::AppEvent,
     ids::{
         Id,
-        marker::{ChannelMarker, GuildMarker, MessageMarker, UserMarker},
+        marker::{
+            ChannelMarker, EmojiMarker, ForumTagMarker, GuildMarker, MessageMarker, UserMarker,
+        },
     },
 };
 
@@ -49,6 +52,7 @@ pub(crate) fn parse_channel_info(
         Some(12) => "GuildPrivateThread".to_owned(),
         Some(13) => "stage".to_owned(),
         Some(15) => "forum".to_owned(),
+        Some(16) => "media".to_owned(),
         Some(other) => format!("type-{other}"),
         None => "channel".to_owned(),
     };
@@ -105,9 +109,34 @@ pub(crate) fn parse_channel_info(
         total_message_sent: value.get("total_message_sent").and_then(Value::as_u64),
         thread_metadata: value.get("thread_metadata").and_then(parse_thread_metadata),
         flags: value.get("flags").and_then(Value::as_u64),
+        available_tags: parse_forum_tags(value.get("available_tags")),
+        applied_tags: parse_id_array(value.get("applied_tags")),
         current_user_joined_thread,
         recipients,
         permission_overwrites,
+    })
+}
+
+fn parse_forum_tags(value: Option<&Value>) -> Vec<ForumTagInfo> {
+    value
+        .and_then(Value::as_array)
+        .map(|tags| tags.iter().filter_map(parse_forum_tag).collect())
+        .unwrap_or_default()
+}
+
+fn parse_forum_tag(value: &Value) -> Option<ForumTagInfo> {
+    Some(ForumTagInfo {
+        id: parse_id::<ForumTagMarker>(value.get("id")?)?,
+        name: value.get("name")?.as_str()?.to_owned(),
+        moderated: value
+            .get("moderated")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        emoji_id: value.get("emoji_id").and_then(parse_id::<EmojiMarker>),
+        emoji_name: value
+            .get("emoji_name")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
     })
 }
 

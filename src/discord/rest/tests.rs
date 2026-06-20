@@ -23,8 +23,9 @@ use super::{
         parse_application_command_index,
     },
     forum::{
-        ForumPostPage, ForumSearchSort, is_search_index_warming, merge_forum_pages,
-        parse_forum_first_messages, parse_forum_threads,
+        ForumPostPage, ForumSearchSort, create_forum_post_request_body, is_search_index_warming,
+        merge_forum_pages, parse_create_forum_post_response, parse_forum_first_messages,
+        parse_forum_threads,
     },
     messages::{
         MessageEditRequest, edit_message_request_body, message_multipart_form,
@@ -64,6 +65,82 @@ fn validates_attachment_only_message_payload() {
     assert_eq!(body["message_reference"]["message_id"], "44");
     assert_eq!(body["attachments"][0]["id"], 0);
     assert_eq!(body["attachments"][0]["filename"], "cat.png");
+}
+
+#[test]
+fn forum_post_request_body_nests_message_and_tags() {
+    let body = create_forum_post_request_body(
+        "Need help",
+        "The client crashes",
+        &[Id::new(101), Id::new(102)],
+        &[],
+    )
+    .expect("forum post body should build");
+
+    assert_eq!(body["name"], "Need help");
+    assert_eq!(body["message"]["content"], "The client crashes");
+    assert_eq!(body["applied_tags"], serde_json::json!(["101", "102"]));
+}
+
+#[test]
+fn forum_post_request_body_trims_title_once() {
+    let body = create_forum_post_request_body("  Need help  ", "Body", &[], &[])
+        .expect("padded title should build");
+
+    assert_eq!(body["name"], "Need help");
+}
+
+#[test]
+fn forum_post_request_body_validates_title_and_message() {
+    let error =
+        create_forum_post_request_body(" ", "body", &[], &[]).expect_err("empty title must fail");
+    assert!(matches!(error, AppError::DiscordRequest(_)));
+
+    let error =
+        create_forum_post_request_body("title", " ", &[], &[]).expect_err("empty body must fail");
+    assert!(matches!(error, AppError::EmptyMessageContent));
+}
+
+#[test]
+fn forum_post_create_response_parses_thread_and_nested_first_message() {
+    let response = parse_create_forum_post_response(
+        &serde_json::json!({
+            "id": "30",
+            "type": 11,
+            "name": "Need help",
+            "thread_metadata": {
+                "archived": false,
+                "locked": false
+            },
+            "message": {
+                "id": "30",
+                "channel_id": "30",
+                "author": {
+                    "id": "10",
+                    "username": "neo"
+                },
+                "type": 0,
+                "content": "Body",
+                "timestamp": "2026-01-01T00:00:00.000000+00:00",
+                "edited_timestamp": null,
+                "pinned": false,
+                "mention_everyone": false,
+                "mentions": [],
+                "mention_roles": [],
+                "attachments": [],
+                "embeds": []
+            }
+        }),
+        Some(Id::new(20)),
+    )
+    .expect("create response should parse");
+
+    assert_eq!(response.thread.channel_id, Id::new(30));
+    assert_eq!(response.thread.parent_id, Some(Id::new(20)));
+    assert_eq!(
+        response.first_message.map(|message| message.message_id),
+        Some(Id::new(30))
+    );
 }
 
 #[test]

@@ -17,6 +17,18 @@ pub fn handle_paste(state: &mut DashboardState, text: &str) -> bool {
         return true;
     }
 
+    if state.is_forum_post_composer_active() {
+        if state.is_forum_post_composer_editing() {
+            if state.forum_post_composer_accepts_attachment_paste()
+                && handle_pasted_file_attachments(state, text)
+            {
+                return true;
+            }
+            return state.insert_forum_post_text(text);
+        }
+        return false;
+    }
+
     if !state.is_composing() {
         return false;
     }
@@ -48,6 +60,14 @@ pub fn handle_pasted_user_profile_avatar(state: &mut DashboardState, text: &str)
 }
 
 pub fn handle_pasted_file_attachments(state: &mut DashboardState, text: &str) -> bool {
+    if state.forum_post_composer_accepts_attachment_paste() {
+        let Some(attachments) = pasted_file_attachments(text) else {
+            return false;
+        };
+        state.add_pending_forum_post_attachments(attachments);
+        return true;
+    }
+
     if !state.is_composing() || !state.composer_accepts_attachments() {
         return false;
     }

@@ -101,7 +101,7 @@ Navigation and app actions:
 
 | Action name             | Default config             | Action                                   |
 | ----------------------- | -------------------------- | ---------------------------------------- |
-| `StartComposer`         | `"i"`                      | Start the message composer.              |
+| `StartComposer`         | `"i"`                      | Start the message composer, or open the forum/media post composer overlay. |
 | `OpenPaneFilter`        | `"/"`                      | Open the focused pane filter or search.  |
 | `ClosePopup`            | `"q"`                      | Close the active popup.                  |
 | `FocusGuildPane`        | `"1"`                      | Show and focus the Servers pane.         |
@@ -175,6 +175,14 @@ profile settings popup:
 These action names can be assigned under `[keymap.composer]`. Configured keys
 replace that action's defaults. Any printable single character can be configured,
 but that key will run the composer action instead of inserting text.
+
+These shortcuts also apply inside the forum/media post composer overlay for
+shared actions such as paste, submit, close, clear, attachment removal, and
+cursor movement while editing a field. In the overlay, `Tab` and `Shift+Tab`
+move between title, body, attachments, and tags. `Enter` starts or finishes
+editing title/body, removes the selected attachment while choosing attachments,
+or toggles the selected tag. Paste files or images while editing the body to add
+attachments. Press `s` outside edit mode to create the post.
 
 | Composer action        | Default config                                     | Action                               |
 | ---------------------- | -------------------------------------------------- | ------------------------------------ |

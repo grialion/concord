@@ -6,10 +6,11 @@ use std::{
 
 use crate::discord::ids::{
     Id,
-    marker::{ChannelMarker, GuildMarker, MessageMarker, UserMarker},
+    marker::{ChannelMarker, ForumTagMarker, GuildMarker, MessageMarker, UserMarker},
 };
-use crate::discord::{AppCommand, ReactionEmoji};
+use crate::discord::{AppCommand, MessageAttachmentUpload, ReactionEmoji};
 use crate::discord::{PresenceStatus, ProfileAvatarUpload};
+use ratatui_image::protocol::Protocol;
 
 use crate::discord::ReactionUsersInfo;
 use crate::tui::keybindings::{KeyBindings, KeyChord, LeaderShortcutItem, SelectionAction};
@@ -19,6 +20,7 @@ mod attachment_viewer;
 mod channel_actions;
 mod channel_switcher;
 mod diagnostics;
+mod forum_post;
 mod guild_actions;
 mod message_actions;
 mod options;
@@ -68,6 +70,7 @@ pub(super) enum ModalPopup {
     Keymap(KeymapPopupState),
     ChannelSwitcher(ChannelSwitcherState),
     Search(SearchPopupState),
+    ForumPostComposer(ForumPostComposerState),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -88,6 +91,7 @@ pub(in crate::tui) enum ActiveModalPopupKind {
     KeymapHelp,
     ChannelSwitcher,
     Search,
+    ForumPostComposer,
 }
 
 impl ModalPopup {
@@ -109,6 +113,78 @@ impl ModalPopup {
             Self::Keymap(_) => ActiveModalPopupKind::KeymapHelp,
             Self::ChannelSwitcher(_) => ActiveModalPopupKind::ChannelSwitcher,
             Self::Search(_) => ActiveModalPopupKind::Search,
+            Self::ForumPostComposer(_) => ActiveModalPopupKind::ForumPostComposer,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(in crate::tui::state) enum ForumPostComposerFieldState {
+    Title,
+    Body,
+    Attachments,
+    Tags,
+}
+
+#[derive(Debug)]
+pub(super) struct ForumPostComposerState {
+    pub(super) channel_id: Id<ChannelMarker>,
+    pub(super) title: TextInputState,
+    pub(super) body: TextInputState,
+    pub(super) edit_input: TextInputState,
+    pub(super) active_field: ForumPostComposerFieldState,
+    pub(super) editing: Option<ForumPostComposerFieldState>,
+    pub(super) selected_attachment_index: usize,
+    pub(super) selected_tag_index: usize,
+    pub(super) selected_tag_ids: Vec<Id<ForumTagMarker>>,
+    pub(super) attachments: Vec<MessageAttachmentUpload>,
+    pub(super) attachment_preview: Option<ForumPostAttachmentPreviewState>,
+    pub(super) attachment_preview_generation: u64,
+    pub(super) status: Option<String>,
+}
+
+#[derive(Debug)]
+pub(super) struct ForumPostAttachmentPreviewState {
+    pub(super) attachment_index: usize,
+    pub(super) generation: u64,
+    pub(super) filename: String,
+    pub(super) state: ForumPostAttachmentPreviewStatus,
+}
+
+pub(super) enum ForumPostAttachmentPreviewStatus {
+    Pending,
+    Loading,
+    Ready(Protocol),
+    Failed(String),
+}
+
+impl std::fmt::Debug for ForumPostAttachmentPreviewStatus {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pending => formatter.write_str("Pending"),
+            Self::Loading => formatter.write_str("Loading"),
+            Self::Ready(_) => formatter.write_str("Ready(<protocol>)"),
+            Self::Failed(message) => formatter.debug_tuple("Failed").field(message).finish(),
+        }
+    }
+}
+
+impl ForumPostComposerState {
+    fn new(channel_id: Id<ChannelMarker>) -> Self {
+        Self {
+            channel_id,
+            title: TextInputState::default(),
+            body: TextInputState::default(),
+            edit_input: TextInputState::default(),
+            active_field: ForumPostComposerFieldState::Title,
+            editing: None,
+            selected_attachment_index: 0,
+            selected_tag_index: 0,
+            selected_tag_ids: Vec::new(),
+            attachments: Vec::new(),
+            attachment_preview: None,
+            attachment_preview_generation: 0,
+            status: None,
         }
     }
 }
@@ -880,6 +956,13 @@ impl PopupUiState {
         SearchPopupState,
         search
     );
+    modal_popup_accessors!(
+        forum_post_composer,
+        forum_post_composer_mut,
+        ForumPostComposer,
+        ForumPostComposerState,
+        composer
+    );
 }
 
 impl DashboardState {
@@ -1072,6 +1155,7 @@ impl DashboardState {
             | Some(ActiveModalPopupKind::Leader)
             | Some(ActiveModalPopupKind::DebugLog)
             | Some(ActiveModalPopupKind::Search)
+            | Some(ActiveModalPopupKind::ForumPostComposer)
             | None => false,
         }
     }

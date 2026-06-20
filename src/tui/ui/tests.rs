@@ -596,6 +596,8 @@ fn channel_with_recipients(kind: &str, statuses: &[PresenceStatus]) -> ChannelSt
         total_message_sent: None,
         thread_metadata: None,
         flags: None,
+        available_tags: Vec::new(),
+        applied_tags: Vec::new(),
         current_user_joined_thread: false,
         recipients: statuses
             .iter()

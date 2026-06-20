@@ -50,18 +50,18 @@ fn message_delete_confirmation_lines_show_controls_and_excerpt() {
     assert_eq!(lines[1].spans[0].content, "From: neo");
     assert!(lines[2].spans[0].content.contains("important message"));
     assert!(lines[4].spans[0].content.contains("[Enter/y]"));
-    assert!(lines[4].spans[2].content.contains("[Esc/n]"));
+    assert!(lines[4].spans[0].content.contains("[Esc/n]"));
 }
 
 #[test]
 fn message_pin_confirmation_lines_show_action_and_excerpt() {
     let pin_lines = message_pin_confirmation_lines(true, "neo", Some("pin this"), 80);
     assert_eq!(pin_lines[0].spans[0].content, "Pin this message?");
-    assert!(pin_lines[4].spans[1].content.contains("Pin message"));
+    assert!(pin_lines[4].spans[0].content.contains("Pin message"));
 
     let unpin_lines = message_pin_confirmation_lines(false, "neo", Some("unpin this"), 80);
     assert_eq!(unpin_lines[0].spans[0].content, "Unpin this message?");
-    assert!(unpin_lines[4].spans[1].content.contains("Unpin message"));
+    assert!(unpin_lines[4].spans[0].content.contains("Unpin message"));
 
     let remove_lines =
         message_remove_embeds_confirmation_lines("neo", Some("remove embeds from this"), 80);
@@ -69,7 +69,7 @@ fn message_pin_confirmation_lines_show_action_and_excerpt() {
         remove_lines[0].spans[0].content,
         "Remove embeds from this message?"
     );
-    assert!(remove_lines[4].spans[1].content.contains("Remove embeds"));
+    assert!(remove_lines[4].spans[0].content.contains("Remove embeds"));
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn quit_confirmation_lines_show_controls() {
     assert_eq!(lines[0].spans[0].content, "Quit Concord?");
     assert_eq!(lines[1].spans[0].content, "");
     assert!(lines[2].spans[0].content.contains("[Enter/y]"));
-    assert!(lines[2].spans[2].content.contains("[Esc/n]"));
+    assert!(lines[2].spans[0].content.contains("[Esc/n]"));
 }
 
 #[test]

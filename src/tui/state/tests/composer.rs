@@ -1,7 +1,14 @@
 use super::*;
 use crate::discord::AppCommand;
-use crate::discord::{ApplicationCommandInfo, ApplicationCommandOptionInfo};
+use crate::discord::{
+    ApplicationCommandInfo, ApplicationCommandOptionInfo, MessageAttachmentUpload,
+};
+use crate::tui::state::{
+    ActiveModalPopupKind, ForumPostAttachmentPreviewView, ForumPostComposerField,
+};
 use serde_json::json;
+
+const PERM_ATTACH_FILES: u64 = 0x0000_0000_0000_8000;
 
 fn application_command(
     name: &str,
@@ -44,6 +51,52 @@ fn state_with_application_command(command: ApplicationCommandInfo) -> DashboardS
         commands: vec![command],
     });
     state.start_composer();
+    state
+}
+
+fn state_with_forum_post_channel(required_tag: bool) -> DashboardState {
+    state_with_post_parent_channel("forum", required_tag)
+}
+
+fn state_with_post_parent_channel(kind: &str, required_tag: bool) -> DashboardState {
+    let me: Id<UserMarker> = Id::new(10);
+    let guild: Id<GuildMarker> = Id::new(1);
+    let channel: Id<ChannelMarker> = Id::new(20);
+    let mut state = DashboardState::new();
+    state.push_event(AppEvent::Ready {
+        user: "me".to_owned(),
+        user_id: Some(me),
+    });
+    state.push_event(AppEvent::GuildCreate {
+        guild_id: guild,
+        name: "guild".to_owned(),
+        member_count: Some(1),
+        owner_id: Some(me),
+        channels: vec![ChannelInfo {
+            guild_id: Some(guild),
+            name: "support".to_owned(),
+            position: Some(0),
+            flags: required_tag.then_some(1 << 4),
+            available_tags: vec![ForumTagInfo {
+                id: Id::<ForumTagMarker>::new(101),
+                name: "Resolved".to_owned(),
+                moderated: false,
+                emoji_id: None,
+                emoji_name: None,
+            }],
+            ..ChannelInfo::test(channel, kind)
+        }],
+        members: vec![member_with_username(me, "me", "me")],
+        presences: Vec::new(),
+        roles: vec![role_info(
+            Id::new(guild.get()),
+            "@everyone",
+            PERM_VIEW_CHANNEL | PERM_SEND_MESSAGES | PERM_ATTACH_FILES,
+        )],
+        emojis: Vec::new(),
+    });
+    state.activate_guild(ActiveGuildScope::Guild(guild));
+    state.activate_channel(channel);
     state
 }
 
@@ -144,6 +197,127 @@ fn start_composer_refused_in_read_only_channel() {
     assert!(
         !state.is_composing(),
         "composer must not open when SEND_MESSAGES is denied"
+    );
+}
+
+#[test]
+fn start_composer_opens_forum_post_overlay_in_forum_channel() {
+    let mut state = state_with_forum_post_channel(false);
+
+    state.start_composer();
+
+    assert!(!state.is_composing());
+    assert!(state.is_active_modal_popup(ActiveModalPopupKind::ForumPostComposer));
+    let view = state
+        .forum_post_composer_view()
+        .expect("forum post modal should have a view");
+    assert_eq!(view.channel_label, "#support");
+    assert_eq!(view.active_field, ForumPostComposerField::Title);
+    assert_eq!(view.editing_field, None);
+}
+
+#[test]
+fn start_composer_opens_forum_post_overlay_in_media_channel() {
+    let mut state = state_with_post_parent_channel("media", false);
+
+    state.start_composer();
+
+    assert!(!state.is_composing());
+    assert!(state.is_active_modal_popup(ActiveModalPopupKind::ForumPostComposer));
+}
+
+#[test]
+fn submit_forum_post_overlay_uses_fields_tags_and_attachments() {
+    let mut state = state_with_forum_post_channel(true);
+    state.start_composer();
+    assert_eq!(state.activate_forum_post_composer(), None);
+    state.insert_forum_post_text("Need help");
+    assert_eq!(state.activate_forum_post_composer(), None);
+    state.cycle_forum_post_field_next();
+    assert_eq!(state.activate_forum_post_composer(), None);
+    state.insert_forum_post_text("The client crashes");
+    assert_eq!(state.activate_forum_post_composer(), None);
+    state.add_pending_forum_post_attachments(vec![MessageAttachmentUpload::from_bytes(
+        "panic.txt".to_owned(),
+        b"stack trace".to_vec(),
+    )]);
+    state.cycle_forum_post_field_next();
+    state.cycle_forum_post_field_next();
+    assert_eq!(state.activate_forum_post_composer(), None);
+    assert_eq!(state.activate_forum_post_composer(), None);
+    state.close_or_cancel_forum_post_composer();
+
+    let Some(AppCommand::CreateForumPost { post }) = state.save_forum_post_composer() else {
+        panic!("forum post modal should create a forum post command");
+    };
+
+    assert_eq!(post.channel_id, Id::new(20));
+    assert_eq!(post.title, "Need help");
+    assert_eq!(post.content, "The client crashes");
+    assert_eq!(post.applied_tags, vec![Id::new(101)]);
+    assert_eq!(post.attachments.len(), 1);
+    assert_eq!(post.attachments[0].filename, "panic.txt");
+    assert!(!state.is_active_modal_popup(ActiveModalPopupKind::ForumPostComposer));
+}
+
+#[test]
+fn forum_post_attachment_preview_waits_for_runtime_result() {
+    let mut state = state_with_forum_post_channel(false);
+    state.start_composer();
+    state.add_pending_forum_post_attachments(vec![MessageAttachmentUpload::from_bytes(
+        "screenshot.png".to_owned(),
+        b"not an image".to_vec(),
+    )]);
+
+    assert!(state.forum_post_attachment_preview().is_none());
+
+    state.cycle_forum_post_field_next();
+    state.cycle_forum_post_field_next();
+    assert_eq!(state.activate_forum_post_composer(), None);
+
+    assert!(matches!(
+        state.forum_post_attachment_preview(),
+        Some(ForumPostAttachmentPreviewView::Loading { filename }) if filename == "screenshot.png"
+    ));
+    let (attachment_index, generation, filename, upload) = state
+        .take_pending_forum_post_attachment_preview()
+        .expect("runtime should be able to take pending preview work");
+    assert_eq!(attachment_index, 0);
+    assert_eq!(filename, "screenshot.png");
+    assert_eq!(upload.filename, "screenshot.png");
+
+    state.store_forum_post_attachment_preview_result(
+        attachment_index,
+        generation,
+        filename,
+        Err("decode failed".to_owned()),
+    );
+    assert!(matches!(
+        state.forum_post_attachment_preview(),
+        Some(ForumPostAttachmentPreviewView::Failed { filename, message })
+            if filename == "screenshot.png" && message == "decode failed"
+    ));
+}
+
+#[test]
+fn submit_forum_post_overlay_blocks_missing_required_tag() {
+    let mut state = state_with_forum_post_channel(true);
+    state.start_composer();
+    assert_eq!(state.activate_forum_post_composer(), None);
+    state.insert_forum_post_text("Need help");
+    assert_eq!(state.activate_forum_post_composer(), None);
+    state.cycle_forum_post_field_next();
+    assert_eq!(state.activate_forum_post_composer(), None);
+    state.insert_forum_post_text("The client crashes");
+    assert_eq!(state.activate_forum_post_composer(), None);
+
+    assert_eq!(state.save_forum_post_composer(), None);
+    assert!(state.is_active_modal_popup(ActiveModalPopupKind::ForumPostComposer));
+    assert_eq!(
+        state
+            .forum_post_composer_view()
+            .and_then(|view| view.status),
+        Some("at least one tag is required".to_owned())
     );
 }
 

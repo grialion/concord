@@ -12,6 +12,7 @@ mod confirmation;
 mod debug_log;
 mod downloads;
 mod folder_settings;
+mod forum_post;
 mod keymap;
 mod options;
 mod polls;
@@ -47,6 +48,7 @@ pub(super) use downloads::render_downloads_popup;
 #[cfg(test)]
 pub(super) use downloads::{downloads_popup_area, downloads_popup_lines};
 pub(super) use folder_settings::render_folder_settings_popup;
+pub(super) use forum_post::render_forum_post_composer;
 #[cfg(test)]
 pub(super) use keymap::keymap_help_popup_lines;
 pub(super) use keymap::{

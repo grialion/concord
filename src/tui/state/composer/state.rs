@@ -189,13 +189,13 @@ impl DashboardState {
         &self.composer.pending_composer_attachments
     }
 
-    pub fn composer_title(&self) -> &'static str {
+    pub fn composer_title(&self) -> String {
         if self.composer.edit_target_message.is_some() {
-            " Edit Message "
+            " Edit Message ".to_owned()
         } else if self.composer.reply_target_message_id.is_some() {
-            " Reply "
+            " Reply ".to_owned()
         } else {
-            " Message Input "
+            " Message Input ".to_owned()
         }
     }
 
@@ -248,8 +248,22 @@ impl DashboardState {
         }
     }
 
+    pub fn can_create_post_in_selected_channel(&self) -> bool {
+        match self.selected_channel_state() {
+            Some(channel) if channel.is_forum() => self.discord.cache.can_send_in_channel(channel),
+            _ => false,
+        }
+    }
+
     pub fn start_composer(&mut self) {
         if self.selected_channel_id().is_none() {
+            return;
+        }
+        if let Some(channel_id) = self.selected_channel_state().and_then(|channel| {
+            (channel.is_forum() && self.discord.cache.can_send_in_channel(channel))
+                .then_some(channel.id)
+        }) {
+            self.open_forum_post_composer(channel_id);
             return;
         }
         // Refusing here keeps the shortcut simple: the same key that opens the

@@ -1,5 +1,6 @@
 use super::*;
 use crate::discord::AppCommand;
+use crate::tui::state::ActiveModalPopupKind;
 use crate::tui::state::MessagePaneSource;
 
 #[test]
@@ -970,13 +971,14 @@ fn activating_selected_forum_post_opens_thread_channel() {
 }
 
 #[test]
-fn forum_channel_does_not_start_parent_channel_composer() {
+fn forum_channel_starts_new_post_overlay() {
     let mut state = state_with_forum_channel_posts();
 
     assert!(!state.can_send_in_selected_channel());
     state.start_composer();
 
     assert!(!state.is_composing());
+    assert!(state.is_active_modal_popup(ActiveModalPopupKind::ForumPostComposer));
 }
 
 #[test]

@@ -676,18 +676,6 @@ impl KeyBindings {
         }
     }
 
-    pub fn message_confirmation_confirm_label(&self) -> &'static str {
-        "[Enter/y]"
-    }
-
-    pub fn message_confirmation_cancel_label(&self) -> &'static str {
-        "[Esc/n]"
-    }
-
-    pub fn attachment_viewer_download_hint(&self) -> &'static str {
-        "[x] play  [d] download  [z] zoom  [+/-] zoom in/out"
-    }
-
     pub fn unread_mark_as_read_hint(&self) -> &'static str {
         "channel action (a) to mark as read "
     }

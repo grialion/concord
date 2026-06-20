@@ -21,7 +21,7 @@ mod read_state;
 mod search;
 mod user_settings;
 
-pub use forum::ForumPostPage;
+pub use forum::{CreatedForumPost, ForumPostPage};
 pub(in crate::discord) use messages::MessageEditRequest;
 
 #[derive(Clone, Debug)]

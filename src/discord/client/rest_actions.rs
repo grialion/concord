@@ -2,14 +2,14 @@ use chrono::{DateTime, Utc};
 
 use super::DiscordClient;
 use crate::discord::{
-    GuildFolder, MESSAGE_FLAG_SUPPRESS_EMBEDS, MessageAttachmentUpload, MessageInfo, ReactionEmoji,
-    ReactionUserInfo, UserProfileInfo, UserProfileUpdate,
+    ForumPostCreate, GuildFolder, MESSAGE_FLAG_SUPPRESS_EMBEDS, MessageAttachmentUpload,
+    MessageInfo, ReactionEmoji, ReactionUserInfo, UserProfileInfo, UserProfileUpdate,
     commands::ForumPostArchiveState,
     ids::{
         Id,
         marker::{ChannelMarker, GuildMarker, MessageMarker, UserMarker},
     },
-    rest::{ForumPostPage, MessageEditRequest},
+    rest::{CreatedForumPost, ForumPostPage, MessageEditRequest},
 };
 use crate::{AppError, Result};
 
@@ -44,6 +44,19 @@ impl DiscordClient {
         self.rest.send_tts_message(channel_id, content).await
     }
 
+    pub async fn create_forum_post(&self, post: &ForumPostCreate) -> Result<CreatedForumPost> {
+        self.ensure_can_create_forum_post(post)?;
+        self.rest
+            .create_forum_post(
+                post.channel_id,
+                &post.title,
+                &post.content,
+                &post.applied_tags,
+                &post.attachments,
+            )
+            .await
+    }
+
     pub(super) fn ensure_can_send_message(
         &self,
         channel_id: Id<ChannelMarker>,
@@ -64,6 +77,47 @@ impl DiscordClient {
         if !attachments.is_empty() && !state.can_attach_in_channel(channel) {
             return Err(AppError::DiscordRequest(
                 "cannot attach files in channel".to_owned(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub(super) fn ensure_can_create_forum_post(&self, post: &ForumPostCreate) -> Result<()> {
+        let state = self
+            .state
+            .read()
+            .expect("discord state lock is not poisoned");
+        let Some(channel) = state.channel(post.channel_id) else {
+            return Ok(());
+        };
+        if !channel.is_forum() {
+            return Err(AppError::DiscordRequest(
+                "cannot create forum post outside a forum channel".to_owned(),
+            ));
+        }
+        if !state.can_send_in_channel(channel) {
+            return Err(AppError::DiscordRequest(
+                "cannot create forum post in channel".to_owned(),
+            ));
+        }
+        if !post.attachments.is_empty() && !state.can_attach_in_channel(channel) {
+            return Err(AppError::DiscordRequest(
+                "cannot attach files in channel".to_owned(),
+            ));
+        }
+        if channel.requires_forum_tag() && post.applied_tags.is_empty() {
+            return Err(AppError::DiscordRequest(
+                "forum post requires a tag".to_owned(),
+            ));
+        }
+        if !post.applied_tags.is_empty()
+            && post
+                .applied_tags
+                .iter()
+                .any(|tag_id| !channel.available_tags.iter().any(|tag| tag.id == *tag_id))
+        {
+            return Err(AppError::DiscordRequest(
+                "forum post includes an unknown tag".to_owned(),
             ));
         }
         Ok(())

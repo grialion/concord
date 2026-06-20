@@ -31,6 +31,17 @@ pub(super) async fn handle(client: DiscordClient, command: AppCommand) {
             Ok(message) => client.publish_event(message_create_event(message)).await,
             Err(error) => publish_app_error(&client, "send tts message failed", &error).await,
         },
+        AppCommand::CreateForumPost { post } => match client.create_forum_post(&post).await {
+            Ok(created) => {
+                client
+                    .publish_event(AppEvent::ChannelUpsert(created.thread))
+                    .await;
+                if let Some(message) = created.first_message {
+                    client.publish_event(message_create_event(message)).await;
+                }
+            }
+            Err(error) => publish_app_error(&client, "create forum post failed", &error).await,
+        },
         AppCommand::LoadApplicationCommands { guild_id } => {
             match client.load_application_commands(guild_id).await {
                 Ok(Some(commands)) => {

@@ -1,28 +1,40 @@
+use std::io::Read;
+
 use ratatui::layout::Rect;
+use ratatui_image::{picker::Picker, protocol::Protocol};
 use tokio::sync::mpsc;
 
 use crate::{
-    discord::{AppCommand, DiscordClient},
+    discord::{AppCommand, DiscordClient, MAX_UPLOAD_FILE_BYTES, MessageAttachmentUpload},
     tui::{
         commands as command_helpers,
         media::{
             AvatarImageCache, AvatarTarget, EmojiImageCache, EmojiImageTarget, ImagePreviewCache,
             ImagePreviewTarget, MediaImageDecodeKey, MediaImageDecodeResult,
-            visible_avatar_targets_from_plan, visible_emoji_image_targets,
+            clipped_preview_protocol, decode_image_bytes, fixed_image_preview_render_info,
+            query_image_picker, visible_avatar_targets_from_plan, visible_emoji_image_targets,
             visible_image_preview_targets_from_plan,
         },
         message::layout::MessageViewportPlan,
         state::DashboardState,
-        ui::{self, ImagePreviewLayout},
+        ui::{self, FORUM_UPLOAD_PREVIEW_HEIGHT, FORUM_UPLOAD_PREVIEW_WIDTH, ImagePreviewLayout},
     },
 };
 
 use super::{effects as effect_helpers, redraw::image_surfaces_visible};
 
+pub(super) struct ForumPostAttachmentPreviewResult {
+    pub(super) attachment_index: usize,
+    pub(super) generation: u64,
+    pub(super) filename: String,
+    pub(super) result: std::result::Result<Protocol, String>,
+}
+
 pub(super) struct DashboardMediaRuntime {
     image_previews: ImagePreviewCache,
     avatar_images: AvatarImageCache,
     emoji_images: EmojiImageCache,
+    forum_post_attachment_picker: Option<Picker>,
     image_targets: Vec<ImagePreviewTarget>,
     avatar_targets: Vec<AvatarTarget>,
     emoji_targets: Vec<EmojiImageTarget>,
@@ -34,6 +46,10 @@ impl DashboardMediaRuntime {
             image_previews: ImagePreviewCache::new(),
             avatar_images: AvatarImageCache::new(),
             emoji_images: EmojiImageCache::new(),
+            forum_post_attachment_picker: query_image_picker(
+                "forum upload",
+                "forum upload image picker unavailable",
+            ),
             image_targets: Vec::new(),
             avatar_targets: Vec::new(),
             emoji_targets: Vec::new(),
@@ -53,6 +69,38 @@ impl DashboardMediaRuntime {
             !self.avatar_targets.is_empty(),
             !self.emoji_targets.is_empty(),
         )
+    }
+
+    pub(super) fn schedule_forum_post_attachment_preview(
+        &mut self,
+        state: &mut DashboardState,
+        tx: &mpsc::UnboundedSender<ForumPostAttachmentPreviewResult>,
+    ) -> bool {
+        let Some((attachment_index, generation, filename, upload)) =
+            state.take_pending_forum_post_attachment_preview()
+        else {
+            return false;
+        };
+        let Some(picker) = self.forum_post_attachment_picker.clone() else {
+            state.store_forum_post_attachment_preview_result(
+                attachment_index,
+                generation,
+                filename,
+                Err("inline preview unavailable in this terminal".to_owned()),
+            );
+            return true;
+        };
+        let tx = tx.clone();
+        tokio::task::spawn_blocking(move || {
+            let result = build_forum_post_attachment_preview_protocol(&picker, &upload);
+            let _ = tx.send(ForumPostAttachmentPreviewResult {
+                attachment_index,
+                generation,
+                filename,
+                result,
+            });
+        });
+        true
     }
 
     pub(super) fn effect_context<'a>(
@@ -123,6 +171,63 @@ impl DashboardMediaRuntime {
     }
 }
 
+fn build_forum_post_attachment_preview_protocol(
+    picker: &Picker,
+    attachment: &MessageAttachmentUpload,
+) -> std::result::Result<Protocol, String> {
+    let bytes = forum_post_attachment_preview_bytes(attachment)?;
+    let image = decode_image_bytes(&bytes)?;
+    clipped_preview_protocol(
+        picker,
+        &image,
+        fixed_image_preview_render_info(FORUM_UPLOAD_PREVIEW_WIDTH, FORUM_UPLOAD_PREVIEW_HEIGHT),
+    )
+    .ok_or_else(|| "preview dimensions unavailable".to_owned())
+}
+
+fn forum_post_attachment_preview_bytes(
+    attachment: &MessageAttachmentUpload,
+) -> std::result::Result<Vec<u8>, String> {
+    if let Some(bytes) = attachment.bytes() {
+        if bytes.len() as u64 > MAX_UPLOAD_FILE_BYTES {
+            return Err(format!(
+                "attachment preview is too large: {} bytes",
+                bytes.len()
+            ));
+        }
+        return Ok(bytes.to_vec());
+    }
+
+    let Some(path) = attachment.path() else {
+        return Err("attachment preview has no image data".to_owned());
+    };
+    let metadata = std::fs::metadata(path)
+        .map_err(|error| format!("stat attachment preview failed: {error}"))?;
+    if !metadata.is_file() {
+        return Err("attachment preview must be a regular file".to_owned());
+    }
+    if metadata.len() > MAX_UPLOAD_FILE_BYTES {
+        return Err(format!(
+            "attachment preview is too large: {} bytes",
+            metadata.len()
+        ));
+    }
+    let file = std::fs::File::open(path)
+        .map_err(|error| format!("open attachment preview failed: {error}"))?;
+    let mut reader = file.take(MAX_UPLOAD_FILE_BYTES.saturating_add(1));
+    let mut bytes = Vec::new();
+    reader
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("read attachment preview failed: {error}"))?;
+    if bytes.len() as u64 > MAX_UPLOAD_FILE_BYTES {
+        return Err(format!(
+            "attachment preview is too large: {} bytes",
+            bytes.len()
+        ));
+    }
+    Ok(bytes)
+}
+
 pub(super) fn clear_image_surfaces_frame(
     frame: &mut ratatui::Frame<'_>,
     state: &mut DashboardState,
@@ -169,7 +274,6 @@ pub(super) fn draw_dashboard_frame(
         popup_avatar_url,
         state.circular_avatars(),
     );
-
     ui::render_with_message_viewport_plan(
         frame,
         state,
@@ -194,8 +298,11 @@ pub(super) async fn schedule_media_loads_after_draw(
     state: &mut DashboardState,
     media_runtime: &mut DashboardMediaRuntime,
     commands: &mpsc::Sender<AppCommand>,
+    forum_post_attachment_preview_tx: &mpsc::UnboundedSender<ForumPostAttachmentPreviewResult>,
 ) -> bool {
     let mut dirty = false;
+    dirty |= media_runtime
+        .schedule_forum_post_attachment_preview(state, forum_post_attachment_preview_tx);
     send_media_request_commands(
         state,
         commands,

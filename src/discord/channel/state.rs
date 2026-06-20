@@ -1,8 +1,10 @@
 use crate::discord::ids::{
     Id,
-    marker::{ChannelMarker, GuildMarker, MessageMarker, UserMarker},
+    marker::{ChannelMarker, ForumTagMarker, GuildMarker, MessageMarker, UserMarker},
 };
-use crate::discord::{ChannelInfo, ChannelRecipientInfo, PermissionOverwriteInfo, PresenceStatus};
+use crate::discord::{
+    ChannelInfo, ChannelRecipientInfo, ForumTagInfo, PermissionOverwriteInfo, PresenceStatus,
+};
 
 use crate::discord::state::DiscordState;
 
@@ -36,6 +38,8 @@ pub struct ChannelState {
     pub total_message_sent: Option<u64>,
     pub thread_metadata: Option<crate::discord::ThreadMetadataInfo>,
     pub flags: Option<u64>,
+    pub available_tags: Vec<ForumTagInfo>,
+    pub applied_tags: Vec<Id<ForumTagMarker>>,
     pub current_user_joined_thread: bool,
     pub recipients: Vec<ChannelRecipientState>,
     /// Channel-level permission overrides used by `can_view_channel`. Threads
@@ -54,7 +58,7 @@ impl ChannelState {
     }
 
     pub fn is_forum(&self) -> bool {
-        matches!(self.kind.as_str(), "forum" | "GuildForum")
+        matches!(self.kind.as_str(), "forum" | "media" | "GuildForum")
     }
 
     pub fn is_voice(&self) -> bool {
@@ -79,6 +83,12 @@ impl ChannelState {
 
     pub fn thread_pinned(&self) -> Option<bool> {
         self.flags.map(|flags| flags & (1 << 1) != 0)
+    }
+
+    pub fn requires_forum_tag(&self) -> bool {
+        const REQUIRE_TAG: u64 = 1 << 4;
+        self.flags
+            .is_some_and(|flags| flags & REQUIRE_TAG == REQUIRE_TAG)
     }
 }
 
@@ -302,6 +312,8 @@ impl DiscordState {
                 total_message_sent: channel.total_message_sent,
                 thread_metadata: channel.thread_metadata.clone(),
                 flags: channel.flags,
+                available_tags: channel.available_tags.clone(),
+                applied_tags: channel.applied_tags.clone(),
                 current_user_joined_thread,
                 recipients,
                 permission_overwrites,

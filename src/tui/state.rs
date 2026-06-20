@@ -60,7 +60,9 @@ pub use message_viewport::MessagePaneSource;
 pub use model::{
     AttachmentDownloadProgressView, AttachmentViewerItem, ChannelActionItem, ChannelPaneEntry,
     ChannelSearchSuggestionItem, ChannelSwitcherItem, ChannelThreadItem, EmojiReactionItem,
-    FORUM_POST_CARD_HEIGHT, FocusPane, GuildActionItem, GuildPaneEntry, MemberActionItem,
+    FORUM_POST_CARD_HEIGHT, FocusPane, ForumPostAttachmentPreviewView,
+    ForumPostComposerAttachmentView, ForumPostComposerField, ForumPostComposerTagView,
+    ForumPostComposerView, GuildActionItem, GuildPaneEntry, MemberActionItem,
     MemberSearchResultItem, MessageActionItem, MessageActionKind, MessageSearchResultItem,
     MuteActionDurationItem, PollVotePickerItem, SearchFieldView, SearchPopupMode, SearchPopupView,
     SearchResultItem, SearchSuggestionItem, ThreadMessagePreview, ThreadSummary,

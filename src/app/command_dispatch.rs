@@ -88,6 +88,7 @@ impl CommandDispatcher {
                 .await;
             }
             command @ (AppCommand::SendMessage { .. }
+            | AppCommand::CreateForumPost { .. }
             | AppCommand::SendTtsMessage { .. }
             | AppCommand::LoadApplicationCommands { .. }
             | AppCommand::RunApplicationCommand { .. }

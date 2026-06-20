@@ -5,7 +5,7 @@ use std::{
 
 use crate::discord::ids::{
     Id,
-    marker::{ChannelMarker, EmojiMarker, GuildMarker, MessageMarker, UserMarker},
+    marker::{ChannelMarker, EmojiMarker, ForumTagMarker, GuildMarker, MessageMarker, UserMarker},
 };
 
 use super::application_commands::ApplicationCommandInvocation;
@@ -35,6 +35,15 @@ pub struct MessageAttachmentUpload {
     source: UploadSource,
     pub filename: String,
     pub size_bytes: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ForumPostCreate {
+    pub channel_id: Id<ChannelMarker>,
+    pub title: String,
+    pub content: String,
+    pub applied_tags: Vec<Id<ForumTagMarker>>,
+    pub attachments: Vec<MessageAttachmentUpload>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -510,6 +519,9 @@ pub enum AppCommand {
         content: String,
         reply_to: Option<Id<MessageMarker>>,
         attachments: Vec<MessageAttachmentUpload>,
+    },
+    CreateForumPost {
+        post: ForumPostCreate,
     },
     SendTtsMessage {
         channel_id: Id<ChannelMarker>,

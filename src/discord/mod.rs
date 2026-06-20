@@ -41,16 +41,17 @@ pub use builtin_commands::{
 };
 pub(crate) use channel::is_thread_kind;
 pub use channel::{
-    ChannelInfo, ChannelRecipientInfo, PermissionOverwriteInfo, PermissionOverwriteKind,
-    ThreadMetadataInfo,
+    ChannelInfo, ChannelRecipientInfo, ForumTagInfo, PermissionOverwriteInfo,
+    PermissionOverwriteKind, ThreadMetadataInfo,
 };
 pub use client::DiscordClient;
 pub(crate) use client::validate_token_header;
 pub use commands::{
     AppCommand, AttachmentDownloadId, DownloadAttachmentSource, ForumPostArchiveState,
-    GlobalUserProfileUpdate, GuildUserProfileUpdate, MediaPlaybackRequestId, MediaPlaybackSource,
-    MediaPlaybackTarget, MessageHistoryAfterMode, MessageSearchAuthorType, MessageSearchHas,
-    MessageSearchPage, MessageSearchQuery, MuteDuration, ProfileAvatarUpload, UserProfileUpdate,
+    ForumPostCreate, GlobalUserProfileUpdate, GuildUserProfileUpdate, MediaPlaybackRequestId,
+    MediaPlaybackSource, MediaPlaybackTarget, MessageHistoryAfterMode, MessageSearchAuthorType,
+    MessageSearchHas, MessageSearchPage, MessageSearchQuery, MuteDuration, ProfileAvatarUpload,
+    UserProfileUpdate,
 };
 pub use commands::{
     MAX_PROFILE_AVATAR_BYTES, MAX_UPLOAD_ATTACHMENT_COUNT, MAX_UPLOAD_FILE_BYTES,

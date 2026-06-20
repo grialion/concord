@@ -20,16 +20,21 @@ pub(super) use targets::{
 #[cfg(test)]
 pub(super) use targets::{visible_avatar_targets, visible_image_preview_targets};
 
+pub(in crate::tui) use decode::decode_image_bytes;
 use protocol::{
-    AVATAR_PREVIEW_HEIGHT, AVATAR_PREVIEW_WIDTH, ImagePreviewRenderInfo, avatar_preview_url,
-    clipped_preview_image, clipped_preview_protocol, emoji_protocol, query_image_picker,
+    AVATAR_PREVIEW_HEIGHT, AVATAR_PREVIEW_WIDTH, avatar_preview_url, clipped_preview_image,
+    emoji_protocol,
+};
+pub(in crate::tui) use protocol::{
+    ImagePreviewRenderInfo, clipped_preview_protocol, fixed_image_preview_render_info,
+    query_image_picker,
 };
 pub(super) use protocol::{PROFILE_POPUP_AVATAR_HEIGHT, PROFILE_POPUP_AVATAR_WIDTH};
 
 #[cfg(test)]
 use avatar::{AvatarImageEntry, AvatarProtocolKey, MAX_AVATAR_IMAGE_CACHE_ENTRIES};
 #[cfg(test)]
-use decode::{MAX_DECODED_IMAGE_HEIGHT, MAX_DECODED_IMAGE_WIDTH, decode_image_bytes};
+use decode::{MAX_DECODED_IMAGE_HEIGHT, MAX_DECODED_IMAGE_WIDTH};
 #[cfg(test)]
 use emoji::{EmojiImageEntry, MAX_EMOJI_IMAGE_CACHE_ENTRIES};
 #[cfg(test)]

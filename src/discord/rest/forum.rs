@@ -2,19 +2,21 @@ use std::time::Duration;
 
 use reqwest::StatusCode;
 use serde_json::Value;
+use serde_json::json;
 
 use crate::discord::ids::{
     Id,
-    marker::{ChannelMarker, GuildMarker},
+    marker::{ChannelMarker, ForumTagMarker, GuildMarker},
 };
 use crate::{
     AppError, Result,
     discord::{
-        ChannelInfo, ForumPostArchiveState, MessageInfo,
+        ChannelInfo, ForumPostArchiveState, MessageAttachmentUpload, MessageInfo,
         gateway::{parse_channel_info, parse_message_info},
     },
 };
 
+use super::messages::{message_multipart_form, validate_message_payload};
 use super::{DiscordRest, clone_array, extra_fields};
 
 const FORUM_POST_SEARCH_PAGE_LIMIT: u16 = 25;
@@ -32,7 +34,36 @@ pub struct ForumPostPage {
     pub next_offset: usize,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CreatedForumPost {
+    pub thread: ChannelInfo,
+    pub first_message: Option<MessageInfo>,
+}
+
 impl DiscordRest {
+    pub async fn create_forum_post(
+        &self,
+        channel_id: Id<ChannelMarker>,
+        title: &str,
+        content: &str,
+        applied_tags: &[Id<ForumTagMarker>],
+        attachments: &[MessageAttachmentUpload],
+    ) -> Result<CreatedForumPost> {
+        let body = create_forum_post_request_body(title, content, applied_tags, attachments)?;
+        let request = self.raw_http.post(format!(
+            "https://discord.com/api/v9/channels/{}/threads",
+            channel_id.get()
+        ));
+        let request = if attachments.is_empty() {
+            request.json(&body)
+        } else {
+            request.multipart(message_multipart_form(body, attachments).await?)
+        };
+
+        let raw: Value = self.send_json(request, "create forum post").await?;
+        parse_create_forum_post_response(&raw, Some(channel_id))
+    }
+
     pub async fn load_forum_posts(
         &self,
         guild_id: Id<GuildMarker>,
@@ -166,6 +197,79 @@ impl DiscordRest {
             has_more: response.has_more,
         })
     }
+}
+
+pub(super) fn create_forum_post_request_body(
+    title: &str,
+    content: &str,
+    applied_tags: &[Id<ForumTagMarker>],
+    attachments: &[MessageAttachmentUpload],
+) -> Result<Value> {
+    let title = validate_forum_post_title(title)?;
+    validate_message_payload(content, attachments)?;
+
+    let mut body = json!({
+        "name": title,
+        "message": {
+            "content": content,
+        },
+    });
+    if !applied_tags.is_empty() {
+        body["applied_tags"] = Value::Array(
+            applied_tags
+                .iter()
+                .map(|tag_id| Value::String(tag_id.to_string()))
+                .collect(),
+        );
+    }
+    if !attachments.is_empty() {
+        body["message"]["attachments"] = Value::Array(
+            attachments
+                .iter()
+                .enumerate()
+                .map(|(index, attachment)| {
+                    json!({
+                        "id": index,
+                        "filename": attachment.filename,
+                    })
+                })
+                .collect(),
+        );
+    }
+    Ok(body)
+}
+
+fn validate_forum_post_title(title: &str) -> Result<&str> {
+    let title = title.trim();
+    let len = title.chars().count();
+    if len == 0 {
+        return Err(AppError::DiscordRequest(
+            "forum post title cannot be empty".to_owned(),
+        ));
+    }
+    if len > 100 {
+        return Err(AppError::DiscordRequest(format!(
+            "forum post title is too long: {len}/100"
+        )));
+    }
+    Ok(title)
+}
+
+pub(super) fn parse_create_forum_post_response(
+    raw: &Value,
+    parent_channel_id: Option<Id<ChannelMarker>>,
+) -> Result<CreatedForumPost> {
+    let mut thread = parse_channel_info(raw, None).ok_or_else(|| {
+        AppError::DiscordRequest("create forum post response was missing thread".to_owned())
+    })?;
+    if thread.parent_id.is_none() {
+        thread.parent_id = parent_channel_id;
+    }
+    let first_message = raw.get("message").and_then(parse_message_info);
+    Ok(CreatedForumPost {
+        thread,
+        first_message,
+    })
 }
 
 #[derive(Clone, Debug, PartialEq)]

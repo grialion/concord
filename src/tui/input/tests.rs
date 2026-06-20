@@ -24,7 +24,7 @@ use crate::{
         CustomEmojiInfo, DownloadAttachmentSource, EmbedInfo, GuildFolder,
         GuildNotificationSettingsInfo, MemberInfo, MessageInfo, MessageReferenceInfo,
         MessageSnapshotInfo, NotificationLevel, PollAnswerInfo, PollInfo, PresenceStatus,
-        ReactionEmoji, ReactionUserInfo, ReactionUsersInfo, UserGuildSettingsInfo,
+        ReactionEmoji, ReactionUserInfo, ReactionUsersInfo, RoleInfo, UserGuildSettingsInfo,
         UserSettingsInfo, VoiceConnectionStatus,
     },
     tui::state::{ChannelPaneEntry, DashboardState, FocusPane, GuildPaneEntry, MessageActionKind},
@@ -37,6 +37,10 @@ mod misc;
 mod mouse;
 mod navigation;
 mod options;
+
+const PERM_VIEW_CHANNEL: u64 = 0x0000_0000_0000_0400;
+const PERM_SEND_MESSAGES: u64 = 0x0000_0000_0000_0800;
+const PERM_ATTACH_FILES: u64 = 0x0000_0000_0000_8000;
 
 fn key(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
@@ -434,7 +438,10 @@ fn state_with_forum_channel_posts() -> DashboardState {
         }],
         members: Vec::new(),
         presences: Vec::new(),
-        roles: Vec::new(),
+        roles: vec![RoleInfo {
+            permissions: PERM_VIEW_CHANNEL | PERM_SEND_MESSAGES | PERM_ATTACH_FILES,
+            ..RoleInfo::test(Id::new(guild_id.get()), "@everyone")
+        }],
         emojis: Vec::new(),
         owner_id: None,
     });

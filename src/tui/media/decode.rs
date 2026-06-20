@@ -65,7 +65,9 @@ fn media_image_decode_permits() -> &'static Arc<tokio::sync::Semaphore> {
     })
 }
 
-pub(super) fn decode_image_bytes(bytes: &[u8]) -> std::result::Result<DynamicImage, String> {
+pub(in crate::tui) fn decode_image_bytes(
+    bytes: &[u8],
+) -> std::result::Result<DynamicImage, String> {
     let mut limits = Limits::default();
     limits.max_image_width = Some(MAX_DECODED_IMAGE_WIDTH);
     limits.max_image_height = Some(MAX_DECODED_IMAGE_HEIGHT);

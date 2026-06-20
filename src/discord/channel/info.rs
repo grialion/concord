@@ -1,6 +1,6 @@
 use crate::discord::ids::{
     Id,
-    marker::{ChannelMarker, GuildMarker, MessageMarker, UserMarker},
+    marker::{ChannelMarker, EmojiMarker, ForumTagMarker, GuildMarker, MessageMarker, UserMarker},
 };
 
 use crate::discord::PresenceStatus;
@@ -33,6 +33,10 @@ pub struct ChannelInfo {
     /// Discord's raw `flags` channel bitfield. For thread channels in forum or
     /// media parents, `PINNED = 1 << 1` means this one thread is pinned.
     pub flags: Option<u64>,
+    /// Tags the user can apply to posts in a forum or media parent channel.
+    pub available_tags: Vec<ForumTagInfo>,
+    /// Tags currently applied to a forum or media post thread.
+    pub applied_tags: Vec<Id<ForumTagMarker>>,
     /// Whether Discord included a current-user thread membership object for
     /// this thread. `None` means the payload did not say either way.
     pub current_user_joined_thread: Option<bool>,
@@ -42,6 +46,15 @@ pub struct ChannelInfo {
     /// channel-specific overrides", which matches Discord's behavior of
     /// inheriting from the guild base permissions.
     pub permission_overwrites: Vec<PermissionOverwriteInfo>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ForumTagInfo {
+    pub id: Id<ForumTagMarker>,
+    pub name: String,
+    pub moderated: bool,
+    pub emoji_id: Option<Id<EmojiMarker>>,
+    pub emoji_name: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -78,6 +91,12 @@ impl ChannelInfo {
     pub fn thread_pinned(&self) -> Option<bool> {
         self.flags.map(|flags| flags & (1 << 1) != 0)
     }
+
+    pub fn requires_forum_tag(&self) -> bool {
+        const REQUIRE_TAG: u64 = 1 << 4;
+        self.flags
+            .is_some_and(|flags| flags & REQUIRE_TAG == REQUIRE_TAG)
+    }
 }
 
 #[cfg(test)]
@@ -97,6 +116,8 @@ impl ChannelInfo {
             total_message_sent: None,
             thread_metadata: None,
             flags: None,
+            available_tags: Vec::new(),
+            applied_tags: Vec::new(),
             current_user_joined_thread: None,
             recipients: None,
             permission_overwrites: Vec::new(),

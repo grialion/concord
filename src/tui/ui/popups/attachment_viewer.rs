@@ -58,7 +58,12 @@ pub(in crate::tui::ui) fn render_attachment_viewer(
 
     if let Some(hint_area) = hint_area {
         let hint = truncate_display_width(
-            state.key_bindings().attachment_viewer_download_hint(),
+            &popup_shortcut_help_text(&[
+                ("x", "play"),
+                ("d", "download"),
+                ("z", "zoom"),
+                ("+/-", "zoom in/out"),
+            ]),
             usize::from(hint_area.width),
         );
         frame.render_widget(

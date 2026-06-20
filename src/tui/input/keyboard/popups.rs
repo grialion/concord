@@ -1,11 +1,11 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::discord::AppCommand;
 use crate::tui::keybindings::{
-    AttachmentViewerAction, ChannelSwitcherAction, DebugLogPopupAction, EmojiReactionPickerAction,
-    KeyChord, MessageConfirmationAction, OptionsPopupAction, PollVotePickerAction, PopupListAction,
-    ProfilePopupAction, ProfilePopupTabAction, ReactionUsersPopupAction, ScrollAction,
-    SearchPopupAction, SelectionAction, SelectionKeySet,
+    AttachmentViewerAction, ChannelSwitcherAction, ComposerAction, DebugLogPopupAction,
+    EmojiReactionPickerAction, KeyChord, MessageConfirmationAction, OptionsPopupAction,
+    PollVotePickerAction, PopupListAction, ProfilePopupAction, ProfilePopupTabAction,
+    ReactionUsersPopupAction, ScrollAction, SearchPopupAction, SelectionAction, SelectionKeySet,
 };
 use crate::tui::state::{ActiveModalPopupKind, DashboardState};
 
@@ -50,6 +50,7 @@ pub(super) fn handle_popup_key(
         ActiveModalPopupKind::EmojiReactionPicker => handle_emoji_reaction_picker_key(state, key),
         ActiveModalPopupKind::ChannelSwitcher => handle_channel_switcher_key(state, key),
         ActiveModalPopupKind::Search => handle_search_popup_key(state, key),
+        ActiveModalPopupKind::ForumPostComposer => handle_forum_post_composer_key(state, key),
         ActiveModalPopupKind::Leader => super::leader::handle_leader_key(state, key),
         ActiveModalPopupKind::MessageUrlPicker => handle_message_url_picker_key(state, key),
         ActiveModalPopupKind::MessageActionMenu => handle_message_action_menu_key(state, key),
@@ -75,8 +76,179 @@ fn popup_key_phase(kind: ActiveModalPopupKind) -> PopupKeyPhase {
         | ActiveModalPopupKind::Leader
         | ActiveModalPopupKind::UserProfile
         | ActiveModalPopupKind::ChannelSwitcher
-        | ActiveModalPopupKind::Search => PopupKeyPhase::Deferred,
+        | ActiveModalPopupKind::Search
+        | ActiveModalPopupKind::ForumPostComposer => PopupKeyPhase::Deferred,
     }
+}
+
+pub(super) fn handle_forum_post_composer_key(
+    state: &mut DashboardState,
+    key: KeyEvent,
+) -> Option<AppCommand> {
+    if state.is_forum_post_attachment_picker_active() {
+        return handle_forum_post_attachment_picker_key(state, key);
+    }
+    if state.is_forum_post_tag_picker_active() {
+        return handle_forum_post_tag_picker_key(state, key);
+    }
+    if state.is_forum_post_composer_editing() {
+        return handle_forum_post_composer_edit_key(state, key);
+    }
+
+    if let Some(action) = state
+        .key_bindings()
+        .selection_action(key, SelectionKeySet::Navigation)
+    {
+        match action {
+            SelectionAction::Next => state.move_forum_post_selection_down(),
+            SelectionAction::Previous => state.move_forum_post_selection_up(),
+        }
+        return None;
+    }
+
+    match key.code {
+        KeyCode::Tab => {
+            state.cycle_forum_post_field_next();
+            return None;
+        }
+        KeyCode::BackTab => {
+            state.cycle_forum_post_field_previous();
+            return None;
+        }
+        KeyCode::Char('s') if key.modifiers == KeyModifiers::NONE => {
+            return state.save_forum_post_composer();
+        }
+        _ => {}
+    }
+
+    match state.key_bindings().composer_action(key) {
+        ComposerAction::Submit => return state.activate_forum_post_composer(),
+        ComposerAction::Close => state.close_or_cancel_forum_post_composer(),
+        ComposerAction::ClearInput => state.clear_forum_post_active_field(),
+        ComposerAction::RemoveLastAttachment => state.pop_pending_forum_post_attachment(),
+        ComposerAction::OpenInEditor
+        | ComposerAction::PasteClipboard
+        | ComposerAction::InsertNewline
+        | ComposerAction::DeletePreviousChar
+        | ComposerAction::DeletePreviousWord
+        | ComposerAction::MoveCursorUp
+        | ComposerAction::MoveCursorDown
+        | ComposerAction::MoveCursorWordLeft
+        | ComposerAction::MoveCursorLeft
+        | ComposerAction::MoveCursorWordRight
+        | ComposerAction::MoveCursorRight
+        | ComposerAction::MoveCursorHome
+        | ComposerAction::MoveCursorEnd
+        | ComposerAction::InsertChar(_)
+        | ComposerAction::Ignore => {}
+    }
+    None
+}
+
+fn handle_forum_post_attachment_picker_key(
+    state: &mut DashboardState,
+    key: KeyEvent,
+) -> Option<AppCommand> {
+    if let Some(action) = state
+        .key_bindings()
+        .selection_action(key, SelectionKeySet::Navigation)
+    {
+        match action {
+            SelectionAction::Next => state.move_forum_post_selection_down(),
+            SelectionAction::Previous => state.move_forum_post_selection_up(),
+        }
+        return None;
+    }
+
+    match state.key_bindings().composer_action(key) {
+        ComposerAction::Submit => return state.activate_forum_post_composer(),
+        ComposerAction::Close => state.close_or_cancel_forum_post_composer(),
+        ComposerAction::RemoveLastAttachment => state.pop_pending_forum_post_attachment(),
+        ComposerAction::ClearInput => state.clear_forum_post_active_field(),
+        ComposerAction::OpenInEditor
+        | ComposerAction::PasteClipboard
+        | ComposerAction::InsertNewline
+        | ComposerAction::DeletePreviousChar
+        | ComposerAction::DeletePreviousWord
+        | ComposerAction::MoveCursorUp
+        | ComposerAction::MoveCursorDown
+        | ComposerAction::MoveCursorWordLeft
+        | ComposerAction::MoveCursorLeft
+        | ComposerAction::MoveCursorWordRight
+        | ComposerAction::MoveCursorRight
+        | ComposerAction::MoveCursorHome
+        | ComposerAction::MoveCursorEnd
+        | ComposerAction::InsertChar(_)
+        | ComposerAction::Ignore => {}
+    }
+    None
+}
+
+fn handle_forum_post_tag_picker_key(
+    state: &mut DashboardState,
+    key: KeyEvent,
+) -> Option<AppCommand> {
+    if let Some(action) = state
+        .key_bindings()
+        .selection_action(key, SelectionKeySet::Navigation)
+    {
+        match action {
+            SelectionAction::Next => state.move_forum_post_selection_down(),
+            SelectionAction::Previous => state.move_forum_post_selection_up(),
+        }
+        return None;
+    }
+
+    match state.key_bindings().composer_action(key) {
+        ComposerAction::Submit => return state.activate_forum_post_composer(),
+        ComposerAction::Close => state.close_or_cancel_forum_post_composer(),
+        ComposerAction::ClearInput => state.clear_forum_post_active_field(),
+        ComposerAction::OpenInEditor
+        | ComposerAction::PasteClipboard
+        | ComposerAction::InsertNewline
+        | ComposerAction::DeletePreviousChar
+        | ComposerAction::DeletePreviousWord
+        | ComposerAction::RemoveLastAttachment
+        | ComposerAction::MoveCursorUp
+        | ComposerAction::MoveCursorDown
+        | ComposerAction::MoveCursorWordLeft
+        | ComposerAction::MoveCursorLeft
+        | ComposerAction::MoveCursorWordRight
+        | ComposerAction::MoveCursorRight
+        | ComposerAction::MoveCursorHome
+        | ComposerAction::MoveCursorEnd
+        | ComposerAction::InsertChar(_)
+        | ComposerAction::Ignore => {}
+    }
+    None
+}
+
+fn handle_forum_post_composer_edit_key(
+    state: &mut DashboardState,
+    key: KeyEvent,
+) -> Option<AppCommand> {
+    match state.key_bindings().composer_action(key) {
+        ComposerAction::PasteClipboard => state.request_paste_clipboard(),
+        ComposerAction::InsertNewline => state.push_forum_post_char('\n'),
+        ComposerAction::Submit => return state.activate_forum_post_composer(),
+        ComposerAction::Close => state.close_or_cancel_forum_post_composer(),
+        ComposerAction::ClearInput => state.clear_forum_post_active_field(),
+        ComposerAction::DeletePreviousChar => state.delete_forum_post_previous_char(),
+        ComposerAction::DeletePreviousWord => state.delete_forum_post_previous_word(),
+        ComposerAction::MoveCursorWordLeft => state.move_forum_post_cursor_word_left(),
+        ComposerAction::MoveCursorLeft => state.move_forum_post_cursor_left(),
+        ComposerAction::MoveCursorWordRight => state.move_forum_post_cursor_word_right(),
+        ComposerAction::MoveCursorRight => state.move_forum_post_cursor_right(),
+        ComposerAction::MoveCursorHome => state.move_forum_post_cursor_home(),
+        ComposerAction::MoveCursorEnd => state.move_forum_post_cursor_end(),
+        ComposerAction::InsertChar(value) => state.push_forum_post_char(value),
+        ComposerAction::OpenInEditor
+        | ComposerAction::RemoveLastAttachment
+        | ComposerAction::MoveCursorUp
+        | ComposerAction::MoveCursorDown
+        | ComposerAction::Ignore => {}
+    }
+    None
 }
 
 pub(super) fn handle_channel_switcher_key(
