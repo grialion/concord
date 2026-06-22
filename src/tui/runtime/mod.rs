@@ -21,7 +21,7 @@ pub(super) mod effects;
 pub(super) mod events;
 mod media_runtime;
 pub(super) mod notification_audio;
-pub(super) mod redraw;
+mod redraw_gate;
 mod scheduler;
 
 use effects as effect_helpers;
@@ -29,10 +29,6 @@ use media_runtime::{
     DashboardMediaRuntime, LocalUploadPreviewResult, clear_image_surfaces_frame,
     drain_pending_commands_after_draw, draw_dashboard_frame, schedule_media_loads_after_draw,
     store_local_upload_preview_result,
-};
-use redraw::{
-    should_redraw_after_visible_signature_change,
-    should_refresh_image_protocols_after_visible_signature_change, visible_dashboard_signature,
 };
 use scheduler::DashboardCommandScheduler;
 
@@ -89,7 +85,7 @@ pub(super) async fn run_dashboard(
     let mut current_snapshot_revision = initial_snapshot.revision.global;
     let mut current_snapshot_area_revision = initial_snapshot.revision;
     state.restore_discord_snapshot(initial_snapshot.to_state());
-    let mut media_runtime = DashboardMediaRuntime::new();
+    let mut media_runtime = DashboardMediaRuntime::new(options.display.image_protocol);
     let mut terminal_events = EventStream::new();
     let mut mouse_clicks = input::MouseClickTracker::default();
     let (media_decode_tx, mut media_decode_rx) = mpsc::unbounded_channel();
@@ -103,32 +99,43 @@ pub(super) async fn run_dashboard(
     let mut clipboard = ClipboardService::default();
     let mut last_frame_area = Rect::default();
     let mut dirty = true;
-    // Snapshot/effect-driven redraws are coalesced into the next pending
-    // deadline so bursts of background Discord events (presence, typing,
-    // off-screen messages) do not each trigger a fresh OSC 1337 emission for
-    // every visible image. Key and mouse arms still mark `dirty` immediately
-    // to keep input responsiveness intact.
+    // Background Discord events (presence, typing, off-screen messages) are
+    // coalesced into the next pending deadline so a burst does not schedule a
+    // draw per event. Key and mouse arms still mark `dirty` immediately to keep
+    // input responsive. Flicker is no longer a reason to suppress redraws: the
+    // image emission tracker re-emits a surface only when it actually changes.
     const BACKGROUND_REDRAW_DEBOUNCE: std::time::Duration = std::time::Duration::from_millis(80);
     let mut pending_redraw_deadline: Option<tokio::time::Instant> = None;
     let mut clipboard_paste_in_flight = false;
-    // Terminal image protocols mark image cells as skipped in ratatui's diff
-    // buffer. When a popup closes over an image, those skipped cells can keep
-    // old popup pixels. On overlay transitions, draw one image-free frame first
-    // so normal cells overwrite the stale image surface before images redraw.
-    let mut clear_image_surfaces_before_next_draw = false;
+    // Fingerprint of the last drawn frame's background-visible state. Background
+    // events only schedule a redraw when this moves (see `redraw_gate`).
+    let mut last_view_signature = redraw_gate::view_signature(&state);
+    // Tracks where images sit on screen. When it changes between draws an image
+    // has moved or been covered/uncovered, and terminal graphics are a pixel
+    // layer the cell diff cannot erase on its own, so we paint one image-free
+    // frame first to overwrite the stale pixels before redrawing (see
+    // `image_layout_signature`). Plain typing/idle never changes it, so they
+    // draw a single frame and never blink.
+    let mut last_image_layout = u64::MAX;
 
     while !state.should_quit() {
         if dirty {
-            if clear_image_surfaces_before_next_draw {
+            let size = terminal.size()?;
+            let image_layout = redraw_gate::image_layout_signature(
+                &state,
+                Rect::new(0, 0, size.width, size.height),
+            );
+            if image_layout != last_image_layout {
                 terminal.draw(|frame| {
                     last_frame_area = clear_image_surfaces_frame(frame, &mut state);
                 })?;
-                clear_image_surfaces_before_next_draw = false;
+                last_image_layout = image_layout;
             }
             terminal.draw(|frame| {
                 last_frame_area = draw_dashboard_frame(frame, &mut state, &mut media_runtime);
             })?;
             dirty = false;
+            last_view_signature = redraw_gate::view_signature(&state);
 
             dirty |= drain_pending_commands_after_draw(&mut state, &commands).await;
             dirty |= schedule_media_loads_after_draw(
@@ -149,11 +156,6 @@ pub(super) async fn run_dashboard(
             maybe_event = terminal_events.next() => {
                 match maybe_event {
                     Some(Ok(event)) => {
-                        let before_signature = visible_dashboard_signature(&state);
-                        let image_surfaces_visible_before_event =
-                            media_runtime.image_surfaces_visible(&state);
-                        let composer_preview_surface_visible_before_event =
-                            state.composer_attachment_preview_has_image_surface();
                         let outcome = events::handle_terminal_event(
                             &mut state,
                             event,
@@ -217,23 +219,6 @@ pub(super) async fn run_dashboard(
                                 }
                             }
                         }
-                        let after_signature = visible_dashboard_signature(&state);
-                        if should_refresh_image_protocols_after_visible_signature_change(
-                            &before_signature,
-                            &after_signature,
-                            image_surfaces_visible_before_event,
-                        ) {
-                            media_runtime.refresh_protocols();
-                            clear_image_surfaces_before_next_draw = true;
-                            dirty = true;
-                        }
-                        if should_clear_composer_preview_surface(
-                            composer_preview_surface_visible_before_event,
-                            state.composer_attachment_preview_has_image_surface(),
-                        ) {
-                            clear_image_surfaces_before_next_draw = true;
-                            dirty = true;
-                        }
                         if outcome.dirty {
                             dirty = true;
                         }
@@ -278,9 +263,8 @@ pub(super) async fn run_dashboard(
                 }
             }
             snapshot_changed = snapshots.changed() => {
-                let should_redraw_for_snapshot = match snapshot_changed {
+                match snapshot_changed {
                     Ok(()) => {
-                        let before_signature = visible_dashboard_signature(&state);
                         drop(snapshots.borrow_and_update());
                         let snapshot = client.current_discord_snapshot();
                         let previous_snapshot_area_revision = current_snapshot_area_revision;
@@ -300,32 +284,28 @@ pub(super) async fn run_dashboard(
                             &mut deferred_effects,
                             &mut ctx,
                         );
-                        let after_signature = visible_dashboard_signature(&state);
-                        let images_visible = media_runtime.image_surfaces_visible(&state);
-                        should_redraw_after_visible_signature_change(
-                            &before_signature,
-                            &after_signature,
-                            images_visible,
-                            deferred_outcome.force_redraw,
-                        )
+                        // Only redraw (coalesced) when the snapshot actually moved
+                        // something on screen, or for media completions the view
+                        // signature cannot see.
+                        if deferred_outcome.force_redraw
+                            || redraw_gate::view_signature(&state) != last_view_signature
+                        {
+                            schedule_background_redraw(
+                                &mut pending_redraw_deadline,
+                                BACKGROUND_REDRAW_DEBOUNCE,
+                            );
+                        }
                     }
                     Err(_) => {
                         logging::error("tui", "snapshot stream closed");
                         state.quit();
-                        true
+                        dirty = true;
                     }
-                };
-                if should_redraw_for_snapshot {
-                    schedule_background_redraw(
-                        &mut pending_redraw_deadline,
-                        BACKGROUND_REDRAW_DEBOUNCE,
-                    );
                 }
             }
             maybe_effect = effects.recv() => {
                 match maybe_effect {
                     Some(effect) => {
-                        let before_signature = visible_dashboard_signature(&state);
                         let mut effect_outcome = effect_helpers::EffectProcessingOutcome::default();
                         let mut ctx = media_runtime.effect_context(
                             &mut state,
@@ -356,16 +336,13 @@ pub(super) async fn run_dashboard(
                                 }
                             }
                         }
-                        let after_signature = visible_dashboard_signature(&state);
-                        let images_visible = media_runtime.image_surfaces_visible(&state);
-                        let should_redraw_for_effects = effect_outcome.processed_event
-                            && should_redraw_after_visible_signature_change(
-                                &before_signature,
-                                &after_signature,
-                                images_visible,
-                                effect_outcome.force_redraw,
-                            );
-                        if should_redraw_for_effects {
+                        // Redraw (coalesced) only when a processed event changed
+                        // the visible signature, or forces a redraw for media
+                        // completions the signature cannot see.
+                        if effect_outcome.processed_event
+                            && (effect_outcome.force_redraw
+                                || redraw_gate::view_signature(&state) != last_view_signature)
+                        {
                             schedule_background_redraw(
                                 &mut pending_redraw_deadline,
                                 BACKGROUND_REDRAW_DEBOUNCE,
@@ -458,10 +435,6 @@ fn schedule_background_redraw(
     if pending_redraw_deadline.is_none() {
         *pending_redraw_deadline = Some(tokio::time::Instant::now() + debounce);
     }
-}
-
-fn should_clear_composer_preview_surface(visible_before: bool, visible_after: bool) -> bool {
-    visible_before && !visible_after
 }
 
 fn apply_clipboard_paste_result(state: &mut DashboardState, result: ClipboardPasteResult) {
@@ -597,17 +570,4 @@ fn open_composer_in_editor(
         state.replace_composer_input_from_editor(content);
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::should_clear_composer_preview_surface;
-
-    #[test]
-    fn clears_composer_preview_surface_when_it_disappears() {
-        assert!(should_clear_composer_preview_surface(true, false));
-        assert!(!should_clear_composer_preview_surface(false, false));
-        assert!(!should_clear_composer_preview_surface(false, true));
-        assert!(!should_clear_composer_preview_surface(true, true));
-    }
 }

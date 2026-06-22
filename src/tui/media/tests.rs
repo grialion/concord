@@ -9,8 +9,9 @@ use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba};
 use crate::{
     config::{DisplayOptions, ImagePreviewQualityPreset},
     discord::{
-        AppCommand, AppEvent, AttachmentInfo, ChannelInfo, CustomEmojiInfo, EmbedInfo, MessageInfo,
-        MessageSnapshotInfo, ProfileAvatarUpload, ReactionEmoji, ReactionInfo,
+        ActivityEmoji, ActivityInfo, ActivityKind, AppCommand, AppEvent, AttachmentInfo,
+        ChannelInfo, CustomEmojiInfo, EmbedInfo, MessageInfo, MessageSnapshotInfo,
+        PresenceEventFields, ProfileAvatarUpload, ReactionEmoji, ReactionInfo, UserProfileInfo,
     },
     tui::{
         message::time::test_message_id_for_unix_millis,
@@ -91,6 +92,17 @@ fn disabled_image_previews_create_no_targets_or_requests() {
 
     assert!(targets.is_empty());
     assert!(cache.next_requests(&targets).is_empty());
+}
+
+#[test]
+fn image_preview_targets_keep_background_previews_while_modal_is_open() {
+    let mut state = state_with_image_messages(1, &[1]);
+    state.set_message_view_height(6);
+    state.open_channel_switcher();
+
+    let targets = visible_image_preview_targets(&state, layout(6));
+
+    assert_eq!(target_message_ids(&targets), vec![Id::new(1)]);
 }
 
 #[test]
@@ -499,7 +511,6 @@ fn image_preview_targets_layout_album_grids() {
         (
             (1..=3).map(image_attachment).collect::<Vec<_>>(),
             vec![(0, 0, 0, 8, 3), (1, 8, 0, 8, 2), (2, 8, 2, 4, 1)],
-            vec![0, 0, 0],
         ),
         (
             (1..=4).map(image_attachment).collect::<Vec<_>>(),
@@ -509,7 +520,6 @@ fn image_preview_targets_layout_album_grids() {
                 (2, 0, 2, 4, 1),
                 (3, 4, 2, 4, 1),
             ],
-            vec![0, 0, 0, 0],
         ),
         (
             (1..=5).map(image_attachment).collect::<Vec<_>>(),
@@ -519,16 +529,11 @@ fn image_preview_targets_layout_album_grids() {
                 (2, 0, 2, 4, 1),
                 (3, 4, 2, 4, 1),
             ],
-            vec![0, 0, 0, 1],
         ),
-        (
-            portrait_album,
-            vec![(0, 0, 0, 5, 3), (1, 5, 0, 5, 3)],
-            vec![0, 0],
-        ),
+        (portrait_album, vec![(0, 0, 0, 5, 3), (1, 5, 0, 5, 3)]),
     ];
 
-    for (attachments, expected_geometry, expected_overflow) in cases {
+    for (attachments, expected_geometry) in cases {
         let mut state = state_with_image_messages(0, &[]);
         push_media_message(
             &mut state,
@@ -554,13 +559,6 @@ fn image_preview_targets_layout_album_grids() {
                 ))
                 .collect::<Vec<_>>(),
             expected_geometry
-        );
-        assert_eq!(
-            targets
-                .iter()
-                .map(|target| target.preview_overflow_count)
-                .collect::<Vec<_>>(),
-            expected_overflow
         );
     }
 }
@@ -654,6 +652,17 @@ fn disabled_avatar_previews_create_no_targets_or_requests() {
 
     assert!(targets.is_empty());
     assert!(cache.next_requests(&targets).is_empty());
+}
+
+#[test]
+fn avatar_targets_keep_background_avatars_while_modal_is_open() {
+    let mut state = state_with_avatar_messages(1);
+    state.open_channel_switcher();
+
+    let targets = visible_avatar_targets(&state, layout(2));
+
+    assert_eq!(targets.len(), 1);
+    assert_eq!(targets[0].url, "https://cdn.discordapp.com/avatar-1.png");
 }
 
 #[test]
@@ -1179,21 +1188,6 @@ fn image_preview_request_is_created_for_draw_target() {
 }
 
 #[test]
-fn image_surface_refresh_protocols_advances_generation() {
-    let mut previews = image_preview_cache_without_picker();
-    let mut avatars = avatar_cache_without_picker();
-    let mut emojis = emoji_cache_without_picker();
-
-    previews.refresh_protocols();
-    avatars.refresh_protocols();
-    emojis.refresh_protocols();
-
-    assert_eq!(previews.cache.protocol_generation, 1);
-    assert_eq!(avatars.cache.protocol_generation, 1);
-    assert_eq!(emojis.cache.protocol_generation, 1);
-}
-
-#[test]
 fn image_preview_render_state_preserves_target_order() {
     let mut cache = image_preview_cache_without_picker();
     let first = image_preview_target(1);
@@ -1558,7 +1552,6 @@ fn clipped_preview_image_stays_within_preview_pixel_bounds() {
         preview_y_offset_rows: 0,
         preview_width: 16,
         preview_height: 3,
-        preview_overflow_count: 0,
         visible_preview_height: 3,
         top_clip_rows: 0,
         accent_color: None,
@@ -1586,7 +1579,6 @@ fn clipped_video_preview_draws_play_marker_into_image_pixels() {
         preview_y_offset_rows: 0,
         preview_width: 16,
         preview_height: 3,
-        preview_overflow_count: 0,
         visible_preview_height: 3,
         top_clip_rows: 0,
         accent_color: None,
@@ -1675,6 +1667,70 @@ fn emoji_image_targets_include_confirmed_composer_custom_emoji() {
         state.push_composer_char(ch);
     }
     assert!(state.confirm_composer_emoji());
+
+    let targets = visible_emoji_image_targets(&state);
+
+    assert_eq!(
+        targets,
+        vec![EmojiImageTarget {
+            url: "https://cdn.discordapp.com/emojis/60.png".to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn emoji_image_targets_keep_profile_popup_activity_emoji_while_modal_is_open() {
+    let user_id = Id::new(10);
+    let mut state = state_with_image_messages(1, &[]);
+    state.push_event(AppEvent::UserProfileLoaded {
+        guild_id: None,
+        profile: UserProfileInfo::test(user_id, "neo"),
+    });
+    state.push_event(AppEvent::PresenceUpdate {
+        guild_id: None,
+        presence: PresenceEventFields {
+            user_id,
+            status: crate::discord::PresenceStatus::Online,
+            activities: vec![ActivityInfo {
+                kind: ActivityKind::Custom,
+                name: "custom".to_owned(),
+                details: None,
+                state: Some("working".to_owned()),
+                url: None,
+                application_id: None,
+                emoji: Some(ActivityEmoji {
+                    name: "party".to_owned(),
+                    id: Some(Id::new(60)),
+                    animated: false,
+                }),
+            }],
+        },
+    });
+    state.open_user_profile_popup(user_id, None);
+
+    let targets = visible_emoji_image_targets(&state);
+
+    assert_eq!(
+        targets,
+        vec![EmojiImageTarget {
+            url: "https://cdn.discordapp.com/emojis/60.png".to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn emoji_image_targets_keep_background_composer_emoji_while_modal_is_open() {
+    let mut state = state_with_image_messages(1, &[]);
+    state.push_event(AppEvent::GuildEmojisUpdate {
+        guild_id: Id::new(1),
+        emojis: vec![CustomEmojiInfo::test(Id::new(60), "wave")],
+    });
+    state.start_composer();
+    for ch in ":wa".chars() {
+        state.push_composer_char(ch);
+    }
+    assert!(state.confirm_composer_emoji());
+    state.open_options_popup();
 
     let targets = visible_emoji_image_targets(&state);
 
@@ -2094,7 +2150,6 @@ fn image_preview_target(id: u64) -> ImagePreviewTarget {
         preview_y_offset_rows: 0,
         preview_width: 16,
         preview_height: 3,
-        preview_overflow_count: 0,
         visible_preview_height: 3,
         top_clip_rows: 0,
         accent_color: None,

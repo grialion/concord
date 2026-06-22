@@ -4,6 +4,7 @@ use image::DynamicImage;
 use ratatui_image::{picker::Picker, protocol::Protocol};
 
 use crate::{
+    config::ImageProtocolPreference,
     discord::{AppCommand, AppEvent},
     tui::ui::EmojiImage,
 };
@@ -26,22 +27,10 @@ pub(in crate::tui) struct EmojiImageCache {
 }
 
 pub(super) enum EmojiImageEntry {
-    Loading {
-        last_used: u64,
-    },
-    Decoding {
-        generation: u64,
-        last_used: u64,
-    },
-    Ready {
-        image: DynamicImage,
-        protocol: Protocol,
-        protocol_generation: u64,
-        last_used: u64,
-    },
-    Failed {
-        last_used: u64,
-    },
+    Loading { last_used: u64 },
+    Decoding { generation: u64, last_used: u64 },
+    Ready { protocol: Protocol, last_used: u64 },
+    Failed { last_used: u64 },
 }
 
 impl MediaImageCacheEntry for EmojiImageEntry {
@@ -78,15 +67,22 @@ impl MediaImageCacheEntry for EmojiImageEntry {
 }
 
 impl EmojiImageCache {
+    #[cfg(test)]
     pub(in crate::tui) fn new() -> Self {
-        Self {
-            picker: query_image_picker("emoji", "emoji image picker unavailable"),
-            cache: MediaImageCacheCore::new(),
-        }
+        Self::new_with_protocol_preference(ImageProtocolPreference::Auto)
     }
 
-    pub(in crate::tui) fn refresh_protocols(&mut self) {
-        self.cache.refresh_protocols();
+    pub(in crate::tui) fn new_with_protocol_preference(
+        protocol_preference: ImageProtocolPreference,
+    ) -> Self {
+        Self {
+            picker: query_image_picker(
+                "emoji",
+                "emoji image picker unavailable",
+                protocol_preference,
+            ),
+            cache: MediaImageCacheCore::new(),
+        }
     }
 
     /// Returns decoded protocols for visible targets and refreshes their
@@ -95,25 +91,10 @@ impl EmojiImageCache {
         &mut self,
         targets: &[EmojiImageTarget],
     ) -> Vec<EmojiImage<'_>> {
-        let picker = self.picker.clone();
-        let protocol_generation = self.cache.protocol_generation;
         for target in targets {
             let touch_tick = self.cache.next_tick();
             if let Some(entry) = self.cache.entries.get_mut(&target.url) {
                 entry.touch(touch_tick);
-                if let EmojiImageEntry::Ready {
-                    image,
-                    protocol,
-                    protocol_generation: entry_protocol_generation,
-                    ..
-                } = entry
-                    && *entry_protocol_generation != protocol_generation
-                    && let Some(picker) = picker.as_ref()
-                    && let Some(updated_protocol) = emoji_protocol(picker, image.clone())
-                {
-                    *protocol = updated_protocol;
-                    *entry_protocol_generation = protocol_generation;
-                }
             }
         }
         targets
@@ -218,7 +199,7 @@ impl EmojiImageCache {
                         .insert(url, EmojiImageEntry::Failed { last_used });
                     return;
                 };
-                let Some(protocol) = emoji_protocol(picker, image.clone()) else {
+                let Some(protocol) = emoji_protocol(picker, image) else {
                     self.cache
                         .entries
                         .insert(url, EmojiImageEntry::Failed { last_used });
@@ -227,9 +208,7 @@ impl EmojiImageCache {
                 self.cache.entries.insert(
                     url,
                     EmojiImageEntry::Ready {
-                        image,
                         protocol,
-                        protocol_generation: self.cache.protocol_generation,
                         last_used,
                     },
                 );

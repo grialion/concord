@@ -68,7 +68,7 @@ use self::layout::{
 };
 #[cfg(test)]
 use self::layout::{composer_content_line_count, composer_prompt_line_count};
-use self::message::list::render_messages;
+use self::message::list::{MessageMedia, render_messages};
 #[cfg(test)]
 use self::panes::{
     composer_cursor_position, composer_lines, composer_lines_with_loaded_custom_emoji_urls,
@@ -193,6 +193,7 @@ pub fn image_preview_layout(area: Rect, state: &DashboardState) -> ImagePreviewL
     }
 }
 
+#[cfg(test)]
 pub fn render(
     frame: &mut Frame,
     state: &DashboardState,
@@ -239,13 +240,18 @@ pub(in crate::tui) fn render_with_message_viewport_plan(
     if state.is_pane_visible(FocusPane::Channels) {
         render_channels(frame, areas.channels, state);
     }
+    let media_occlusion_areas =
+        background_media_occlusion_areas(areas.messages, frame.area(), state);
     render_messages(
         frame,
         areas.messages,
         state,
-        inline_image_previews,
-        avatar_images,
-        &emoji_images,
+        MessageMedia {
+            image_previews: inline_image_previews,
+            avatar_images,
+            emoji_images: &emoji_images,
+            occlusion_areas: &media_occlusion_areas,
+        },
         message_viewport_plan,
     );
     if state.is_pane_visible(FocusPane::Members) {
@@ -277,6 +283,41 @@ pub(in crate::tui) fn render_with_message_viewport_plan(
     render_forum_post_composer(frame, areas.messages, state);
     render_downloads_popup(frame, frame.area(), state);
     render_toast(frame, frame.area(), state);
+}
+
+pub(in crate::tui) fn background_media_occlusion_areas(
+    messages_area: Rect,
+    frame_area: Rect,
+    state: &DashboardState,
+) -> Vec<Rect> {
+    self::popups::background_media_occlusion_areas(messages_area, frame_area, state)
+}
+
+pub(in crate::tui) fn image_preview_list_area(area: Rect, state: &DashboardState) -> Rect {
+    let areas = dashboard_areas(area, state);
+    message_list_area(areas.messages, state)
+}
+
+pub(in crate::tui) fn dashboard_message_area(area: Rect, state: &DashboardState) -> Rect {
+    dashboard_areas(area, state).messages
+}
+
+pub(in crate::tui) fn inline_image_preview_screen_area(
+    list: Rect,
+    row: isize,
+    preview_x_offset_columns: u16,
+    preview_width: u16,
+    preview_height: u16,
+    accent_color: Option<u32>,
+) -> Option<Rect> {
+    inline_image_preview_area(
+        list,
+        row,
+        preview_x_offset_columns,
+        preview_width,
+        preview_height,
+        accent_color,
+    )
 }
 
 fn message_content_width(list: Rect) -> usize {

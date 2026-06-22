@@ -4,6 +4,7 @@ use image::DynamicImage;
 use ratatui_image::{picker::Picker, protocol::Protocol};
 
 use crate::{
+    config::ImageProtocolPreference,
     discord::{AppCommand, AppEvent, ProfileAvatarUpload},
     tui::ui::AvatarImage,
 };
@@ -47,7 +48,6 @@ pub(super) enum AvatarImageEntry {
 
 pub(super) struct AvatarProtocolEntry {
     protocol: Protocol,
-    protocol_generation: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -88,7 +88,6 @@ impl AvatarProtocolKey {
             preview_y_offset_rows: 0,
             preview_width: self.preview_width,
             preview_height: self.preview_height,
-            preview_overflow_count: 0,
             visible_preview_height: self.visible_preview_height,
             top_clip_rows: self.top_clip_rows,
             accent_color: None,
@@ -132,16 +131,23 @@ impl MediaImageCacheEntry for AvatarImageEntry {
 }
 
 impl AvatarImageCache {
+    #[cfg(test)]
     pub(in crate::tui) fn new() -> Self {
+        Self::new_with_protocol_preference(ImageProtocolPreference::Auto)
+    }
+
+    pub(in crate::tui) fn new_with_protocol_preference(
+        protocol_preference: ImageProtocolPreference,
+    ) -> Self {
         Self {
-            picker: query_image_picker("avatar", "avatar image picker unavailable"),
+            picker: query_image_picker(
+                "avatar",
+                "avatar image picker unavailable",
+                protocol_preference,
+            ),
             cache: MediaImageCacheCore::new(),
             active_popup_avatar_url: None,
         }
-    }
-
-    pub(in crate::tui) fn refresh_protocols(&mut self) {
-        self.cache.refresh_protocols();
     }
 
     pub(in crate::tui) fn render_state_with_popup(
@@ -166,7 +172,6 @@ impl AvatarImageCache {
             let Some(picker) = self.picker.as_ref() else {
                 return (Vec::new(), None);
             };
-            let protocol_generation = self.cache.protocol_generation;
 
             for target in targets {
                 let url =
@@ -178,19 +183,11 @@ impl AvatarImageCache {
                 else {
                     continue;
                 };
-                if protocols
-                    .get(&key)
-                    .is_none_or(|entry| entry.protocol_generation != protocol_generation)
+                if !protocols.contains_key(&key)
                     && let Some(protocol) =
                         clipped_preview_protocol(picker, image, key.render_info())
                 {
-                    protocols.insert(
-                        key,
-                        AvatarProtocolEntry {
-                            protocol,
-                            protocol_generation,
-                        },
-                    );
+                    protocols.insert(key, AvatarProtocolEntry { protocol });
                 }
             }
 
@@ -200,19 +197,11 @@ impl AvatarImageCache {
                 }) = self.cache.entries.get_mut(url)
             {
                 let key = AvatarProtocolKey::profile_popup(circular);
-                if protocols
-                    .get(&key)
-                    .is_none_or(|entry| entry.protocol_generation != protocol_generation)
+                if !protocols.contains_key(&key)
                     && let Some(protocol) =
                         clipped_preview_protocol(picker, image, key.render_info())
                 {
-                    protocols.insert(
-                        key,
-                        AvatarProtocolEntry {
-                            protocol,
-                            protocol_generation,
-                        },
-                    );
+                    protocols.insert(key, AvatarProtocolEntry { protocol });
                 }
             }
         }

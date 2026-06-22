@@ -260,6 +260,31 @@ fn render_composer_picker_scrollbar(
 /// Picks a rectangle directly above the composer for the picker. Returns
 /// `None` when there isn't enough room (very short terminal) so the caller
 /// can silently skip drawing.
+pub(in crate::tui::ui) fn active_composer_picker_area(
+    message_areas: MessageAreas,
+    state: &DashboardState,
+) -> Option<Rect> {
+    if state.composer_command_query().is_some() {
+        let candidates = state.composer_command_candidates();
+        if !candidates.is_empty() {
+            return composer_picker_area(message_areas, candidates.len());
+        }
+    }
+    if state.composer_mention_query().is_some() {
+        let candidates = state.composer_mention_candidates();
+        if !candidates.is_empty() {
+            return composer_picker_area(message_areas, candidates.len());
+        }
+    }
+    if state.composer_emoji_query().is_some() {
+        let candidates = state.composer_emoji_candidates();
+        if !candidates.is_empty() {
+            return composer_picker_area(message_areas, candidates.len());
+        }
+    }
+    None
+}
+
 fn composer_picker_area(message_areas: MessageAreas, candidate_count: usize) -> Option<Rect> {
     let composer = message_areas.composer;
     let messages = message_areas.list;

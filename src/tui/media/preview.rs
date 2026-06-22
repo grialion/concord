@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::config::ImageProtocolPreference;
 use crate::discord::ids::{Id, marker::MessageMarker};
 use image::DynamicImage;
 use ratatui_image::{picker::Picker, protocol::StatefulProtocol};
@@ -17,7 +18,7 @@ use super::{
     cache::{MediaImageCacheCore, MediaImageCacheEntry},
     clipped_preview_image,
     decode::{MediaImageDecodeJob, MediaImageDecodeKey},
-    query_image_picker,
+    picker_font_size, query_image_picker,
 };
 
 pub(super) const MAX_IMAGE_PREVIEW_CACHE_ENTRIES: usize = 16;
@@ -27,6 +28,9 @@ pub(in crate::tui) struct ImagePreviewKey {
     viewer: bool,
     message_id: Id<MessageMarker>,
     preview_index: usize,
+    preview_y_offset_rows: usize,
+    visible_preview_height: u16,
+    top_clip_rows: u16,
     pub(super) url: String,
 }
 
@@ -51,7 +55,6 @@ pub(super) enum ImagePreviewEntry {
         filename: String,
         image: DynamicImage,
         protocol_render_info: ImagePreviewRenderInfo,
-        protocol_generation: u64,
         protocol: Box<StatefulProtocol>,
         last_used: u64,
     },
@@ -63,19 +66,26 @@ pub(super) enum ImagePreviewEntry {
 }
 
 impl ImagePreviewCache {
+    #[cfg(test)]
     pub(in crate::tui) fn new() -> Self {
+        Self::new_with_protocol_preference(ImageProtocolPreference::Auto)
+    }
+
+    pub(in crate::tui) fn new_with_protocol_preference(
+        protocol_preference: ImageProtocolPreference,
+    ) -> Self {
         Self {
-            picker: query_image_picker("preview", "inline image picker unavailable"),
+            picker: query_image_picker(
+                "preview",
+                "inline image picker unavailable",
+                protocol_preference,
+            ),
             cache: MediaImageCacheCore::new(),
         }
     }
 
     pub(in crate::tui) fn font_size(&self) -> Option<(u16, u16)> {
-        self.picker.as_ref().map(Picker::font_size)
-    }
-
-    pub(in crate::tui) fn refresh_protocols(&mut self) {
-        self.cache.refresh_protocols();
+        self.picker.as_ref().map(picker_font_size)
     }
 
     pub(in crate::tui) fn render_state(
@@ -93,7 +103,6 @@ impl ImagePreviewCache {
         let mut previews = Vec::new();
 
         let mut tick = self.cache.tick;
-        let current_protocol_generation = self.cache.protocol_generation;
         for (key, entry) in &mut self.cache.entries {
             let Some((order, render_info)) = target_by_key.get(key).copied() else {
                 continue;
@@ -109,19 +118,16 @@ impl ImagePreviewCache {
                 ImagePreviewEntry::Ready {
                     image,
                     protocol,
-                    protocol_generation,
                     protocol_render_info,
                     ..
                 } => {
-                    if (*protocol_render_info != render_info
-                        || *protocol_generation != current_protocol_generation)
+                    if *protocol_render_info != render_info
                         && let Some(picker) = picker.as_ref()
                         && let Some(updated_protocol) =
                             clipped_preview_stateful_protocol(picker, image, render_info)
                     {
                         *protocol = updated_protocol;
                         *protocol_render_info = render_info;
-                        *protocol_generation = current_protocol_generation;
                     }
                     ImagePreviewState::Ready {
                         protocol: protocol.as_mut(),
@@ -143,7 +149,7 @@ impl ImagePreviewCache {
                     preview_y_offset_rows: render_info.preview_y_offset_rows,
                     preview_width: render_info.preview_width,
                     preview_height: render_info.preview_height,
-                    preview_overflow_count: render_info.preview_overflow_count,
+                    visible_preview_height: render_info.visible_preview_height,
                     accent_color: render_info.accent_color,
                     state,
                 },
@@ -162,7 +168,7 @@ impl ImagePreviewCache {
                         preview_y_offset_rows: target.preview_y_offset_rows,
                         preview_width: target.preview_width,
                         preview_height: target.preview_height,
-                        preview_overflow_count: target.preview_overflow_count,
+                        visible_preview_height: target.visible_preview_height,
                         accent_color: target.accent_color,
                         state: ImagePreviewState::Loading {
                             filename: target.filename.clone(),
@@ -349,7 +355,6 @@ impl ImagePreviewCache {
                         filename,
                         image,
                         protocol_render_info: render_info,
-                        protocol_generation: self.cache.protocol_generation,
                         protocol,
                         last_used,
                     },
@@ -429,7 +434,7 @@ fn clipped_preview_stateful_protocol(
     image: &DynamicImage,
     render_info: ImagePreviewRenderInfo,
 ) -> Option<Box<StatefulProtocol>> {
-    let image = clipped_preview_image(image, picker.font_size(), render_info)?;
+    let image = clipped_preview_image(image, picker_font_size(picker), render_info)?;
     Some(Box::new(picker.new_resize_protocol(image)))
 }
 
@@ -439,6 +444,9 @@ impl ImagePreviewTarget {
             viewer: self.viewer,
             message_id: self.message_id,
             preview_index: self.preview_index,
+            preview_y_offset_rows: self.preview_y_offset_rows,
+            visible_preview_height: self.visible_preview_height,
+            top_clip_rows: self.top_clip_rows,
             url: self.url.clone(),
         }
     }
@@ -450,7 +458,6 @@ impl ImagePreviewTarget {
             preview_y_offset_rows: self.preview_y_offset_rows,
             preview_width: self.preview_width,
             preview_height: self.preview_height,
-            preview_overflow_count: self.preview_overflow_count,
             visible_preview_height: self.visible_preview_height,
             top_clip_rows: self.top_clip_rows,
             accent_color: self.accent_color,

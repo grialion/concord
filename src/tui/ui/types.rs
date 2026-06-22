@@ -25,7 +25,7 @@ pub struct ImagePreview<'a> {
     pub preview_y_offset_rows: usize,
     pub preview_width: u16,
     pub preview_height: u16,
-    pub preview_overflow_count: usize,
+    pub visible_preview_height: u16,
     pub accent_color: Option<u32>,
     pub state: ImagePreviewState<'a>,
 }

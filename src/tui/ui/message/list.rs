@@ -1,7 +1,7 @@
 use super::super::forum;
 use super::super::panes::{
-    render_composer, render_composer_command_picker, render_composer_emoji_picker,
-    render_composer_mention_picker,
+    active_composer_picker_area, render_composer, render_composer_command_picker,
+    render_composer_emoji_picker, render_composer_mention_picker,
 };
 use super::super::*;
 use crate::tui::media;
@@ -36,6 +36,13 @@ struct MessageRenderPlan<'a, 'p> {
     layout: MessageViewportLayout,
 }
 
+pub(in crate::tui::ui) struct MessageMedia<'a> {
+    pub(in crate::tui::ui) image_previews: Vec<ImagePreview<'a>>,
+    pub(in crate::tui::ui) avatar_images: Vec<AvatarImage<'a>>,
+    pub(in crate::tui::ui) emoji_images: &'a [EmojiImage<'a>],
+    pub(in crate::tui::ui) occlusion_areas: &'a [Rect],
+}
+
 impl<'a> MessageRenderPlan<'a, '_> {
     fn row(&self, local_index: usize) -> Option<&MessageViewportRow<'a>> {
         self.rows.row(local_index)
@@ -46,9 +53,7 @@ pub(in crate::tui::ui) fn render_messages(
     frame: &mut Frame,
     area: Rect,
     state: &DashboardState,
-    image_previews: Vec<ImagePreview<'_>>,
-    avatar_images: Vec<AvatarImage<'_>>,
-    emoji_images: &[EmojiImage<'_>],
+    media: MessageMedia<'_>,
     viewport_plan: Option<&MessageViewportPlan<'_>>,
 ) {
     let block = panel_block_owned(
@@ -59,6 +64,19 @@ pub(in crate::tui::ui) fn render_messages(
     frame.render_widget(block, area);
 
     let message_areas = message_areas(inner, state);
+    let owned_occlusion_areas;
+    let media_occlusion_areas =
+        if let Some(area) = active_composer_picker_area(message_areas, state) {
+            owned_occlusion_areas = media
+                .occlusion_areas
+                .iter()
+                .copied()
+                .chain(std::iter::once(area))
+                .collect::<Vec<_>>();
+            owned_occlusion_areas.as_slice()
+        } else {
+            media.occlusion_areas
+        };
     let content_width = message_content_width(message_areas.list);
 
     render_unread_banner(frame, message_areas.unread_banner, state);
@@ -90,7 +108,8 @@ pub(in crate::tui::ui) fn render_messages(
                 message_areas.list,
                 &posts,
                 forum_card_width,
-                emoji_images,
+                media.emoji_images,
+                media_occlusion_areas,
             );
         }
         render_vertical_scrollbar(
@@ -101,10 +120,10 @@ pub(in crate::tui::ui) fn render_messages(
             forum_total_rows,
         );
         render_typing_footer(frame, message_areas.typing, state);
-        render_composer(frame, message_areas.composer, state, emoji_images);
+        render_composer(frame, message_areas.composer, state, media.emoji_images);
         render_composer_command_picker(frame, message_areas, state);
         render_composer_mention_picker(frame, message_areas, state);
-        render_composer_emoji_picker(frame, message_areas, state, emoji_images);
+        render_composer_emoji_picker(frame, message_areas, state, media.emoji_images);
         return;
     }
 
@@ -130,7 +149,7 @@ pub(in crate::tui::ui) fn render_messages(
     );
     let selected_card_width =
         selected_message_card_width(message_areas.list.width as usize, message_scrollbar_visible);
-    let loaded_custom_emoji_urls = loaded_custom_emoji_urls(emoji_images);
+    let loaded_custom_emoji_urls = loaded_custom_emoji_urls(media.emoji_images);
     let layout = MessageViewportLayout {
         content_width,
         list_width: message_areas.list.width as usize,
@@ -158,26 +177,34 @@ pub(in crate::tui::ui) fn render_messages(
     frame.render_widget(Paragraph::new(lines), message_areas.list);
     let selected_avatar_body_top =
         selected.and_then(|selected| render_plan.row(selected).map(|row| row.body_top));
-    for avatar in avatar_images {
+    for avatar in media.avatar_images {
         if let Some(area) = message_avatar_area(
             message_areas.list,
             avatar.row,
             avatar.visible_height,
             selected_avatar_x_offset(selected_avatar_body_top, avatar.row),
-        ) {
+        ) && !intersects_any(area, media_occlusion_areas)
+        {
             frame.render_widget(RatatuiImage::new(avatar.protocol), area);
         }
     }
-    render_inline_reaction_emojis(frame, message_areas.list, &render_plan, emoji_images);
+    render_inline_reaction_emojis(
+        frame,
+        message_areas.list,
+        &render_plan,
+        media.emoji_images,
+        media_occlusion_areas,
+    );
     render_inline_message_body_emojis(
         frame,
         message_areas.list,
         &render_plan,
         state,
-        emoji_images,
+        media.emoji_images,
         &loaded_custom_emoji_urls,
+        media_occlusion_areas,
     );
-    for image_preview in image_previews.into_iter() {
+    for image_preview in media.image_previews.into_iter() {
         let Some(row_plan) = render_plan.row(image_preview.message_index) else {
             continue;
         };
@@ -186,7 +213,7 @@ pub(in crate::tui::ui) fn render_messages(
             .saturating_add(row_plan.metrics.body_rows() as isize)
             .saturating_add(image_preview.preview_y_offset_rows as isize)
             .saturating_sub(1);
-        if let Some(preview_area) = inline_image_preview_area(
+        if let Some(mut preview_area) = inline_image_preview_area(
             message_areas.list,
             row,
             image_preview
@@ -196,12 +223,13 @@ pub(in crate::tui::ui) fn render_messages(
             image_preview.preview_height,
             image_preview.accent_color,
         ) {
+            preview_area.height = preview_area
+                .height
+                .min(image_preview.visible_preview_height);
+            if intersects_any(preview_area, media_occlusion_areas) {
+                continue;
+            }
             render_image_preview(frame, preview_area, image_preview.state);
-            render_image_preview_overflow_marker(
-                frame,
-                preview_area,
-                image_preview.preview_overflow_count,
-            );
         }
     }
     render_vertical_scrollbar(
@@ -213,10 +241,10 @@ pub(in crate::tui::ui) fn render_messages(
     );
     render_new_messages_notice(frame, message_areas.list, state);
     render_typing_footer(frame, message_areas.typing, state);
-    render_composer(frame, message_areas.composer, state, emoji_images);
+    render_composer(frame, message_areas.composer, state, media.emoji_images);
     render_composer_command_picker(frame, message_areas, state);
     render_composer_mention_picker(frame, message_areas, state);
-    render_composer_emoji_picker(frame, message_areas, state, emoji_images);
+    render_composer_emoji_picker(frame, message_areas, state, media.emoji_images);
 }
 
 fn message_viewport_lines_from_plan(
@@ -415,6 +443,7 @@ fn render_inline_reaction_emojis(
     list: Rect,
     plan: &MessageRenderPlan<'_, '_>,
     emoji_images: &[EmojiImage<'_>],
+    media_occlusion_areas: &[Rect],
 ) {
     if emoji_images.is_empty() || list.height == 0 || list.width <= MESSAGE_AVATAR_OFFSET {
         return;
@@ -464,7 +493,9 @@ fn render_inline_reaction_emojis(
                     width: image_width,
                     height: 1,
                 };
-                if image_area.y >= list_bottom as u16 {
+                if image_area.y >= list_bottom as u16
+                    || intersects_any(image_area, media_occlusion_areas)
+                {
                     continue;
                 }
                 frame.render_widget(RatatuiImage::new(image.protocol), image_area);
@@ -481,6 +512,7 @@ fn render_inline_message_body_emojis(
     state: &DashboardState,
     emoji_images: &[EmojiImage<'_>],
     loaded_custom_emoji_urls: &[String],
+    media_occlusion_areas: &[Rect],
 ) {
     if emoji_images.is_empty() || list.height == 0 || list.width <= MESSAGE_AVATAR_OFFSET {
         return;
@@ -539,10 +571,28 @@ fn render_inline_message_body_emojis(
                     width: image_width,
                     height: 1,
                 };
+                if intersects_any(image_area, media_occlusion_areas) {
+                    continue;
+                }
                 frame.render_widget(RatatuiImage::new(image.protocol), image_area);
             }
         }
     }
+}
+
+fn intersects_any(area: Rect, occlusion_areas: &[Rect]) -> bool {
+    occlusion_areas
+        .iter()
+        .any(|occlusion| rects_intersect(area, *occlusion))
+}
+
+fn rects_intersect(a: Rect, b: Rect) -> bool {
+    !a.is_empty()
+        && !b.is_empty()
+        && a.x < b.x.saturating_add(b.width)
+        && b.x < a.x.saturating_add(a.width)
+        && a.y < b.y.saturating_add(b.height)
+        && b.y < a.y.saturating_add(a.height)
 }
 
 #[cfg(test)]
@@ -620,29 +670,6 @@ pub(in crate::tui::ui) fn render_image_preview(
             frame.render_stateful_widget(widget, area, protocol);
         }
     }
-}
-
-fn render_image_preview_overflow_marker(frame: &mut Frame, area: Rect, overflow_count: usize) {
-    if overflow_count == 0 || area.width < 3 || area.height == 0 {
-        return;
-    }
-
-    let marker = format!("+{overflow_count}");
-    let width = u16::try_from(marker.width())
-        .unwrap_or(u16::MAX)
-        .min(area.width);
-    let marker_area = Rect {
-        x: area.x.saturating_add(area.width.saturating_sub(width)),
-        y: area.y.saturating_add(area.height.saturating_sub(1)),
-        width,
-        height: 1,
-    };
-    frame.render_widget(
-        Paragraph::new(marker)
-            .alignment(Alignment::Center)
-            .style(Style::default().fg(Color::White).bg(Color::Black).bold()),
-        marker_area,
-    );
 }
 
 #[cfg(test)]

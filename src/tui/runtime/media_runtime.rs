@@ -5,6 +5,7 @@ use ratatui_image::{picker::Picker, protocol::Protocol};
 use tokio::sync::mpsc;
 
 use crate::{
+    config::ImageProtocolPreference,
     discord::{AppCommand, DiscordClient, MAX_UPLOAD_FILE_BYTES, MessageAttachmentUpload},
     tui::{
         commands as command_helpers,
@@ -21,7 +22,7 @@ use crate::{
     },
 };
 
-use super::{effects as effect_helpers, redraw::image_surfaces_visible};
+use super::effects as effect_helpers;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum LocalUploadPreviewOwner {
@@ -48,34 +49,20 @@ pub(super) struct DashboardMediaRuntime {
 }
 
 impl DashboardMediaRuntime {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(protocol_preference: ImageProtocolPreference) -> Self {
         Self {
-            image_previews: ImagePreviewCache::new(),
-            avatar_images: AvatarImageCache::new(),
-            emoji_images: EmojiImageCache::new(),
+            image_previews: ImagePreviewCache::new_with_protocol_preference(protocol_preference),
+            avatar_images: AvatarImageCache::new_with_protocol_preference(protocol_preference),
+            emoji_images: EmojiImageCache::new_with_protocol_preference(protocol_preference),
             local_upload_preview_picker: query_image_picker(
                 "local upload",
                 "local upload image picker unavailable",
+                protocol_preference,
             ),
             image_targets: Vec::new(),
             avatar_targets: Vec::new(),
             emoji_targets: Vec::new(),
         }
-    }
-
-    pub(super) fn refresh_protocols(&mut self) {
-        self.image_previews.refresh_protocols();
-        self.avatar_images.refresh_protocols();
-        self.emoji_images.refresh_protocols();
-    }
-
-    pub(super) fn image_surfaces_visible(&self, state: &DashboardState) -> bool {
-        image_surfaces_visible(
-            state,
-            !self.image_targets.is_empty(),
-            !self.avatar_targets.is_empty(),
-            !self.emoji_targets.is_empty(),
-        )
     }
 
     pub(super) fn schedule_local_upload_previews(
@@ -197,11 +184,121 @@ impl DashboardMediaRuntime {
         state: &DashboardState,
         layout: ImagePreviewLayout,
         plan: &MessageViewportPlan<'_>,
+        area: Rect,
     ) {
         self.image_targets = visible_image_preview_targets_from_plan(state, layout, plan);
+        let list = ui::image_preview_list_area(area, state);
+        let messages_area = ui::dashboard_message_area(area, state);
+        let occlusion_areas = ui::background_media_occlusion_areas(messages_area, area, state);
+        self.image_targets = clip_image_preview_targets_for_occlusions(
+            std::mem::take(&mut self.image_targets),
+            list,
+            plan,
+            &occlusion_areas,
+        );
         self.avatar_targets = visible_avatar_targets_from_plan(state, layout, plan);
         self.emoji_targets = visible_emoji_image_targets(state);
     }
+}
+
+fn clip_image_preview_targets_for_occlusions(
+    targets: Vec<ImagePreviewTarget>,
+    list: Rect,
+    plan: &MessageViewportPlan<'_>,
+    occlusion_areas: &[Rect],
+) -> Vec<ImagePreviewTarget> {
+    if occlusion_areas.is_empty() {
+        return targets;
+    }
+
+    let mut clipped = Vec::new();
+    for target in targets {
+        if target.viewer {
+            clipped.push(target);
+            continue;
+        }
+
+        let Some(row_plan) = plan.row(target.message_index) else {
+            continue;
+        };
+        let row = row_plan
+            .body_top
+            .saturating_add(row_plan.metrics.body_rows() as isize)
+            .saturating_add(target.preview_y_offset_rows as isize)
+            .saturating_sub(1);
+        let Some(area) = ui::inline_image_preview_screen_area(
+            list,
+            row,
+            target.preview_x_offset_columns,
+            target.preview_width,
+            target.preview_height,
+            target.accent_color,
+        ) else {
+            continue;
+        };
+
+        clipped.extend(visible_image_target_slices(target, area, occlusion_areas));
+    }
+    clipped
+}
+
+fn visible_image_target_slices(
+    target: ImagePreviewTarget,
+    area: Rect,
+    occlusion_areas: &[Rect],
+) -> Vec<ImagePreviewTarget> {
+    let mut segments = vec![(area.y, area.y.saturating_add(area.height))];
+    for occlusion in occlusion_areas {
+        if !rects_intersect_horizontally(area, *occlusion) {
+            continue;
+        }
+        let cut_start = area.y.max(occlusion.y);
+        let cut_end = area
+            .y
+            .saturating_add(area.height)
+            .min(occlusion.y.saturating_add(occlusion.height));
+        if cut_start >= cut_end {
+            continue;
+        }
+        segments = segments
+            .into_iter()
+            .flat_map(|(start, end)| {
+                let mut next = Vec::new();
+                if start < cut_start {
+                    next.push((start, cut_start));
+                }
+                if cut_end < end {
+                    next.push((cut_end, end));
+                }
+                next
+            })
+            .collect();
+    }
+
+    segments
+        .into_iter()
+        .filter_map(|(start, end)| {
+            let additional_top = start.saturating_sub(area.y);
+            let visible_height = end.saturating_sub(start);
+            if visible_height == 0 {
+                return None;
+            }
+            let mut slice = target.clone();
+            slice.preview_y_offset_rows = slice
+                .preview_y_offset_rows
+                .saturating_add(usize::from(additional_top));
+            slice.top_clip_rows = slice.top_clip_rows.saturating_add(additional_top);
+            slice.visible_preview_height = visible_height;
+            Some(slice)
+        })
+        .collect()
+}
+
+fn rects_intersect_horizontally(a: Rect, b: Rect) -> bool {
+    !a.is_empty()
+        && !b.is_empty()
+        && a.x < b.x.saturating_add(b.width)
+        && b.x < a.x.saturating_add(a.width)
 }
 
 fn build_local_upload_preview_protocol(
@@ -285,16 +382,6 @@ pub(super) fn store_local_upload_preview_result(
     }
 }
 
-pub(super) fn clear_image_surfaces_frame(
-    frame: &mut ratatui::Frame<'_>,
-    state: &mut DashboardState,
-) -> Rect {
-    let area = frame.area();
-    ui::sync_view_heights(area, state);
-    ui::render(frame, state, Vec::new(), Vec::new(), Vec::new(), None);
-    area
-}
-
 pub(super) fn draw_dashboard_frame(
     frame: &mut ratatui::Frame<'_>,
     state: &mut DashboardState,
@@ -313,7 +400,7 @@ pub(super) fn draw_dashboard_frame(
         preview_layout.preview_width,
         preview_layout.max_preview_height,
     );
-    media_runtime.compute_targets_for_draw(state, preview_layout, &viewport_plan);
+    media_runtime.compute_targets_for_draw(state, preview_layout, &viewport_plan, area);
 
     let image_previews = media_runtime
         .image_previews
@@ -339,6 +426,30 @@ pub(super) fn draw_dashboard_frame(
         rendered_emojis,
         popup_avatar,
         Some(&viewport_plan),
+    );
+    area
+}
+
+/// Draw the whole dashboard but with no images at all. Every cell an image
+/// would occupy is instead painted with its underlying content (text, blanks,
+/// or a popup drawn on top), which overwrites the leftover terminal-graphic
+/// pixels there. The run loop draws this once, immediately before the real
+/// frame, whenever images have moved or been covered/uncovered, so the next
+/// frame redraws them cleanly with no ghost (see `image_layout_signature`).
+pub(super) fn clear_image_surfaces_frame(
+    frame: &mut ratatui::Frame<'_>,
+    state: &mut DashboardState,
+) -> Rect {
+    let area = frame.area();
+    ui::sync_view_heights(area, state);
+    ui::render_with_message_viewport_plan(
+        frame,
+        state,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        None,
+        None,
     );
     area
 }
@@ -441,4 +552,62 @@ async fn send_commands_until_closed(
         }
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::visible_image_target_slices;
+    use crate::discord::ids::{Id, marker::MessageMarker};
+    use crate::tui::media::ImagePreviewTarget;
+    use ratatui::layout::Rect;
+
+    #[test]
+    fn image_target_slices_keep_visible_rows_above_bottom_overlay() {
+        let slices = visible_image_target_slices(
+            image_preview_target(),
+            Rect::new(10, 2, 20, 10),
+            &[Rect::new(0, 8, 80, 4)],
+        );
+
+        assert_eq!(slices.len(), 1);
+        assert_eq!(slices[0].preview_y_offset_rows, 0);
+        assert_eq!(slices[0].top_clip_rows, 0);
+        assert_eq!(slices[0].visible_preview_height, 6);
+    }
+
+    #[test]
+    fn image_target_slices_keep_rows_around_middle_overlay() {
+        let slices = visible_image_target_slices(
+            image_preview_target(),
+            Rect::new(10, 2, 20, 10),
+            &[Rect::new(0, 5, 80, 3)],
+        );
+
+        assert_eq!(slices.len(), 2);
+        assert_eq!(slices[0].preview_y_offset_rows, 0);
+        assert_eq!(slices[0].top_clip_rows, 0);
+        assert_eq!(slices[0].visible_preview_height, 3);
+        assert_eq!(slices[1].preview_y_offset_rows, 6);
+        assert_eq!(slices[1].top_clip_rows, 6);
+        assert_eq!(slices[1].visible_preview_height, 4);
+    }
+
+    fn image_preview_target() -> ImagePreviewTarget {
+        ImagePreviewTarget {
+            viewer: false,
+            message_index: 0,
+            preview_index: 0,
+            preview_x_offset_columns: 0,
+            preview_y_offset_rows: 0,
+            preview_width: 20,
+            preview_height: 10,
+            visible_preview_height: 10,
+            top_clip_rows: 0,
+            accent_color: None,
+            show_play_marker: false,
+            message_id: Id::<MessageMarker>::new(1),
+            url: "https://cdn.discordapp.com/image.png".to_owned(),
+            filename: "image.png".to_owned(),
+        }
+    }
 }
