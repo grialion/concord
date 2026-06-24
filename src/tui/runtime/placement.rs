@@ -54,7 +54,12 @@ impl FramePlacements {
         self.previews.insert(key, area);
     }
 
-    pub(super) fn insert_avatar(&mut self, url: String, row: isize, fingerprint: (isize, u16, u16)) {
+    pub(super) fn insert_avatar(
+        &mut self,
+        url: String,
+        row: isize,
+        fingerprint: (isize, u16, u16),
+    ) {
         self.avatars.insert((url, row), fingerprint);
     }
 

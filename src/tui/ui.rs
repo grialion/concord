@@ -125,9 +125,9 @@ use self::{
     },
 };
 
+pub(in crate::tui) use self::popups::user_profile_popup_area;
 #[cfg(test)]
 pub(in crate::tui::ui) use self::popups::{downloads_popup_area, downloads_popup_lines};
-pub(in crate::tui) use self::popups::user_profile_popup_area;
 pub fn sync_view_heights(area: Rect, state: &mut DashboardState) {
     let areas = dashboard_areas(area, state);
     let guild_filter_row = usize::from(

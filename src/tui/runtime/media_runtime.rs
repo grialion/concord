@@ -611,7 +611,9 @@ pub(super) fn clear_image_surfaces_frame(
         .cloned()
         .collect();
 
-    let image_previews = media_runtime.image_previews.render_state(&unchanged_previews);
+    let image_previews = media_runtime
+        .image_previews
+        .render_state(&unchanged_previews);
     let rendered_emojis = media_runtime
         .emoji_images
         .render_state(&media_runtime.emoji_targets);

@@ -89,7 +89,14 @@ fn channel_switcher_includes_threads_and_forums_with_type_icons() {
     // A forum post is a thread parented to a forum; it must stay out.
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         current_user_joined_thread: Some(true),
-        ..forum_thread_info(guild_id, forum_id, forum_post_id.get(), "a post", Some(300), false)
+        ..forum_thread_info(
+            guild_id,
+            forum_id,
+            forum_post_id.get(),
+            "a post",
+            Some(300),
+            false,
+        )
     }));
     // A joined, non-archived thread under a text channel must appear.
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
