@@ -176,6 +176,8 @@ choose `[o] Sign out`.
 - Browse servers with guild folder grouping
 - Navigate text channels, threads, and forum channels
 - View, filter, and create forum/media posts (active / archived)
+- Create, edit, follow, close, lock, pin, and delete threads and forum posts
+- Switch channels, threads, and posts with the fuzzy channel switcher (`Space`, `Space`)
 - Load pinned messages per channel
 - Open channel actions for pinned messages, thread lists, and mark-as-read
 - Join and leave voice channels
@@ -250,7 +252,9 @@ YouTube playback depends on your local `mpv` setup, such as `yt-dlp` support.
 
 ### Notifications
 
-- You can configure custom WAV files
+- Notification inbox (`<leader>n`) with Unreads and Mentions tabs, per-channel
+  message previews, and mark-as-read / mark-all-read
+- You can configure notification sounds with custom WAV files
 - Desktop notifications for messages that pass your Discord
   notification settings
 - Voice join and leave notification sounds while you are connected to voice
@@ -370,19 +374,19 @@ Channel actions:
 
 Thread / post actions (a focused thread in the Channels pane or a forum post in the post list):
 
-| Shortcut | Action                | Description                                                     |
-| -------- | --------------------- | -------------------------------------------------------------- |
-| `m`      | Mark as read          | Mark the thread or post read                                   |
-| `f`      | Follow / unfollow     | Follow or unfollow the thread or post                          |
-| `c`      | Close / reopen        | Close or reopen the thread or post (author or moderator)       |
-| `l`      | Lock / unlock         | Lock or unlock the thread or post (moderator)                  |
-| `e`      | Edit                  | Edit title, tags, slow mode, and auto-archive                  |
-| `y`      | Copy link             | Copy a link to the thread or post                              |
-| `u`      | Mute / unmute         | Toggle thread or post notification mute (must follow first)    |
-| `n`      | Notification settings | Choose the notification level for the thread or post           |
-| `P`      | Pin / unpin           | Pin or unpin the post (forum posts only, moderator)            |
-| `d`      | Delete                | Delete the whole thread or post (moderator)                    |
-| `i`      | Copy ID               | Copy the thread or post ID                                     |
+| Shortcut | Action                | Description                                                 |
+| -------- | --------------------- | ----------------------------------------------------------- |
+| `m`      | Mark as read          | Mark the thread or post read                                |
+| `f`      | Follow / unfollow     | Follow or unfollow the thread or post                       |
+| `c`      | Close / reopen        | Close or reopen the thread or post (author or moderator)    |
+| `l`      | Lock / unlock         | Lock or unlock the thread or post (moderator)               |
+| `e`      | Edit                  | Edit title, tags, slow mode, and auto-archive               |
+| `y`      | Copy link             | Copy a link to the thread or post                           |
+| `u`      | Mute / unmute         | Toggle thread or post notification mute (must follow first) |
+| `n`      | Notification settings | Choose the notification level for the thread or post        |
+| `P`      | Pin / unpin           | Pin or unpin the post (forum posts only, moderator)         |
+| `d`      | Delete                | Delete the whole thread or post (moderator)                 |
+| `i`      | Copy ID               | Copy the thread or post ID                                  |
 
 Voice commands:
 
