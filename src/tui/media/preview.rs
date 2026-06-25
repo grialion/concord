@@ -6,7 +6,10 @@ use std::{
 use crate::config::ImageProtocolPreference;
 use crate::discord::ids::{Id, marker::MessageMarker};
 use image::DynamicImage;
-use ratatui_image::{picker::Picker, protocol::StatefulProtocol};
+use ratatui_image::{
+    picker::{Picker, ProtocolType},
+    protocol::StatefulProtocol,
+};
 
 use crate::{
     discord::{AppCommand, AppEvent},
@@ -86,6 +89,12 @@ impl ImagePreviewCache {
 
     pub(in crate::tui) fn font_size(&self) -> Option<(u16, u16)> {
         self.picker.as_ref().map(picker_font_size)
+    }
+
+    pub(in crate::tui) fn uses_kitty_protocol(&self) -> bool {
+        self.picker
+            .as_ref()
+            .is_some_and(|picker| picker.protocol_type() == ProtocolType::Kitty)
     }
 
     pub(in crate::tui) fn render_state(

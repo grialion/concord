@@ -1,6 +1,10 @@
 use std::collections::VecDeque;
 
-use crossterm::event::EventStream;
+use crossterm::{
+    event::EventStream,
+    execute,
+    terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate},
+};
 use futures::StreamExt;
 use ratatui::layout::Rect;
 use tokio::sync::{mpsc, watch};
@@ -120,9 +124,18 @@ pub(super) async fn run_dashboard(
             // cell diff cannot erase on its own, so when an overlay moved or
             // disappeared we draw one frame that keeps only the unchanged
             // overlays (overpainting the stale pixels) before the real frame.
-            // When nothing moved we draw a single frame and never blink.
+            // When nothing moved we draw a single frame.
             media_runtime.prepare_frame(&mut state, area);
-            if media_runtime.need_clear() {
+            let need_clear = media_runtime.need_clear();
+            // The erase frame blanks the moved images and the real frame redraws
+            // them. Wrap both in a synchronized update (DEC mode 2026) so the
+            // terminal presents them as one atomic repaint. Without it, terminals
+            // that paint each flush eagerly (iTerm2, Kitty) show the blanked frame
+            // for a beat and every image flickers on each scroll. WezTerm
+            // coalesces draws so it never revealed the gap. Best-effort: terminals
+            // without 2026 ignore the markers and behave as before.
+            if need_clear {
+                let _ = execute!(terminal.backend_mut(), BeginSynchronizedUpdate);
                 terminal.draw(|frame| {
                     last_frame_area =
                         clear_image_surfaces_frame(frame, &mut state, &mut media_runtime);
@@ -131,6 +144,9 @@ pub(super) async fn run_dashboard(
             terminal.draw(|frame| {
                 last_frame_area = draw_dashboard_frame(frame, &mut state, &mut media_runtime);
             })?;
+            if need_clear {
+                let _ = execute!(terminal.backend_mut(), EndSynchronizedUpdate);
+            }
             media_runtime.commit_placements();
             dirty = false;
             last_view_signature = redraw_gate::view_signature(&state);

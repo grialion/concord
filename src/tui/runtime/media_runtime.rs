@@ -317,7 +317,13 @@ impl DashboardMediaRuntime {
     }
 
     pub(super) fn need_clear(&self) -> bool {
-        self.placement_diff.need_clear
+        // Kitty's unicode-placeholder protocol auto-removes a placement when its
+        // placeholder cells are overwritten, so the normal cell diff erases moved
+        // or removed images on its own. The separate erase frame would only add a
+        // redundant repaint there (and a residual blink). Skip it for Kitty.
+        // iTerm2 and Sixel still need it because they blit pixels the cell diff
+        // cannot reach.
+        self.placement_diff.need_clear && !self.image_previews.uses_kitty_protocol()
     }
 }
 
