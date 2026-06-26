@@ -28,7 +28,9 @@ use gateway::voice_speaking_payload;
 use gateway::*;
 #[cfg(not(test))]
 use gateway::{run_voice_gateway_session, send_voice_binary, send_voice_text};
-pub use info::{VoiceConnectionStatus, VoiceScope, VoiceServerInfo, VoiceSoundKind, VoiceStateInfo};
+pub use info::{
+    VoiceConnectionStatus, VoiceScope, VoiceServerInfo, VoiceSoundKind, VoiceStateInfo,
+};
 #[cfg(all(feature = "voice-playback", target_os = "linux", not(test)))]
 use microphone::log_captured_alsa_errors;
 #[cfg(all(feature = "voice-playback", not(test)))]

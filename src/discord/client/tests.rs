@@ -287,7 +287,12 @@ fn requested_voice_state_tracks_shutdown_fallback() {
     let client = DiscordClient::new("test-token".to_owned()).expect("token is valid header");
 
     client
-        .update_voice_state(VoiceScope::Guild(Id::new(1)), Some(Id::new(10)), true, false)
+        .update_voice_state(
+            VoiceScope::Guild(Id::new(1)),
+            Some(Id::new(10)),
+            true,
+            false,
+        )
         .expect("gateway command should queue");
     let voice = client
         .requested_voice_connection()
@@ -317,7 +322,12 @@ fn requested_voice_state_skips_duplicate_gateway_updates() {
         .expect("gateway commands can be taken once");
 
     client
-        .update_voice_state(VoiceScope::Guild(Id::new(1)), Some(Id::new(10)), true, false)
+        .update_voice_state(
+            VoiceScope::Guild(Id::new(1)),
+            Some(Id::new(10)),
+            true,
+            false,
+        )
         .expect("initial join should queue");
     assert_voice_update(
         &mut gateway_commands,
@@ -328,7 +338,12 @@ fn requested_voice_state_skips_duplicate_gateway_updates() {
     );
 
     client
-        .update_voice_state(VoiceScope::Guild(Id::new(1)), Some(Id::new(10)), true, false)
+        .update_voice_state(
+            VoiceScope::Guild(Id::new(1)),
+            Some(Id::new(10)),
+            true,
+            false,
+        )
         .expect("duplicate join is ignored without closing channel");
     assert!(matches!(
         gateway_commands.try_recv(),
@@ -336,7 +351,12 @@ fn requested_voice_state_skips_duplicate_gateway_updates() {
     ));
 
     client
-        .update_voice_state(VoiceScope::Guild(Id::new(1)), Some(Id::new(10)), false, false)
+        .update_voice_state(
+            VoiceScope::Guild(Id::new(1)),
+            Some(Id::new(10)),
+            false,
+            false,
+        )
         .expect("mute change should queue");
     assert_voice_update(
         &mut gateway_commands,
@@ -418,7 +438,12 @@ async fn voice_join_rejects_explicit_missing_connect_permission() {
         .expect("gateway commands can be taken once");
 
     let error = client
-        .update_voice_state(VoiceScope::Guild(Id::new(1)), Some(Id::new(2)), false, false)
+        .update_voice_state(
+            VoiceScope::Guild(Id::new(1)),
+            Some(Id::new(2)),
+            false,
+            false,
+        )
         .expect_err("missing CONNECT should stop before gateway command");
 
     assert_eq!(error, "cannot connect to voice channel");

@@ -1,6 +1,6 @@
 use super::*;
-use std::collections::BTreeMap;
 use crate::discord::VoiceScope;
+use std::collections::BTreeMap;
 
 #[test]
 fn enter_toggles_selected_channel_category_and_space_opens_leader() {

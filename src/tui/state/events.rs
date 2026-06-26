@@ -350,20 +350,14 @@ impl DashboardState {
     ) {
         match status {
             VoiceConnectionStatus::Connecting => {
-                self.runtime.voice_connection = Some(VoiceConnectionUiState {
-                    scope,
-                    channel_id,
-                });
+                self.runtime.voice_connection = Some(VoiceConnectionUiState { scope, channel_id });
                 self.show_success_toast(
                     message.as_deref().unwrap_or("Voice join requested"),
                     Instant::now(),
                 );
             }
             VoiceConnectionStatus::Connected => {
-                self.runtime.voice_connection = Some(VoiceConnectionUiState {
-                    scope,
-                    channel_id,
-                });
+                self.runtime.voice_connection = Some(VoiceConnectionUiState { scope, channel_id });
                 self.show_success_toast(
                     message.as_deref().unwrap_or("Voice connected"),
                     Instant::now(),

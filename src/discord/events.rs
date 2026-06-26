@@ -17,8 +17,7 @@ use super::{
     GuildNotificationSettingsInfo, MemberInfo, MentionInfo, MessageInfo, PollInfo, PresenceStatus,
     ReactionUsersInfo, ReadStateInfo, RelationshipInfo, RoleInfo, SnapshotAreas, UserProfileInfo,
     UserSettingsInfo, VoiceConnectionStatus, VoiceScope, VoiceServerInfo, VoiceSoundKind,
-    VoiceStateInfo,
-    is_thread_kind,
+    VoiceStateInfo, is_thread_kind,
 };
 
 #[cfg(test)]

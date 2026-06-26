@@ -198,10 +198,8 @@ impl DashboardState {
                 match item.kind {
                     ChannelActionKind::JoinVoice => {
                         self.close_channel_leader_action();
-                        self.discord
-                            .cache
-                            .channel(channel_id)
-                            .map(|channel| AppCommand::JoinVoiceChannel {
+                        self.discord.cache.channel(channel_id).map(|channel| {
+                            AppCommand::JoinVoiceChannel {
                                 scope: channel.voice_scope(),
                                 channel_id,
                                 self_mute: self.options.voice_options.self_mute,
@@ -216,18 +214,18 @@ impl DashboardState {
                                     .microphone_sensitivity,
                                 microphone_volume: self.options.voice_options.microphone_volume,
                                 voice_output_volume: self.options.voice_options.voice_output_volume,
-                            })
+                            }
+                        })
                     }
                     ChannelActionKind::LeaveVoice => {
                         self.close_channel_leader_action();
-                        self.discord
-                            .cache
-                            .channel(channel_id)
-                            .map(|channel| AppCommand::LeaveVoiceChannel {
+                        self.discord.cache.channel(channel_id).map(|channel| {
+                            AppCommand::LeaveVoiceChannel {
                                 scope: channel.voice_scope(),
                                 self_mute: self.options.voice_options.self_mute,
                                 self_deaf: self.options.voice_options.self_deaf,
-                            })
+                            }
+                        })
                     }
                     ChannelActionKind::LoadPinnedMessages => {
                         self.close_channel_leader_action();

@@ -1,7 +1,8 @@
 use serde_json::Value;
 
 use crate::discord::{
-    Id, VoiceServerInfo, VoiceStateInfo, events::AppEvent,
+    Id, VoiceServerInfo, VoiceStateInfo,
+    events::AppEvent,
     ids::marker::{ChannelMarker, GuildMarker},
 };
 

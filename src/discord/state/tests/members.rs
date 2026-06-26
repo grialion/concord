@@ -279,10 +279,9 @@ fn tracks_dm_call_participants_resolving_names_from_recipients() {
             .any(|participant| participant.user_id == me && participant.display_name == "Me")
     );
     assert!(
-        participants
-            .iter()
-            .any(|participant| participant.user_id == friend
-                && participant.display_name == "Friend")
+        participants.iter().any(
+            |participant| participant.user_id == friend && participant.display_name == "Friend"
+        )
     );
     assert!(
         state
@@ -336,7 +335,9 @@ fn moving_between_dm_calls_does_not_leave_the_user_in_the_old_call() {
     assert_eq!(current.len(), 1);
     assert_eq!(current[0].user_id, me);
     assert_eq!(
-        state.current_user_voice_connection().map(|voice| voice.scope),
+        state
+            .current_user_voice_connection()
+            .map(|voice| voice.scope),
         Some(VoiceScope::Private(second_dm))
     );
 }
@@ -425,11 +426,7 @@ fn call_delete_clears_a_dm_calls_participants() {
     assert_eq!(state.voice_participants_for_private_channel(dm).len(), 2);
 
     state.apply_event(&AppEvent::CallDelete { channel_id: dm });
-    assert!(
-        state
-            .voice_participants_for_private_channel(dm)
-            .is_empty()
-    );
+    assert!(state.voice_participants_for_private_channel(dm).is_empty());
 }
 
 #[test]

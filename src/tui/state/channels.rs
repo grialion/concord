@@ -536,7 +536,9 @@ impl DashboardState {
                     state,
                     branch: ChannelBranch::None,
                 });
-                let participants = self.discord.voice_participants_for_private_channel(state.id);
+                let participants = self
+                    .discord
+                    .voice_participants_for_private_channel(state.id);
                 entries.extend(participants.into_iter().map(|participant| {
                     ChannelPaneEntry::VoiceParticipant {
                         participant,
@@ -932,13 +934,12 @@ impl DashboardState {
     }
 
     pub fn active_voice_connection_label(&self) -> Option<String> {
-        let (scope, channel_id, other_client) =
-            if let Some(voice) = self.runtime.voice_connection {
-                (voice.scope, voice.channel_id?, false)
-            } else {
-                let voice = self.discord.current_user_voice_connection()?;
-                (voice.scope, voice.channel_id, true)
-            };
+        let (scope, channel_id, other_client) = if let Some(voice) = self.runtime.voice_connection {
+            (voice.scope, voice.channel_id?, false)
+        } else {
+            let voice = self.discord.current_user_voice_connection()?;
+            (voice.scope, voice.channel_id, true)
+        };
         let channel = self
             .discord
             .channel(channel_id)

@@ -247,9 +247,9 @@ impl DiscordState {
         user_id: Id<UserMarker>,
     ) -> Option<String> {
         match scope {
-            VoiceScope::Guild(guild_id) => {
-                self.member_display_name(guild_id, user_id).map(str::to_owned)
-            }
+            VoiceScope::Guild(guild_id) => self
+                .member_display_name(guild_id, user_id)
+                .map(str::to_owned),
             VoiceScope::Private(channel_id) => {
                 if self.session.current_user_id == Some(user_id) {
                     if let Some(name) = self.session.current_user.clone() {
@@ -299,11 +299,9 @@ impl DiscordState {
             // Moving across scopes (DM A -> DM B, guild -> DM) changes the key,
             // and Discord sends only the new location, so drop any stale entry
             // this user still holds under a different scope.
-            self.voice
-                .states
-                .retain(|(state_scope, state_user_id), _| {
-                    *state_user_id != user_id || *state_scope == scope
-                });
+            self.voice.states.retain(|(state_scope, state_user_id), _| {
+                *state_user_id != user_id || *state_scope == scope
+            });
             self.voice.states.insert(
                 key,
                 VoiceState {
