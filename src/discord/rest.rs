@@ -75,7 +75,11 @@ impl DiscordRest {
 /// A captcha challenge becomes `CaptchaRequired` so callers stop instead of
 /// retrying. Retrying an unsolved captcha is what escalates to a temporary
 /// account block (issue #218).
-async fn request_error(error: reqwest::Error, response: reqwest::Response, label: &str) -> AppError {
+async fn request_error(
+    error: reqwest::Error,
+    response: reqwest::Response,
+    label: &str,
+) -> AppError {
     let status = response.status();
     let body = response.text().await.ok();
     if let Some(body) = body.as_deref()

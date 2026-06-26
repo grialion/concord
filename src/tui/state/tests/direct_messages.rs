@@ -90,7 +90,10 @@ fn dm_composer_locks_until_current_user_has_sent_a_message() {
         user: "me".to_owned(),
         user_id: Some(Id::new(1)),
     });
-    state.push_event(AppEvent::ChannelUpsert(dm_channel_info(Id::new(20), "alice")));
+    state.push_event(AppEvent::ChannelUpsert(dm_channel_info(
+        Id::new(20),
+        "alice",
+    )));
     state.confirm_selected_guild();
     state.confirm_selected_channel();
     assert_eq!(state.selected_channel_id(), Some(Id::new(20)));
@@ -104,7 +107,10 @@ fn dm_composer_locks_until_current_user_has_sent_a_message() {
         content: Some("hi".to_owned()),
         ..guild_message_create_fixture()
     }));
-    assert_eq!(state.dm_composer_lock(), Some(DmComposerLock::NeverMessaged));
+    assert_eq!(
+        state.dm_composer_lock(),
+        Some(DmComposerLock::NeverMessaged)
+    );
     assert!(!state.can_send_in_selected_channel());
     state.start_composer();
     assert!(!state.is_composing());
@@ -149,7 +155,10 @@ fn dm_composer_locks_message_request_and_spam_dms_even_after_replying() {
         content: Some("hey".to_owned()),
         ..guild_message_create_fixture()
     }));
-    assert_eq!(state.dm_composer_lock(), Some(DmComposerLock::MessageRequest));
+    assert_eq!(
+        state.dm_composer_lock(),
+        Some(DmComposerLock::MessageRequest)
+    );
     assert!(!state.can_send_in_selected_channel());
 
     // Spam classification takes precedence and reports the spam reason.

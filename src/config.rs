@@ -507,7 +507,9 @@ where
                 clean.insert(key.clone(), value.clone());
             }
             Err(error) => {
-                warnings.push(format!("[{name}] {key} is invalid and was ignored: {error}"));
+                warnings.push(format!(
+                    "[{name}] {key} is invalid and was ignored: {error}"
+                ));
             }
         }
     }
@@ -515,7 +517,9 @@ where
     match toml::Value::Table(clean).try_into() {
         Ok(options) => options,
         Err(error) => {
-            warnings.push(format!("[{name}] could not be applied, using defaults: {error}"));
+            warnings.push(format!(
+                "[{name}] could not be applied, using defaults: {error}"
+            ));
             T::default()
         }
     }
@@ -612,7 +616,9 @@ fn parse_keymap_options(content: &str) -> Result<(KeymapOptions, Vec<String>)> {
     let keymap = match toml::Value::Table(file).try_into::<KeymapFileOptions>() {
         Ok(file) => file.keymap,
         Err(error) => {
-            warnings.push(format!("[keymap] could not be applied, using defaults: {error}"));
+            warnings.push(format!(
+                "[keymap] could not be applied, using defaults: {error}"
+            ));
             KeymapOptions::default()
         }
     };
@@ -690,9 +696,9 @@ mod tests {
     use super::{
         AppOptions, ComposerOptions, CredentialOptions, CredentialStoreMode, DisplayOptions,
         ImagePreviewQualityPreset, ImageProtocolPreference, KeymapBinding, KeymapFileOptions,
-        KeymapOptions, MicrophoneSensitivityDb, NotificationOptions, VoiceOptions, VoiceVolumePercent,
-        load_keymap_options_from_path, load_options_from_path, parse_app_options,
-        save_options_to_path,
+        KeymapOptions, MicrophoneSensitivityDb, NotificationOptions, VoiceOptions,
+        VoiceVolumePercent, load_keymap_options_from_path, load_options_from_path,
+        parse_app_options, save_options_to_path,
     };
 
     #[test]
@@ -939,7 +945,10 @@ mod tests {
         .expect("syntactically valid config should parse");
 
         assert!(!options.display.show_avatars, "valid sibling value applies");
-        assert!(options.voice.self_mute, "valid value in other section applies");
+        assert!(
+            options.voice.self_mute,
+            "valid value in other section applies"
+        );
         assert_eq!(
             options.display.image_protocol,
             ImageProtocolPreference::default(),

@@ -54,8 +54,6 @@ mod tests {
         // Same body under a different status is not a captcha gate.
         assert!(parse_captcha_challenge(StatusCode::FORBIDDEN, body).is_none());
         // An ordinary 400 error must not be mistaken for a captcha.
-        assert!(
-            parse_captcha_challenge(StatusCode::BAD_REQUEST, r#"{"message":"bad"}"#).is_none()
-        );
+        assert!(parse_captcha_challenge(StatusCode::BAD_REQUEST, r#"{"message":"bad"}"#).is_none());
     }
 }
