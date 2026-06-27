@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [2.2.8] - 2026-06-26
 
 ### Bug Fixes
 
@@ -80,10 +80,10 @@ All notable changes to this project will be documented in this file.
 
 - Preserve boundary payloads consistently by @chojs23
 
-
 ### New Contributors
 
 - @fuguesoft made their first contribution in [#200](https://github.com/chojs23/concord/pull/200)
+
 ## [2.2.3] - 2026-06-18
 
 ### Bug Fixes
@@ -153,8 +153,8 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- *(tui)* Preserve member search selection across member cache refreshes by @chojs23
-- *(tui)* Prevent popup residue on terminal images by @chojs23
+- _(tui)_ Preserve member search selection across member cache refreshes by @chojs23
+- _(tui)_ Prevent popup residue on terminal images by @chojs23
 - Retain member cache for more recent guilds by @chojs23
 
 ### Documentation
@@ -164,17 +164,17 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - Add --check-config validation command by @chojs23
-- *(tui)* Keep voice indicators visible after name truncation by @chojs23
+- _(tui)_ Keep voice indicators visible after name truncation by @chojs23
 
 ## [2.1.12] - 2026-06-07
 
 ### Bug Fixes
 
-- *(deps)* Lock ratatui-image by @chojs23
+- _(deps)_ Lock ratatui-image by @chojs23
 
 ### Miscellaneous Tasks
 
-- *(ci)* Remove legacy Darwin SDK framework inputs from Nix flake by @chojs23
+- _(ci)_ Remove legacy Darwin SDK framework inputs from Nix flake by @chojs23
 
 ## [2.1.11] - 2026-06-07
 
@@ -200,10 +200,10 @@ All notable changes to this project will be documented in this file.
 - Use pure rust syntect backend by @chojs23
 - Add profile configuration (#163) in [#163](https://github.com/chojs23/concord/pull/163) by @chojs23
 
-
 ### New Contributors
 
 - @cultlead3r made their first contribution in [#160](https://github.com/chojs23/concord/pull/160)
+
 ## [2.1.9] - 2026-06-03
 
 ### Bug Fixes
@@ -237,11 +237,11 @@ All notable changes to this project will be documented in this file.
 - Added option for notification icon (#148) in [#148](https://github.com/chojs23/concord/pull/148) by @ToborWinner
 - Add composer option and move emoji_as_link to composer option by @chojs23
 
-
 ### New Contributors
 
 - @ToborWinner made their first contribution in [#148](https://github.com/chojs23/concord/pull/148)
 - @van-nessing made their first contribution in [#144](https://github.com/chojs23/concord/pull/144)
+
 ## [2.1.7] - 2026-05-29
 
 ### Bug Fixes
@@ -257,8 +257,8 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- *(voice)* Isolate audio path on a dedicated runtime and pace sends off the mic clock (#138) in [#138](https://github.com/chojs23/concord/pull/138) by @ibarrick
-- *(voice)* Make audio transmit shutdown and pacing robust by @chojs23
+- _(voice)_ Isolate audio path on a dedicated runtime and pace sends off the mic clock (#138) in [#138](https://github.com/chojs23/concord/pull/138) by @ibarrick
+- _(voice)_ Make audio transmit shutdown and pacing robust by @chojs23
 
 ### Features
 
@@ -287,10 +287,10 @@ All notable changes to this project will be documented in this file.
 - Use generic popup by @chojs23
 - Group tui runtime plumbing by @chojs23
 
-
 ### New Contributors
 
 - @ibarrick made their first contribution in [#133](https://github.com/chojs23/concord/pull/133)
+
 ## [2.1.4] - 2026-05-26
 
 ### Bug Fixes
@@ -386,7 +386,7 @@ All notable changes to this project will be documented in this file.
 - Avoid report all keys as escape code by @chojs23
 - Improve clipboard paste priority by @chojs23
 - Fix stale MESSAGE_ACK from reopening unread state (#119) in [#119](https://github.com/chojs23/concord/pull/119) by @chojs23
-- *(tui)* Keep guild filter pane width stable by @chojs23
+- _(tui)_ Keep guild filter pane width stable by @chojs23
 - Fix forum preview message by @chojs23
 
 ### Documentation
@@ -403,11 +403,11 @@ All notable changes to this project will be documented in this file.
 - Move tui state to client backend by @chojs23
 - Move TUI backend request handling into Discord client by @chojs23
 
-
 ### New Contributors
 
 - @StaszeKrk made their first contribution in [#121](https://github.com/chojs23/concord/pull/121)
 - @CX330Blake made their first contribution in [#117](https://github.com/chojs23/concord/pull/117)
+
 ## [2.0.6] - 2026-05-21
 
 ### Bug Fixes
@@ -421,7 +421,7 @@ All notable changes to this project will be documented in this file.
 
 ### Performance
 
-- *(tui)* Suppress image redraws for sidebar updates by @chojs23
+- _(tui)_ Suppress image redraws for sidebar updates by @chojs23
 
 ### Refactor
 
@@ -444,7 +444,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- *(tui)* Detect URLs in reply quotes and forwarded messages (#107) in [#107](https://github.com/chojs23/concord/pull/107) by @SAY-5
+- _(tui)_ Detect URLs in reply quotes and forwarded messages (#107) in [#107](https://github.com/chojs23/concord/pull/107) by @SAY-5
 - Use transient typing display names for TYPING_START by @chojs23
 - Clear typing indicator when a typer sends a message by @chojs23
 - Composer newline fallbacks (#112) in [#112](https://github.com/chojs23/concord/pull/112) by @chojs23
@@ -462,12 +462,12 @@ All notable changes to this project will be documented in this file.
 
 ### Performance
 
-- *(tui)* Improve member sidebar loading and rendering by @chojs23
-
+- _(tui)_ Improve member sidebar loading and rendering by @chojs23
 
 ### New Contributors
 
 - @SAY-5 made their first contribution in [#107](https://github.com/chojs23/concord/pull/107)
+
 ## [2.0.3] - 2026-05-19
 
 ### Bug Fixes
@@ -519,7 +519,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- *(voice)* Reduce microphone tearing during transmit (#96) in [#96](https://github.com/chojs23/concord/pull/96) by @chojs23
+- _(voice)_ Reduce microphone tearing during transmit (#96) in [#96](https://github.com/chojs23/concord/pull/96) by @chojs23
 
 ### Features
 
@@ -595,7 +595,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- *(search)* Improve fuzzy search logic (#74) in [#74](https://github.com/chojs23/concord/pull/74) by @80avin
+- _(search)_ Improve fuzzy search logic (#74) in [#74](https://github.com/chojs23/concord/pull/74) by @80avin
 
 ### Miscellaneous Tasks
 
@@ -607,10 +607,10 @@ All notable changes to this project will be documented in this file.
 - Cache message content row metrics to reduce repeated per-frame formatting by @chojs23
 - Reduce channel upsert UI repair work by @chojs23
 
-
 ### New Contributors
 
 - @80avin made their first contribution in [#74](https://github.com/chojs23/concord/pull/74)
+
 ## [1.4.1] - 2026-05-15
 
 ### Bug Fixes
@@ -674,10 +674,10 @@ All notable changes to this project will be documented in this file.
 - Remove redundant preview preset by @chojs23
 - Refactor keyboard shortcuts by @chojs23
 
-
 ### New Contributors
 
 - @SeniorMars made their first contribution in [#57](https://github.com/chojs23/concord/pull/57)
+
 ## [1.3.3] - 2026-05-13
 
 ### Bug Fixes
@@ -702,10 +702,10 @@ All notable changes to this project will be documented in this file.
 - Split tui modules by @chojs23
 - Gateway parser and TUI popup modules by @chojs23
 
-
 ### New Contributors
 
 - @AnalogCyan made their first contribution in [#50](https://github.com/chojs23/concord/pull/50)
+
 ## [1.3.2] - 2026-05-12
 
 ### Bug Fixes
@@ -732,7 +732,7 @@ All notable changes to this project will be documented in this file.
 
 ### Refactor
 
-- *(tui)* Remove footer and popup hints (#43) in [#43](https://github.com/chojs23/concord/pull/43) by @chojs23
+- _(tui)_ Remove footer and popup hints (#43) in [#43](https://github.com/chojs23/concord/pull/43) by @chojs23
 - Refactor activity rendering with typed ActivityRender struct (#44) in [#44](https://github.com/chojs23/concord/pull/44) by @chojs23
 - Change broken dash by @chojs23
 
@@ -740,11 +740,11 @@ All notable changes to this project will be documented in this file.
 
 - Rename leader action state and add context-specific action titles by @chojs23
 
-
 ### New Contributors
 
 - @amiralimollaei made their first contribution in [#49](https://github.com/chojs23/concord/pull/49)
 - @kimjune01 made their first contribution in [#45](https://github.com/chojs23/concord/pull/45)
+
 ## [1.3.1] - 2026-05-11
 
 ### Bug Fixes
@@ -789,22 +789,22 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - Support resizing panes (#18) in [#18](https://github.com/chojs23/concord/pull/18) by @nexxai
-- *(composer)* Add CTRL+Left, CTRL+Right word skip (#15) in [#15](https://github.com/chojs23/concord/pull/15) by @TobyBridle
+- _(composer)_ Add CTRL+Left, CTRL+Right word skip (#15) in [#15](https://github.com/chojs23/concord/pull/15) by @TobyBridle
 - Add search to reaction picker + allow toggling of reactions (#19) in [#19](https://github.com/chojs23/concord/pull/19) by @nexxai
 - Add fuzzy score helper (#21) in [#21](https://github.com/chojs23/concord/pull/21) by @chojs23
 - Typo tolerant fuzzy (#22) in [#22](https://github.com/chojs23/concord/pull/22) by @chojs23
 
 ### Refactor
 
-- *(composer)* Use char-safe word boundary helpers (#20) in [#20](https://github.com/chojs23/concord/pull/20) by @chojs23
+- _(composer)_ Use char-safe word boundary helpers (#20) in [#20](https://github.com/chojs23/concord/pull/20) by @chojs23
 - Store app files under $XDG_CONFIG_HOME/concord (#23) in [#23](https://github.com/chojs23/concord/pull/23) by @chojs23
-
 
 ### New Contributors
 
 - @lisk77 made their first contribution in [#14](https://github.com/chojs23/concord/pull/14)
 - @nexxai made their first contribution in [#19](https://github.com/chojs23/concord/pull/19)
 - @TobyBridle made their first contribution in [#15](https://github.com/chojs23/concord/pull/15)
+
 ## [1.2.0] - 2026-05-09
 
 ### Documentation
@@ -854,7 +854,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- *(flake)* Use crane (#4) in [#4](https://github.com/chojs23/concord/pull/4) by @M4jor-Tom
+- _(flake)_ Use crane (#4) in [#4](https://github.com/chojs23/concord/pull/4) by @M4jor-Tom
 - Keep original image width:height ratio (#6) in [#6](https://github.com/chojs23/concord/pull/6) by @chojs23
 
 ### Documentation
@@ -875,10 +875,10 @@ All notable changes to this project will be documented in this file.
 
 - Chain crates publish after release by @chojs23
 
-
 ### New Contributors
 
 - @M4jor-Tom made their first contribution in [#4](https://github.com/chojs23/concord/pull/4)
+
 ## [1.0.3] - 2026-05-08
 
 ### Bug Fixes
@@ -1204,9 +1204,7 @@ All notable changes to this project will be documented in this file.
 
 - Add TUI and keychain dependencies by @chojs23
 
-
 ### New Contributors
 
 - @chojs23 made their first contribution
 - @vncsalencar made their first contribution
-
