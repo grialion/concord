@@ -144,24 +144,41 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          ${{ matrix.packages_install }}
 
-          if [[ "${{ contains(join(matrix.targets, ' '), 'arm-unknown-linux-gnueabihf') }}" == "true" ]]; then
-            sudo dpkg --add-architecture armhf
-            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports|g' /etc/apt/sources.list
-            sudo apt-get update
-            sudo apt-get install -y \
-              gcc-arm-linux-gnueabihf \
-              pkg-config \
-              libasound2-dev:armhf \
-              libopus-dev:armhf
-
-            echo "PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig" >> "$GITHUB_ENV"
-            echo "PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig" >> "$GITHUB_ENV"
-            echo "PKG_CONFIG_SYSROOT_DIR=/" >> "$GITHUB_ENV"
-            echo "CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc" >> "$GITHUB_ENV"
-            echo "CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc" >> "$GITHUB_ENV"
-          fi
+        ${{ matrix.packages_install }}
+    
+        if [[ "${{ contains(join(matrix.targets, ' '), 'arm-unknown-linux-gnueabihf') }}" == "true" ]]; then
+          sudo dpkg --add-architecture armhf
+    
+          # Rewrite sources to be arch-specific:
+          # - amd64 from normal Ubuntu/security mirrors
+          # - armhf from ports.ubuntu.com
+          sudo tee /etc/apt/sources.list >/dev/null <<'EOF'
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy-backports main restricted universe multiverse
+          deb [arch=amd64] http://security.ubuntu.com/ubuntu jammy-security main restricted universe multiverse
+    
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
+          EOF
+    
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-arm-linux-gnueabihf \
+            pkg-config \
+            libasound2-dev:armhf \
+            libopus-dev:armhf
+    
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_SYSROOT_DIR=/" >> "$GITHUB_ENV"
+          echo "CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc" >> "$GITHUB_ENV"
+        fi
 
       - name: expose Homebrew Opus to pkg-config (macOS)
         if: runner.os == 'macOS'
