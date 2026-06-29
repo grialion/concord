@@ -176,7 +176,7 @@ jobs:
               echo "PKG_CONFIG_SYSROOT_DIR=/"
               echo "CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc"
               echo "CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc"
-} >> "$GITHUB_ENV"
+            } >> "$GITHUB_ENV"
           fi
       - name: expose Homebrew Opus to pkg-config (macOS)
         if: runner.os == 'macOS'
