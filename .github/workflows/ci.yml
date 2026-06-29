@@ -148,6 +148,7 @@ jobs:
 
           if [[ "${{ contains(join(matrix.targets, ' '), 'arm-unknown-linux-gnueabihf') }}" == "true" ]]; then
             sudo dpkg --add-architecture armhf
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports|g' /etc/apt/sources.list
             sudo apt-get update
             sudo apt-get install -y \
               gcc-arm-linux-gnueabihf \
