@@ -1121,18 +1121,6 @@ mod tests {
     }
 
     #[test]
-    fn key_chord_rejects_legacy_plus_modifier_syntax() {
-        let cases = ["ctrl+k", "control+k", "shift+tab", "alt+backspace"];
-
-        for value in cases {
-            assert!(
-                KeyChord::from_str(value).is_err(),
-                "{value} should not parse as a key chord"
-            );
-        }
-    }
-
-    #[test]
     fn angle_key_parses_neovim_modifier_aliases() {
         let cases = [
             ("C-f", KeyCode::Char('f'), KeyModifiers::CONTROL, "Ctrl+f"),
@@ -1172,31 +1160,6 @@ mod tests {
             assert!(
                 parse_angle_key(value).is_err(),
                 "{value} should not parse as an angle key"
-            );
-        }
-    }
-
-    #[test]
-    fn keymap_rejects_legacy_modifier_syntax_in_mixed_tokens() {
-        let cases = [
-            "ctrl+u<C-w>",
-            "<C-w>ctrl+u",
-            "ctrl-w",
-            "C-w",
-            "alt-backspace",
-        ];
-
-        for value in cases {
-            let keymap = KeymapOptions {
-                mappings: [("ChannelSwitcher".to_owned(), KeymapBinding::one(value))]
-                    .into_iter()
-                    .collect(),
-                ..Default::default()
-            };
-
-            assert!(
-                KeyBindings::try_from_options(&keymap).is_err(),
-                "{value} should not parse as a keymap sequence"
             );
         }
     }

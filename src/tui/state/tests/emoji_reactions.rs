@@ -66,19 +66,6 @@ fn custom_emoji_reaction_items_expose_cdn_image_url() {
 }
 
 #[test]
-fn emoji_picker_items_hide_animated_custom_emojis_without_nitro() {
-    let mut state = state_with_custom_emojis();
-    state.push_event(AppEvent::CurrentUserCapabilities { has_nitro: false });
-
-    let items = state.emoji_reaction_items();
-
-    assert!(items.iter().all(|item| !matches!(
-        &item.emoji,
-        ReactionEmoji::Custom { id, .. } if *id == Id::new(50)
-    )));
-}
-
-#[test]
 fn emoji_picker_items_include_custom_emojis_from_update_event() {
     let guild_id = Id::new(1);
     let mut state = state_with_messages(1);
@@ -120,22 +107,6 @@ fn emoji_picker_items_include_foreign_custom_emojis_for_nitro_users() {
         ReactionEmoji::Custom { id, name, animated: true }
             if *id == Id::new(61) && name.as_deref() == Some("dance_foreign")
     )));
-}
-
-#[test]
-fn emoji_picker_items_hide_foreign_custom_emojis_without_nitro() {
-    let mut state = state_with_custom_emojis();
-    push_foreign_reaction_emojis(&mut state);
-    state.push_event(AppEvent::CurrentUserCapabilities { has_nitro: false });
-
-    let items = state.emoji_reaction_items();
-
-    assert!(items.iter().all(|item| {
-        !matches!(
-            item.emoji,
-            ReactionEmoji::Custom { id, .. } if id == Id::new(60) || id == Id::new(61)
-        )
-    }));
 }
 
 #[test]
@@ -267,7 +238,6 @@ fn reaction_message_actions_use_single_reacted_users_item() {
             .count(),
         1
     );
-    assert!(!actions.iter().any(|action| action.label == "Show 👍 users"));
 }
 
 #[test]

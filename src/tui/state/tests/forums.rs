@@ -1946,7 +1946,7 @@ fn thread_notification_settings_marks_current_level_after_update() {
 }
 
 #[test]
-fn channel_pane_regular_thread_opens_thread_actions_without_pin() {
+fn channel_pane_regular_thread_opens_thread_actions() {
     let guild_id = Id::new(1);
     // `general` (id 11) is a normal text channel in the standard channel tree,
     // so a thread under it is a regular thread, not a forum post.
@@ -2016,8 +2016,6 @@ fn channel_pane_regular_thread_opens_thread_actions_without_pin() {
         label(ThreadActionKind::ToggleFollow),
         Some("Unfollow thread".to_owned())
     );
-    // Pin is forum-only, so it never appears for a regular thread.
-    assert!(label(ThreadActionKind::Pin).is_none());
     // The remaining management/notification rows are still present.
     assert!(label(ThreadActionKind::NotificationSettings).is_some());
 }

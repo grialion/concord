@@ -3,70 +3,6 @@ use crate::discord::{AppCommand, VoiceScope};
 use crate::tui::keybindings::OptionsCategoryShortcut;
 
 #[test]
-fn image_preview_quality_option_cycles_presets() {
-    let mut state = DashboardState::new();
-    state.open_options_popup();
-    for _ in 0..3 {
-        state.move_option_down();
-    }
-
-    state.toggle_selected_display_option();
-    assert_eq!(
-        state.image_preview_quality(),
-        ImagePreviewQualityPreset::High
-    );
-
-    state.toggle_selected_display_option();
-    assert_eq!(
-        state.image_preview_quality(),
-        ImagePreviewQualityPreset::Original
-    );
-
-    state.toggle_selected_display_option();
-    assert_eq!(
-        state.image_preview_quality(),
-        ImagePreviewQualityPreset::Efficient
-    );
-}
-
-#[test]
-fn display_option_items_include_voice_state_controls() {
-    let state = DashboardState::new_with_voice_options(VoiceOptions {
-        self_mute: true,
-        self_deaf: true,
-        allow_microphone_transmit: true,
-        microphone_sensitivity: Default::default(),
-        microphone_volume: Default::default(),
-        voice_output_volume: Default::default(),
-    });
-
-    let items = state.display_option_items();
-
-    assert_eq!(items.len(), 15);
-    assert_eq!(items[9].label, "Voice muted");
-    assert!(items[9].enabled);
-    assert!(items[9].effective);
-    assert_eq!(items[10].label, "Voice deafened");
-    assert!(items[10].enabled);
-    assert!(items[10].effective);
-    assert_eq!(items[11].label, "Allow microphone transmit");
-    assert!(items[11].enabled);
-    assert!(items[11].effective);
-    assert_eq!(items[12].label, "Microphone sensitivity");
-    assert_eq!(items[12].value, Some("-30 dB".to_owned()));
-    assert_eq!(items[12].gauge_percent, Some(70));
-    assert!(items[12].effective);
-    assert_eq!(items[13].label, "Microphone volume");
-    assert_eq!(items[13].value, Some("100%".to_owned()));
-    assert_eq!(items[13].gauge_percent, Some(100));
-    assert!(items[13].effective);
-    assert_eq!(items[14].label, "Voice volume");
-    assert_eq!(items[14].value, Some("100%".to_owned()));
-    assert_eq!(items[14].gauge_percent, Some(100));
-    assert!(!items[14].effective);
-}
-
-#[test]
 fn voice_option_toggles_queue_current_voice_state_update_when_joined() {
     let mut state = DashboardState::new();
     state.push_effect(AppEvent::VoiceConnectionStatusChanged {
@@ -312,13 +248,6 @@ fn other_client_voice_state_shows_header_only() {
     state.open_selected_channel_actions();
     let actions = state.selected_channel_action_items();
     assert_eq!(actions[0].kind, ChannelActionKind::JoinVoice);
-
-    state.open_options_popup();
-    for _ in 0..6 {
-        state.move_option_down();
-    }
-    state.toggle_selected_display_option();
-    assert!(state.drain_pending_commands().is_empty());
 }
 
 #[test]

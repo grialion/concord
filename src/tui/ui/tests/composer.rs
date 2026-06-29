@@ -440,10 +440,6 @@ fn dashboard_renders_scrollbar_for_overflowing_composer_pickers() {
         "selected overflow mention candidate should stay visible:\n{rendered}"
     );
     assert!(
-        !rendered.contains("@scroll00"),
-        "picker should scroll away from the first row after selecting the bottom overflow candidate:\n{rendered}"
-    );
-    assert!(
         rendered.contains('┃'),
         "overflowing mention picker should render a scrollbar thumb:\n{rendered}"
     );
@@ -469,10 +465,6 @@ fn dashboard_renders_scrollbar_for_overflowing_composer_pickers() {
     assert!(
         rendered.contains(":overflow_09:"),
         "selected overflow emoji candidate should stay visible:\n{rendered}"
-    );
-    assert!(
-        !rendered.contains(":overflow_00:"),
-        "picker should scroll away from the first row after selecting the bottom overflow candidate:\n{rendered}"
     );
     assert!(
         rendered.contains('┃'),

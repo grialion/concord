@@ -645,18 +645,6 @@ fn forum_post_reaction_render_layouts(
     layouts
 }
 
-#[cfg(test)]
-pub(super) fn forum_post_reaction_rows_for_test(
-    posts: &[ChannelThreadItem],
-    width: usize,
-    list_height: usize,
-) -> Vec<usize> {
-    forum_post_reaction_render_layouts(posts, width, list_height)
-        .into_iter()
-        .map(|(row, _, _)| row)
-        .collect()
-}
-
 fn forum_post_inner_line(
     marker: &str,
     mut content: Vec<Span<'static>>,

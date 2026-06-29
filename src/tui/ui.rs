@@ -102,9 +102,8 @@ pub(crate) use self::types::{MouseTarget, PopupListTarget};
 #[cfg(test)]
 use self::{
     forum::{
-        forum_post_reaction_rows_for_test, forum_post_reaction_summary,
-        forum_post_scrollbar_visible_count, forum_post_tag_rows_for_test,
-        forum_post_viewport_lines,
+        forum_post_reaction_summary, forum_post_scrollbar_visible_count,
+        forum_post_tag_rows_for_test, forum_post_viewport_lines,
     },
     message::list::{
         date_separator_line, format_message_sent_time, inline_image_preview_row,

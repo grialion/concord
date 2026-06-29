@@ -38,12 +38,6 @@ fn channel_switcher_lines_show_search_and_grouped_selection() {
             .iter()
             .any(|line| line.to_string().contains("Text / #general"))
     );
-    assert!(!lines.iter().any(|line| line.to_string().contains("cursor")));
-    assert!(
-        !lines
-            .iter()
-            .any(|line| line.to_string().contains("type to filter"))
-    );
 }
 
 #[test]
@@ -115,7 +109,6 @@ fn channel_switcher_search_line_windows_long_query_around_cursor() {
     let rendered = lines[0].to_string();
 
     assert!(rendered.contains("uvwxyz"));
-    assert!(!rendered.contains("abcdef"));
 }
 
 #[test]

@@ -4,7 +4,7 @@ use fixtures::*;
 use ratatui::text::Line;
 
 use crate::{
-    config::{DisplayOptions, ImagePreviewQualityPreset, NotificationOptions, VoiceOptions},
+    config::{DisplayOptions, NotificationOptions, VoiceOptions},
     discord::ids::{
         Id,
         marker::{

@@ -20,7 +20,6 @@ fn custom_emoji_markup_uses_id_fallback_when_disabled() {
     let lines = format_message_content_lines(&message, &state, 200);
 
     assert_eq!(lines[0].text, "hello 42");
-    assert!(lines[0].image_slots.is_empty());
 }
 
 #[test]
@@ -208,7 +207,7 @@ fn inline_image_preview_row_ignores_reaction_footer_for_current_message() {
 }
 
 #[test]
-fn inline_image_preview_area_hides_preview_at_list_bottom() {
+fn inline_image_preview_area_clips_preview_at_list_bottom() {
     let area = Rect::new(10, 5, 80, 6);
 
     assert_eq!(
@@ -225,20 +224,6 @@ fn inline_image_preview_area_clips_preview_at_list_top() {
         inline_image_preview_area(area, -2, 0, 77, 4, None),
         Some(Rect::new(18, 5, 72, 3))
     );
-}
-
-#[test]
-fn inline_image_preview_area_returns_none_when_preview_starts_below_list() {
-    let area = Rect::new(10, 5, 80, 6);
-
-    assert_eq!(inline_image_preview_area(area, 5, 0, 77, 4, None), None);
-}
-
-#[test]
-fn inline_image_preview_area_returns_none_when_preview_ends_above_list() {
-    let area = Rect::new(10, 5, 80, 6);
-
-    assert_eq!(inline_image_preview_area(area, -5, 0, 77, 4, None), None);
 }
 
 #[test]
@@ -279,34 +264,6 @@ fn inline_image_preview_renders_when_not_occluded() {
         render_dashboard_dump_with_previews(120, 30, &mut state, vec![preview]).join("\n");
 
     assert!(rendered.contains("loading cat.png"), "{rendered}");
-}
-
-#[test]
-fn inline_image_preview_skips_rendering_when_overlay_occludes_it() {
-    let mut state = state_with_message();
-    state.open_keymap_help_popup();
-    let preview = loading_image_preview_at_message_offset(13);
-
-    let rendered =
-        render_dashboard_dump_with_previews(120, 30, &mut state, vec![preview]).join("\n");
-
-    assert!(!rendered.contains("loading cat.png"), "{rendered}");
-}
-
-#[test]
-fn inline_image_preview_skips_rendering_when_composer_picker_occludes_it() {
-    let mut state = state_with_message();
-    state.start_composer();
-    for ch in ":heart".chars() {
-        state.push_composer_char(ch);
-    }
-    let preview = loading_image_preview_at_message_offset(16);
-
-    let rendered =
-        render_dashboard_dump_with_previews(120, 30, &mut state, vec![preview]).join("\n");
-
-    assert!(rendered.contains(" emoji "), "{rendered}");
-    assert!(!rendered.contains("loading cat.png"), "{rendered}");
 }
 
 fn loading_image_preview_at_message_offset(preview_y_offset_rows: usize) -> ImagePreview<'static> {

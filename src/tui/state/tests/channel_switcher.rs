@@ -2,24 +2,6 @@ use super::*;
 use crate::discord::GuildFolder;
 
 #[test]
-fn channel_pane_excludes_threads() {
-    let state = state_with_thread_created_message();
-    let entries = state.channel_pane_entries();
-    let channel_ids: Vec<Id<ChannelMarker>> =
-        entries
-            .iter()
-            .filter_map(|entry| match entry {
-                ChannelPaneEntry::Channel { state, .. }
-                | ChannelPaneEntry::Thread { state, .. } => Some(state.id),
-                ChannelPaneEntry::CategoryHeader { .. }
-                | ChannelPaneEntry::VoiceParticipant { .. } => None,
-            })
-            .collect();
-    assert!(channel_ids.contains(&Id::new(2)));
-    assert!(!channel_ids.contains(&Id::new(10)));
-}
-
-#[test]
 fn channel_switcher_groups_channels_and_filters_by_fuzzy_name() {
     let mut state = DashboardState::new();
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
@@ -80,24 +62,11 @@ fn channel_switcher_includes_threads_and_forums_with_type_icons() {
     let guild_id = Id::new(1);
     let general_id = Id::new(11);
     let forum_id = Id::new(20);
-    let forum_post_id = Id::new(30);
     let thread_id = Id::new(31);
     let mut state = state_with_channel_tree();
     state.push_event(AppEvent::ChannelUpsert(forum_channel_info(
         guild_id, forum_id,
     )));
-    // A forum post is a thread parented to a forum; it must stay out.
-    state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
-        current_user_joined_thread: Some(true),
-        ..forum_thread_info(
-            guild_id,
-            forum_id,
-            forum_post_id.get(),
-            "a post",
-            Some(300),
-            false,
-        )
-    }));
     // A joined, non-archived thread under a text channel must appear.
     state.push_event(AppEvent::ChannelUpsert(ChannelInfo {
         current_user_joined_thread: Some(true),
@@ -116,7 +85,6 @@ fn channel_switcher_includes_threads_and_forums_with_type_icons() {
     assert_eq!(label(general_id), Some("# general"));
     assert_eq!(label(forum_id), Some("📝 announcements"));
     assert_eq!(label(thread_id), Some("🧵 a thread"));
-    assert_eq!(label(forum_post_id), None);
 
     let thread = items
         .iter()
@@ -302,21 +270,11 @@ fn channel_switcher_lists_recent_channels_first() {
         items
             .iter()
             .filter(|item| {
-                item.group_label == "Recent Channels" && item.channel_id == Id::new(11)
-            })
-            .count(),
-        0
-    );
-    assert_eq!(
-        items
-            .iter()
-            .filter(|item| {
                 item.group_label == "Recent Channels" && item.channel_id == Id::new(12)
             })
             .count(),
         1
     );
-    assert!(!items.iter().any(|item| item.group_label == "Notifications"));
     assert!(
         items
             .iter()

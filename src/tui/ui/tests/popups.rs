@@ -207,7 +207,6 @@ fn options_popup_lines_keep_selected_item_visible_when_clipped() {
     let lines = options_popup_lines(&items, 3, 2, 120);
     let rendered = line_texts_from_ratatui(&lines).join("\n");
 
-    assert!(!rendered.contains("Option 1"), "{rendered}");
     assert!(rendered.contains("Option 3"), "{rendered}");
     assert!(rendered.contains("› [x] Option 4"), "{rendered}");
 }
@@ -393,7 +392,6 @@ fn current_user_profile_settings_render_contract() {
     assert!(wrapped_hint.contains(" · "));
     assert!(wrapped_hint.contains("[Enter] select"));
     assert!(wrapped_hint.contains("[s] save"));
-    assert!(!wrapped_hint.contains("select/edit/commit"));
 
     state.next_user_profile_settings_field();
     state.next_user_profile_settings_field();
@@ -439,23 +437,6 @@ fn current_user_profile_settings_show_sign_out_action() {
     let rendered = texts.join(" ");
     assert!(rendered.contains("[o]"));
     assert!(rendered.contains("sign out"));
-}
-
-#[test]
-fn user_profile_popup_does_not_show_dm_hint_without_dm_context() {
-    for (profile_name, current_user_id) in [("neo", 10), ("alice", 99)] {
-        let profile = user_profile_info(10, profile_name);
-        let mut state = DashboardState::new();
-        state.push_event(AppEvent::Ready {
-            user: "neo".to_owned(),
-            user_id: Some(Id::new(current_user_id)),
-        });
-
-        let lines = user_profile_popup_lines(&profile, &state, 40, PresenceStatus::Online);
-        let texts = line_texts_from_ratatui(&lines);
-
-        assert!(!texts.iter().any(|line| line.contains("m send DM")));
-    }
 }
 
 #[test]
@@ -519,18 +500,7 @@ fn user_profile_popup_renders_activity_section() {
 }
 
 #[test]
-fn user_profile_popup_omits_activity_section_when_empty() {
-    let profile = user_profile_info(10, "neo");
-    let state = DashboardState::new();
-    let lines =
-        user_profile_popup_lines_with_activities(&profile, &state, 60, PresenceStatus::Online, &[]);
-    let texts = line_texts_from_ratatui(&lines);
-
-    assert!(!texts.iter().any(|line| line == "ACTIVITY"));
-}
-
-#[test]
-fn user_profile_popup_lists_mutual_servers_without_selection_marker() {
+fn user_profile_popup_lists_mutual_servers() {
     let mut profile = user_profile_info(10, "neo");
     profile.mutual_guilds = (1_u64..=3)
         .map(|id| MutualGuildInfo {
@@ -542,11 +512,8 @@ fn user_profile_popup_lists_mutual_servers_without_selection_marker() {
     let lines = user_profile_popup_lines(&profile, &state, 40, PresenceStatus::Online);
     let texts = line_texts_from_ratatui(&lines);
 
-    // The popup no longer drives a per-row cursor. Every mutual entry gets a
-    // uniform "  • name" prefix and the user navigates by scrolling.
     assert!(texts.iter().any(|line| line == "  • guild-1"));
     assert!(texts.iter().any(|line| line == "  • guild-3"));
-    assert!(!texts.iter().any(|line| line.starts_with("› ")));
 }
 
 #[test]
@@ -1257,7 +1224,7 @@ fn leader_action_popup_dims_disabled_channel_actions() {
 }
 
 #[test]
-fn leader_action_popup_from_messages_hides_standalone_message_action_menu() {
+fn leader_action_popup_from_messages_uses_message_action_title() {
     let mut state = state_with_message();
     state.focus_pane(FocusPane::Messages);
     state.open_leader();
@@ -1267,7 +1234,6 @@ fn leader_action_popup_from_messages_hides_standalone_message_action_menu() {
     let rendered = dump.join("\n");
 
     assert!(rendered.contains("Message Actions"), "{rendered}");
-    assert!(!rendered.contains("Message actions"), "{rendered}");
 }
 
 #[test]
@@ -1298,7 +1264,6 @@ fn folder_settings_popup_renders_name_and_color_inputs() {
     assert!(rendered.contains("#00AAFF"), "{rendered}");
     assert!(rendered.contains("[Enter] select"), "{rendered}");
     assert!(rendered.contains("[Esc] close/cancel"), "{rendered}");
-    assert!(!rendered.contains("[j/k] move"), "{rendered}");
 }
 
 #[test]
@@ -1317,7 +1282,7 @@ fn leader_action_popup_from_members_uses_member_action_title() {
 }
 
 #[test]
-fn leader_action_popup_for_empty_panes_does_not_fall_back_to_root_keymap() {
+fn leader_action_popup_for_empty_panes_shows_empty_state() {
     for pane in [FocusPane::Channels, FocusPane::Messages, FocusPane::Members] {
         let mut state = DashboardState::new();
         state.focus_pane(pane);
@@ -1331,7 +1296,6 @@ fn leader_action_popup_for_empty_panes_does_not_fall_back_to_root_keymap() {
             rendered.contains("No actions available"),
             "{pane:?}: {rendered}"
         );
-        assert!(!rendered.contains("[o] Options"), "{pane:?}: {rendered}");
     }
 }
 

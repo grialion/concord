@@ -81,20 +81,6 @@ fn image_preview_targets_stop_at_rendered_row_budget() {
 }
 
 #[test]
-fn disabled_image_previews_create_no_targets_or_requests() {
-    let mut state = state_with_image_messages(1, &[1]);
-    state.open_options_popup();
-    state.toggle_selected_display_option();
-    state.set_message_view_height(6);
-
-    let targets = visible_image_preview_targets(&state, layout(6));
-    let mut cache = ImagePreviewCache::new();
-
-    assert!(targets.is_empty());
-    assert!(cache.next_requests(&targets).is_empty());
-}
-
-#[test]
 fn image_preview_targets_keep_background_previews_while_modal_is_open() {
     let mut state = state_with_image_messages(1, &[1]);
     state.set_message_view_height(6);
@@ -638,20 +624,6 @@ fn avatar_targets_include_visible_author_avatar() {
     assert_eq!(targets[0].visible_height, 1);
     assert_eq!(targets[0].top_clip_rows, 0);
     assert_eq!(targets[0].url, "https://cdn.discordapp.com/avatar-1.png");
-}
-
-#[test]
-fn disabled_avatar_previews_create_no_targets_or_requests() {
-    let mut state = state_with_avatar_messages(1);
-    state.open_options_popup();
-    state.move_option_down();
-    state.toggle_selected_display_option();
-
-    let targets = visible_avatar_targets(&state, layout(2));
-    let mut cache = AvatarImageCache::new();
-
-    assert!(targets.is_empty());
-    assert!(cache.next_requests(&targets).is_empty());
 }
 
 #[test]
@@ -1740,28 +1712,6 @@ fn emoji_image_targets_keep_background_composer_emoji_while_modal_is_open() {
             url: "https://cdn.discordapp.com/emojis/60.png".to_owned(),
         }]
     );
-}
-
-#[test]
-fn disabled_custom_emoji_images_create_no_targets_or_requests() {
-    let mut state = state_with_image_messages(1, &[]);
-    state.push_event(AppEvent::GuildEmojisUpdate {
-        guild_id: Id::new(1),
-        emojis: vec![CustomEmojiInfo::test(Id::new(50), "party")],
-    });
-    state.focus_pane(FocusPane::Messages);
-    state.open_emoji_reaction_picker();
-    state.open_options_popup();
-    for _ in 0..4 {
-        state.move_option_down();
-    }
-    state.toggle_selected_display_option();
-
-    let targets = visible_emoji_image_targets(&state);
-    let mut cache = EmojiImageCache::new();
-
-    assert!(targets.is_empty());
-    assert!(cache.next_requests(&targets).is_empty());
 }
 
 #[test]

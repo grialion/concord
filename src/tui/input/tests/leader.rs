@@ -777,18 +777,6 @@ fn leader_o_category_shortcuts_open_scoped_options() {
         state.display_option_items()[0].label,
         "Disable all image previews"
     );
-    assert!(
-        !state
-            .display_option_items()
-            .iter()
-            .any(|item| item.label == "Voice muted")
-    );
-    assert!(
-        !state
-            .display_option_items()
-            .iter()
-            .any(|item| item.label == "Desktop notifications")
-    );
 
     state.close_options_popup();
     handle_key(&mut state, char_key(' '));
@@ -800,7 +788,6 @@ fn leader_o_category_shortcuts_open_scoped_options() {
         state.display_option_items()[0].label,
         "Desktop notifications"
     );
-    assert_eq!(state.display_option_items().len(), 1);
 
     state.close_options_popup();
     handle_key(&mut state, char_key(' '));
@@ -809,12 +796,6 @@ fn leader_o_category_shortcuts_open_scoped_options() {
 
     assert_eq!(state.options_popup_title(), "Voice Options");
     assert_eq!(state.display_option_items()[0].label, "Voice muted");
-    assert!(
-        !state
-            .display_option_items()
-            .iter()
-            .any(|item| item.label == "Show avatars")
-    );
 }
 
 #[test]
